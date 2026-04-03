@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel usera - Subscriptions Manager</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/welcome.html">Powitalna</a>
+        <a href="/login.html">Logowanie</a>
+        <a href="/dashboard-user.html">Panel usera</a>
+    </div>
+
+    <div class="card">
+        <h1>Panel usera</h1>
+        <p id="whoAmI" class="muted"></p>
+        <button class="btn paypal" id="paypalBtn">PayPal - zaplac teraz</button>
+    </div>
+
+    <div class="card">
+        <h2>Twoje subskrypcje</h2>
+        <ul id="subscriptionsList"></ul>
+    </div>
+</div>
+<script src="/dashboard-user.js"></script>
+</body>
+</html>

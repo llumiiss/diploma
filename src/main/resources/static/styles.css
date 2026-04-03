@@ -1,0 +1,80 @@
+.container {
+    max-width: 960px;
+    margin: 40px auto;
+    padding: 0 16px;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    margin: 0;
+    background: #f6f8fc;
+    color: #1b1f28;
+}
+
+.card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+    margin-bottom: 16px;
+}
+
+h1, h2 {
+    margin-top: 0;
+}
+
+.btn {
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    background: #3a6df0;
+    color: #fff;
+}
+
+.btn.secondary {
+    background: #1f9d61;
+}
+
+.btn.paypal {
+    background: #ffc439;
+    color: #111;
+}
+
+input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #d5d9e2;
+    margin-bottom: 10px;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.muted {
+    color: #5b6578;
+}
+
+.space-top {
+    margin-top: 12px;
+}
+
+.nav {
+    margin-bottom: 20px;
+}
+
+.nav a {
+    margin-right: 12px;
+    text-decoration: none;
+    color: #3a6df0;
+}

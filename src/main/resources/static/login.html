@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Logowanie - Subscriptions Manager</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/welcome.html">Powitalna</a>
+        <a href="/login.html">Logowanie</a>
+    </div>
+
+    <div class="card">
+        <h1>Logowanie przez email + kod</h1>
+        <input id="email" type="email" placeholder="Podaj email, np. admin@demo.pl">
+        <button class="btn" id="sendCodeBtn">Wyslij kod</button>
+
+        <div class="space-top">
+            <input id="code" type="text" placeholder="Wpisz kod (demo: 123456)">
+            <button class="btn secondary" id="verifyBtn">Zaloguj</button>
+        </div>
+
+        <p id="loginMessage" class="muted"></p>
+    </div>
+</div>
+<script src="/login.js"></script>
+</body>
+</html>

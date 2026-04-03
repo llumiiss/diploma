@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel admina - Subscriptions Manager</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/welcome.html">Powitalna</a>
+        <a href="/login.html">Logowanie</a>
+        <a href="/dashboard-admin.html">Panel admina</a>
+    </div>
+
+    <div class="card">
+        <h1>Panel admina</h1>
+        <p id="whoAmI" class="muted"></p>
+        <button class="btn paypal" id="paypalBtn">PayPal - zaplac teraz</button>
+    </div>
+
+    <div class="row">
+        <div class="card">
+            <h2>Wszystkie subskrypcje</h2>
+            <ul id="subscriptionsList"></ul>
+        </div>
+
+        <div class="card">
+            <h2>Dodaj subskrypcje</h2>
+            <input id="subName" type="text" placeholder="Nazwa subskrypcji">
+            <input id="subCost" type="number" step="0.01" placeholder="Cena miesieczna">
+            <button class="btn" id="addSubBtn">Dodaj</button>
+
+            <h2 class="space-top">Uzytkownicy</h2>
+            <ul id="usersList"></ul>
+        </div>
+    </div>
+</div>
+<script src="/dashboard-admin.js"></script>
+</body>
+</html>
