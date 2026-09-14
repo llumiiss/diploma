@@ -1,0 +1,6 @@
+/vendor/
+/logs/*.log
+!.gitkeep
+/config/mail.local.php
+/phpunit.xml
+.phpunit.result.cache

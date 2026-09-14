@@ -1,0 +1,52 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Local mail overrides — copy to mail.local.php (gitignored).
+ *
+ * === TESTING (Mailtrap Sandbox) ===
+ * Mail goes to https://mailtrap.io → Email Testing → your inbox.
+ * It will NOT arrive in Gmail/Outlook.
+ *
+ * 'driver' => 'sandbox',
+ * 'smtp' => [
+ *     'host'     => 'sandbox.smtp.mailtrap.io',
+ *     'port'     => 2525,
+ *     'username' => '...',
+ *     'password' => '...',
+ * ],
+ *
+ * === REAL EMAIL (Gmail example) ===
+ * 1. Google Account → Security → 2FA → App passwords
+ * 2. Use that 16-char password below (not your Gmail password)
+ *
+ * 'driver' => 'smtp',
+ * 'from_email' => 'twoj@gmail.com',
+ * 'dev_log_codes' => false,
+ * 'show_sandbox_notice' => false,
+ * 'smtp' => [
+ *     'host'     => 'smtp.gmail.com',
+ *     'port'     => 587,
+ *     'username' => 'twoj@gmail.com',
+ *     'password' => 'xxxx xxxx xxxx xxxx',
+ *     'smtp_secure' => 'tls',
+ * ],
+ *
+ * === Mailtrap Email Sending (real delivery) ===
+ * 'driver' => 'smtp',
+ * 'smtp' => [
+ *     'host'     => 'live.smtp.mailtrap.io',
+ *     'port'     => 587,
+ *     'username' => '...',
+ *     'password' => '...',
+ * ],
+ */
+return [
+    'driver' => 'sandbox',
+    'dev_log_codes' => true,
+    'smtp' => [
+        'username' => 'your_mailtrap_username',
+        'password' => 'your_mailtrap_password',
+    ],
+];
