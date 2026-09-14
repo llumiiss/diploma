@@ -1,0 +1,149 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit;
+
+use App\AuthManager;
+use App\Session;
+use App\UserManager;
+use PHPUnit\Framework\TestCase;
+use Tests\Support\RecordingOtpMailer;
+use Tests\Support\SqliteTestDatabase;
+
+final class AuthManagerTest extends TestCase
+{
+    private RecordingOtpMailer $mail;
+
+    protected function setUp(): void
+    {
+        Session::destroy();
+        Session::ensureStarted();
+        $_SESSION = [];
+        $this->mail = new RecordingOtpMailer();
+    }
+
+    protected function tearDown(): void
+    {
+        Session::destroy();
+        $_SESSION = [];
+    }
+
+    public function testRequestOtpForUnknownEmailDoesNotRevealAccount(): void
+    {
+        $db = SqliteTestDatabase::create();
+        $auth = new AuthManager($db, new UserManager($db), $this->mail);
+
+        $result = $auth->requestOtp('unknown@example.com');
+
+        $this->assertTrue($result['ok']);
+        $this->assertFalse($result['sent']);
+        $this->assertSame([], $this->mail->sent);
+        $this->assertNull($auth->getPendingEmail());
+    }
+
+    public function testRequestOtpForKnownUserSendsCode(): void
+    {
+        $db = SqliteTestDatabase::create();
+        SqliteTestDatabase::seedUser($db, 'known@example.com');
+        $auth = new AuthManager($db, new UserManager($db), $this->mail);
+
+        $result = $auth->requestOtp('known@example.com');
+
+        $this->assertTrue($result['ok']);
+        $this->assertTrue($result['sent']);
+        $this->assertCount(1, $this->mail->sent);
+        $this->assertSame('known@example.com', $this->mail->sent[0]['email']);
+        $this->assertSame('known@example.com', $auth->getPendingEmail());
+    }
+
+    public function testVerifyOtpLogsUserIn(): void
+    {
+        $db = SqliteTestDatabase::create();
+        $userId = SqliteTestDatabase::seedUser($db, 'login@example.com');
+        $auth = new AuthManager($db, new UserManager($db), $this->mail);
+
+        $auth->requestOtp('login@example.com');
+        $code = $this->mail->sent[0]['code'];
+
+        $result = $auth->verifyOtp('login@example.com', $code);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('dashboard.php', $result['redirect']);
+        $this->assertTrue($auth->isAuthenticated());
+        $this->assertSame($userId, (int) $_SESSION['user_id']);
+    }
+
+    public function testVerifyOtpRejectsInvalidCode(): void
+    {
+        $db = SqliteTestDatabase::create();
+        SqliteTestDatabase::seedUser($db, 'login@example.com');
+        $auth = new AuthManager($db, new UserManager($db), $this->mail);
+
+        $auth->requestOtp('login@example.com');
+
+        $result = $auth->verifyOtp('login@example.com', '000000');
+
+        $this->assertFalse($result['ok']);
+        $this->assertFalse($auth->isAuthenticated());
+    }
+
+    public function testRegisterRollsBackUserWhenMailFails(): void
+    {
+        $db = SqliteTestDatabase::create();
+        $failingMail = new class implements \App\OtpMailer {
+            public function sendOtpCode(string $toEmail, string $code): bool
+            {
+                return false;
+            }
+        };
+        $auth = new AuthManager($db, new UserManager($db), $failingMail);
+
+        $result = $auth->register('Jan', 'Kowalski', 'new@example.com');
+
+        $this->assertFalse($result['ok']);
+        $users = new UserManager($db);
+        $this->assertFalse($users->findByEmail('new@example.com'));
+    }
+
+    public function testVerifyOtpWorksWhenSessionPendingWasLost(): void
+    {
+        $db = SqliteTestDatabase::create();
+        $userId = SqliteTestDatabase::seedUser($db, 'login@example.com');
+        $auth = new AuthManager($db, new UserManager($db), $this->mail);
+
+        $auth->requestOtp('login@example.com');
+        $code = $this->mail->sent[0]['code'];
+        $auth->clearPendingOtp();
+
+        $result = $auth->verifyOtp('login@example.com', $code);
+
+        $this->assertTrue($result['ok']);
+        $this->assertTrue($auth->isAuthenticated());
+        $this->assertSame($userId, (int) $_SESSION['user_id']);
+    }
+
+    public function testClearPendingOtpAllowsLeavingVerifyStep(): void
+    {
+        $db = SqliteTestDatabase::create();
+        SqliteTestDatabase::seedUser($db, 'login@example.com');
+        $auth = new AuthManager($db, new UserManager($db), $this->mail);
+
+        $auth->requestOtp('login@example.com');
+        $this->assertSame('login@example.com', $auth->getPendingEmail());
+
+        $auth->clearPendingOtp();
+        $this->assertNull($auth->getPendingEmail());
+    }
+
+    public function testSanitizeRedirectBlocksOpenRedirect(): void
+    {
+        $db = SqliteTestDatabase::create();
+        $auth = new AuthManager($db, new UserManager($db), $this->mail);
+
+        $this->assertSame(
+            'dashboard.php',
+            $auth->sanitizeRedirect('https://evil.com/dashboard.php')
+        );
+    }
+}
