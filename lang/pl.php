@@ -255,6 +255,7 @@ return [
     'auth.error.csrf' => 'Token bezpieczeństwa wygasł. Odśwież stronę i spróbuj ponownie.',
     'auth.error.rate_limited' => 'Zbyt wiele próśb o kod. Poczekaj kilka minut.',
     'auth.error.too_many_attempts' => 'Zbyt wiele błędnych prób. Poproś o nowy kod.',
+    'auth.error.delete_blocked' => 'Do konta są przypisane subskrypcje lub certyfikaty. Przekaż je innej osobie albo poproś administratora o usunięcie konta.',
     'auth.register_title' => 'Rejestracja',
     'auth.register_subtitle' => 'Podaj dane — wyślemy kod weryfikacyjny na e-mail.',
     'auth.register_submit' => 'Załóż konto',

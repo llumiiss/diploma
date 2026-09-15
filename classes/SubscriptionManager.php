@@ -16,11 +16,15 @@ final class SubscriptionManager
     }
 
     /**
+     * @param int|null $ownerId Gdy podane, zwraca wyłącznie rekordy tej osoby
+     *                          (rola bez dostępu do danych całej organizacji).
      * @return array<int, array<string, mixed>>
      */
-    public function getAllSubscriptions(string $scope = 'corporate'): array
+    public function getAllSubscriptions(string $scope = 'corporate', ?int $ownerId = null): array
     {
-        $sql = <<<'SQL'
+        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope], 's.user_id');
+
+        $sql = <<<SQL
             SELECT
                 s.id,
                 s.name,
@@ -46,12 +50,12 @@ final class SubscriptionManager
             FROM subscriptions s
             INNER JOIN users u ON s.user_id = u.id
             INNER JOIN payers p ON s.payer_id = p.id
-            WHERE s.scope = :scope
+            WHERE s.scope = :scope{$ownerFilter}
             ORDER BY s.expiry_date ASC
         SQL;
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(['scope' => $scope]);
+        $stmt->execute($params);
 
         return $stmt->fetchAll();
     }
@@ -59,17 +63,19 @@ final class SubscriptionManager
     /**
      * @return array{pending: int, active: int, renewal_in_progress: int, expired: int}
      */
-    public function getStatusStats(string $scope = 'corporate'): array
+    public function getStatusStats(string $scope = 'corporate', ?int $ownerId = null): array
     {
-        $sql = <<<'SQL'
+        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope]);
+
+        $sql = <<<SQL
             SELECT status, COUNT(*) AS total
             FROM subscriptions
-            WHERE scope = :scope
+            WHERE scope = :scope{$ownerFilter}
             GROUP BY status
         SQL;
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(['scope' => $scope]);
+        $stmt->execute($params);
 
         $stats = [
             'pending'              => 0,
@@ -88,21 +94,23 @@ final class SubscriptionManager
     /**
      * @return array{due_soon: int, overdue: int, paid: int, total_due_amount: float}
      */
-    public function getPaymentSummary(string $scope = 'corporate'): array
+    public function getPaymentSummary(string $scope = 'corporate', ?int $ownerId = null): array
     {
-        $sql = <<<'SQL'
+        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope]);
+
+        $sql = <<<SQL
             SELECT
                 payment_status,
                 COUNT(*) AS total,
                 COALESCE(SUM(annual_cost), 0) AS amount
             FROM subscriptions
-            WHERE scope = :scope
+            WHERE scope = :scope{$ownerFilter}
               AND payment_status IN ('due_soon', 'overdue')
             GROUP BY payment_status
         SQL;
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(['scope' => $scope]);
+        $stmt->execute($params);
 
         $summary = [
             'due_soon'         => 0,
@@ -117,9 +125,9 @@ final class SubscriptionManager
         }
 
         $paidStmt = $this->db->prepare(
-            "SELECT COUNT(*) FROM subscriptions WHERE scope = :scope AND payment_status = 'paid'"
+            "SELECT COUNT(*) FROM subscriptions WHERE scope = :scope{$ownerFilter} AND payment_status = 'paid'"
         );
-        $paidStmt->execute(['scope' => $scope]);
+        $paidStmt->execute($params);
         $summary['paid'] = (int) $paidStmt->fetchColumn();
 
         return $summary;
@@ -128,11 +136,13 @@ final class SubscriptionManager
     /**
      * @return array{expired: int, expiring_critical: int, expiring_warning: int, critical_days: int, warning_days: int, annual_commitment: float, monthly_spend: float}
      */
-    public function getRenewalSummary(string $scope = 'corporate'): array
+    public function getRenewalSummary(string $scope = 'corporate', ?int $ownerId = null): array
     {
         $thresholds = SubscriptionHelper::getThresholds($scope);
         $criticalDays = (int) $thresholds['critical'];
         $warningDays = (int) $thresholds['warning'];
+
+        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope]);
 
         $sql = "
             SELECT
@@ -148,11 +158,11 @@ final class SubscriptionManager
                     END
                 ), 0) AS monthly_spend
             FROM subscriptions
-            WHERE scope = :scope
+            WHERE scope = :scope{$ownerFilter}
         ";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(['scope' => $scope]);
+        $stmt->execute($params);
         $row = $stmt->fetch();
 
         return [
@@ -164,5 +174,22 @@ final class SubscriptionManager
             'annual_commitment'  => (float) ($row['annual_commitment'] ?? 0),
             'monthly_spend'      => (float) ($row['monthly_spend'] ?? 0),
         ];
+    }
+
+    /**
+     * Zwraca warunek SQL i parametry ograniczające wynik do właściciela rekordów.
+     *
+     * @param array<string, mixed> $params
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    private function ownerFilter(?int $ownerId, array $params, string $column = 'user_id'): array
+    {
+        if ($ownerId === null) {
+            return ['', $params];
+        }
+
+        $params['owner_id'] = $ownerId;
+
+        return [' AND ' . $column . ' = :owner_id', $params];
     }
 }

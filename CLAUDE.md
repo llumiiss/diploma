@@ -1,6 +1,6 @@
 # CLAUDE.md — CertiSub Assistant (assistent_subscription)
 
-Guidance for AI agents working in this repo. Read `docs/AGENT_HANDOFF.md` for the full project brief, feature status, and roadmap — this file is the quick operational contract.
+Guidance for AI agents working in this repo. **Start with `docs/MAPA_PROJEKTU.md`** — it carries the official thesis description (the authoritative scope), the requirement matrix, the bug list, the phased plan and the open decisions D1–D7. `docs/AGENT_HANDOFF.md` is the older project brief; its roadmap covers only about a quarter of the official requirements, so treat the map as the source of truth. This file remains the quick operational contract.
 
 ## What this is
 University thesis project (author: Maksym Litosh, Uniwersytet Śląski). A PHP 8 / MySQL LAMP web app ("CertiSub Assistant") for tracking SSL certificates, SaaS subscriptions, domains, and renewal payments, with two scopes: **corporate** (`dashboard.php`) and **personal** (`dashboard-personal.php`). Primary human language: Polish; UI is i18n (pl/en/es/de/uk).
@@ -21,19 +21,24 @@ composer cs          # PHP-CS-Fixer dry-run (diff only)
 composer cs-fix      # PHP-CS-Fixer apply (PSR-12 + short arrays, ordered imports)
 php scripts/migrate.php          # idempotent DB migrations (needs MySQL up)
 php scripts/test-mail.php you@example.com   # mail smoke test
+php scripts/set-role.php --list                  # list accounts and their roles
+php scripts/set-role.php you@example.com ADMIN   # grant a role (ADMIN > MANAGER > OPERATOR)
 $env:RUN_INTEGRATION_TESTS=1; composer test # DB integration tests
 ```
-Current quality baseline (2026-09-15): 10/10 unit tests pass; PHPStan reports 2 pre-existing benign "always true" notes (MigrationRunner.php:92, send_reminders.php:120) — not blockers.
+Current quality baseline (2026-09-16, after Etap 0): 16 unit tests pass + 1 integration test skipped; PHPStan (now also covering the root entry scripts) reports the same 2 pre-existing benign "always true" notes (MigrationRunner.php:92, send_reminders.php:120) — not blockers. `composer cs` flags 27/32 files only because @PSR12 wants LF endings and the repo is CRLF — do not run `cs-fix` without a separate line-ending normalization commit.
 
 ## Code conventions (match existing code)
 - PHP: `declare(strict_types=1);`, `final` classes, namespace `App\`, PDO prepared statements.
-- API endpoints (`api/*.php`): JSON in/out, require auth, require CSRF header `X-CSRF-TOKEN`, validate all input.
+- API endpoints (`api/*.php`): JSON in/out, require auth, require CSRF header `X-CSRF-TOKEN`, validate all input, and check the role with `App\Rbac` before returning or writing organisation-wide data.
+- Authorization: `App\Rbac` defines the hierarchy ADMIN > MANAGER > OPERATOR. Read queries that can return other people's records take an `?int $ownerId` and filter on it; OPERATOR never sees the org-wide directories of people and payers. Hiding things only in Vue is not access control.
+- CLI-only scripts (`scripts/*.php`, `cron/*.php`) begin with a `PHP_SAPI !== 'cli'` guard *before* `require bootstrap.php`. The project folder is the web docroot, so the root `.htaccess` blocks internal directories — extend it whenever you add a directory that must not be served.
 - Dashboard UI is Vue 3 + Tailwind (CDN) inside `includes/dashboard_app.php`; one file serves both scopes, switched by `$scope`.
 - i18n: put user-facing strings as keys in `lang/*.php` (all five languages) — never hardcode Polish/English in markup.
 - Never commit `config/mail.local.php` or other secrets (already gitignored). `vendor/` is gitignored.
 - **Focused changes only** — do not expand scope beyond the current request. Add/extend PHPUnit tests when you touch auth or CRUD logic.
 
-## Roadmap priority (from docs/AGENT_HANDOFF.md §9/§12)
+## Roadmap priority
+**Use `docs/MAPA_PROJEKTU.md` §7 (Etapy 1–7).** Etap 0 — the critical security and consistency fixes — is done; see §11 there. The list below is the older AGENT_HANDOFF roadmap, kept for context only: it omits import/export, message templates with attachments, invitation tracking, archiving, ToDo task statuses and statistics, the event-history timeline and the per-perspective reports.
 1. CRUD for the `subscriptions` table (backend in `SubscriptionManager` + `api/` endpoints + modal in `dashboard_app.php`) — the biggest functional gap.
 2. Edit/delete in `ManagerSubscriptionManager` (personal "Moje Subskrypcje").
 3. CRUD for users & payers (views exist; wire up write endpoints).

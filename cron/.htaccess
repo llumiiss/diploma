@@ -1,2 +1,3 @@
-Require all
-Deny from all
+# Skrypty uruchamiane z CLI — nigdy nie udostępniamy ich przez HTTP.
+# Uwaga: "Require all" bez argumentu to błąd składni (Apache zwraca wtedy 500).
+Require all denied
