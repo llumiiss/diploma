@@ -1,0 +1,15 @@
+parameters:
+    level: 5
+    paths:
+        - classes
+        - api
+        - cron
+        - scripts
+        - includes
+    excludePaths:
+        - vendor
+        - tests/Support/*
+    bootstrapFiles:
+        - bootstrap.php
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false

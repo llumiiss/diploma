@@ -1,0 +1,23 @@
+﻿{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(php:*)",
+      "Bash(composer:*)",
+      "Bash(composer test:*)",
+      "Bash(phpunit:*)",
+      "Bash(phpstan:*)",
+      "Bash(php-cs-fixer:*)",
+      "Bash(vendor/bin/phpunit:*)",
+      "Bash(vendor/bin/phpstan:*)",
+      "Bash(vendor/bin/php-cs-fixer:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
