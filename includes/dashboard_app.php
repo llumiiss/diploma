@@ -12,6 +12,7 @@ use App\AuthManager;
 use App\Csrf;
 use App\ManagerSubscriptionManager;
 use App\PayerManager;
+use App\Rbac;
 use App\SubscriptionHelper;
 use App\SubscriptionManager;
 use App\Translator;
@@ -66,20 +67,27 @@ $userManager = new UserManager();
 $payerManager = new PayerManager();
 $managerSubscriptionManager = new ManagerSubscriptionManager();
 
-$subscriptions = SubscriptionHelper::enrich($subscriptionManager->getAllSubscriptions($scope));
-$stats = $subscriptionManager->getStatusStats($scope);
-$paymentSummary = $subscriptionManager->getPaymentSummary($scope);
-$renewalSummary = $subscriptionManager->getRenewalSummary($scope);
-$users = $userManager->getAllUsers($scope);
-$payers = $payerManager->getAllPayers($scope);
-
 $currentUser = $auth->currentUser() ?: [
     'first_name' => 'User',
     'last_name'  => '',
-    'role'       => 'OPERATOR',
+    'role'       => Rbac::OPERATOR,
     'email'      => '',
     'id'         => 0,
 ];
+
+// Kontrola dostępu: MANAGER i ADMIN widzą dane całej organizacji,
+// OPERATOR wyłącznie rekordy, których jest właścicielem.
+$seesAllRecords = Rbac::seesAllRecords((string) ($currentUser['role'] ?? Rbac::OPERATOR));
+$ownerId = $seesAllRecords ? null : (int) $currentUser['id'];
+
+$subscriptions = SubscriptionHelper::enrich($subscriptionManager->getAllSubscriptions($scope, $ownerId));
+$stats = $subscriptionManager->getStatusStats($scope, $ownerId);
+$paymentSummary = $subscriptionManager->getPaymentSummary($scope, $ownerId);
+$renewalSummary = $subscriptionManager->getRenewalSummary($scope, $ownerId);
+
+// Katalog osób i płatników to dane całej organizacji (e-maile, NIP-y) — nie dla OPERATORA.
+$users = $seesAllRecords ? $userManager->getAllUsers($scope) : [];
+$payers = $seesAllRecords ? $payerManager->getAllPayers($scope) : [];
 
 $managerSubscriptions = $currentUser['id'] > 0
     ? $managerSubscriptionManager->getByUserId((int) $currentUser['id'])
@@ -109,6 +117,7 @@ $commitmentValueJson = json_encode($commitmentValue);
 $localeJson = json_encode($translator->locale());
 $managerSubscriptionsJson = json_encode($managerSubscriptions, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
 $csrfTokenJson = json_encode(Csrf::token());
+$seesAllRecordsJson = json_encode($seesAllRecords);
 ?>
 <!DOCTYPE html>
 <html lang="<?= htmlspecialchars($translator->locale()) ?>">
@@ -600,6 +609,7 @@ createApp({
             payers: <?= $payersJson ?>,
             managerSubscriptions: <?= $managerSubscriptionsJson ?>,
             csrfToken: <?= $csrfTokenJson ?>,
+            canSeeDirectory: <?= $seesAllRecordsJson ?>,
             showAddModal: false,
             showDeleteAccountModal: false,
             deleteAccountSaving: false,
@@ -629,13 +639,19 @@ createApp({
         },
         navItems() {
             const due = this.paymentSummary.due_soon + this.paymentSummary.overdue;
-            return [
+            const items = [
                 { id: 'dashboard', icon: '📊', label: this.t('dash.nav.dashboard'), badge: null },
                 { id: 'todo', icon: '✅', label: this.t('dash.nav.todo'), badge: this.renewalSummary.expiring_warning || null },
                 { id: 'subscriptions', icon: '📋', label: this.t('dash.nav.subscriptions'), badge: null },
-                { id: 'users', icon: '👥', label: this.t('dash.nav.users'), badge: null },
-                { id: 'payers', icon: '🏢', label: this.t('dash.nav.payers'), badge: due || null },
             ];
+
+            // Katalog osób i płatników widzą tylko role MANAGER i ADMIN.
+            if (this.canSeeDirectory) {
+                items.push({ id: 'users', icon: '👥', label: this.t('dash.nav.users'), badge: null });
+                items.push({ id: 'payers', icon: '🏢', label: this.t('dash.nav.payers'), badge: due || null });
+            }
+
+            return items;
         },
         priorityList() {
             return [...this.subscriptions]

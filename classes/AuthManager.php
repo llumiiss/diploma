@@ -251,28 +251,33 @@ final class AuthManager
         );
     }
 
-    public function deleteCurrentAccount(): bool
+    /**
+     * @return array{ok: bool, error?: string}
+     */
+    public function deleteCurrentAccount(): array
     {
         if (!$this->isAuthenticated()) {
-            return false;
+            return ['ok' => false, 'error' => 'auth.error.generic'];
         }
 
         $userId = (int) $_SESSION[self::SESSION_USER_KEY];
 
         if ($userId <= 0) {
-            return false;
+            return ['ok' => false, 'error' => 'auth.error.generic'];
         }
 
-        $deleted = $this->users->deleteAccountCompletely($userId);
+        if ($this->users->countOwnedSubscriptions($userId) > 0) {
+            return ['ok' => false, 'error' => 'auth.error.delete_blocked'];
+        }
 
-        if (!$deleted) {
-            return false;
+        if (!$this->users->deleteAccountCompletely($userId)) {
+            return ['ok' => false, 'error' => 'auth.error.generic'];
         }
 
         $this->logout();
         $this->clearPendingOtp();
 
-        return true;
+        return ['ok' => true];
     }
 
     public function requireAuth(string $redirectTarget): void

@@ -267,6 +267,7 @@ return [
     'auth.error.csrf' => 'Security token expired. Refresh the page and try again.',
     'auth.error.rate_limited' => 'Too many code requests. Please wait a few minutes.',
     'auth.error.too_many_attempts' => 'Too many incorrect attempts. Request a new code.',
+    'auth.error.delete_blocked' => 'This account still owns subscriptions or certificates. Reassign them or ask an administrator to delete the account.',
     'auth.register_title' => 'Create account',
     'auth.register_subtitle' => 'Enter your details — we will send a verification code to your email.',
     'auth.register_submit' => 'Create account',

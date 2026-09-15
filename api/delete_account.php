@@ -41,9 +41,12 @@ if (!is_array($payload) || empty($payload['confirm'])) {
     exit;
 }
 
-if (!$auth->deleteCurrentAccount()) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Could not delete account']);
+$result = $auth->deleteCurrentAccount();
+
+if (!$result['ok']) {
+    $error = $result['error'] ?? 'auth.error.generic';
+    http_response_code($error === 'auth.error.delete_blocked' ? 409 : 500);
+    echo json_encode(['success' => false, 'message' => __($error)], JSON_UNESCAPED_UNICODE);
     exit;
 }
 

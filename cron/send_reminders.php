@@ -8,12 +8,12 @@ declare(strict_types=1);
  * Windows Task Scheduler / Linux crontab: 0 8 * * *
  */
 
-require dirname(__DIR__) . '/bootstrap.php';
-
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
-    exit('Forbidden');
+    exit('Forbidden — CLI only.');
 }
+
+require dirname(__DIR__) . '/bootstrap.php';
 
 use App\Database;
 use App\Mailer;

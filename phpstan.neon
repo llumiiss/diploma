@@ -6,6 +6,13 @@ parameters:
         - cron
         - scripts
         - includes
+        - bootstrap.php
+        - index.php
+        - login.php
+        - logout.php
+        - register.php
+        - dashboard.php
+        - dashboard-personal.php
     excludePaths:
         - vendor
         - tests/Support/*

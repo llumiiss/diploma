@@ -8,6 +8,11 @@ declare(strict_types=1);
  *   php scripts/test-mail.php twoj@email.com
  */
 
+if (PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    exit('Forbidden — CLI only.');
+}
+
 require dirname(__DIR__) . '/bootstrap.php';
 
 use App\MailConfig;

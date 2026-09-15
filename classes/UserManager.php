@@ -115,30 +115,49 @@ final class UserManager
         return $stmt->execute(['id' => $id]);
     }
 
-    public function deleteAccountCompletely(int $userId): bool
+    /**
+     * Liczba rekordów biznesowych, których ta osoba jest właścicielem.
+     */
+    public function countOwnedSubscriptions(int $userId): int
     {
-        $this->db->beginTransaction();
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM subscriptions WHERE user_id = :id');
+        $stmt->execute(['id' => $userId]);
 
-        try {
-            $stmt = $this->db->prepare('DELETE FROM subscriptions WHERE user_id = :id');
-            $stmt->execute(['id' => $userId]);
+        return (int) $stmt->fetchColumn();
+    }
 
-            $stmt = $this->db->prepare('DELETE FROM users WHERE id = :id');
-            $ok = $stmt->execute(['id' => $userId]);
-
-            if (!$ok || $stmt->rowCount() === 0) {
-                $this->db->rollBack();
-
-                return false;
-            }
-
-            $this->db->commit();
-
-            return true;
-        } catch (\Throwable) {
-            $this->db->rollBack();
-
+    public function setRoleByEmail(string $email, string $role): bool
+    {
+        if (!Rbac::isRole($role)) {
             return false;
         }
+
+        $user = $this->findByEmail($email);
+        if ($user === false) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare('UPDATE users SET role = :role WHERE id = :id');
+
+        return $stmt->execute([
+            'role' => strtoupper(trim($role)),
+            'id'   => (int) $user['id'],
+        ]);
+    }
+
+    /**
+     * Usuwa konto wraz z kodami logowania i prywatnym menedżerem (FK ON DELETE CASCADE).
+     * Rekordów biznesowych (subscriptions) NIE usuwa — jeśli osoba jest ich właścicielem,
+     * konto zostaje, żeby nie stracić danych ani historii (docs/MAPA_PROJEKTU.md §5).
+     */
+    public function deleteAccountCompletely(int $userId): bool
+    {
+        if ($this->countOwnedSubscriptions($userId) > 0) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare('DELETE FROM users WHERE id = :id');
+
+        return $stmt->execute(['id' => $userId]) && $stmt->rowCount() > 0;
     }
 }

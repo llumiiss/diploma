@@ -146,4 +146,36 @@ final class AuthManagerTest extends TestCase
             $auth->sanitizeRedirect('https://evil.com/dashboard.php')
         );
     }
+
+    public function testDeleteCurrentAccountIsBlockedWhenUserOwnsSubscriptions(): void
+    {
+        $db = SqliteTestDatabase::create();
+        $userId = SqliteTestDatabase::seedUser($db, 'owner@example.com');
+        SqliteTestDatabase::seedSubscription($db, $userId);
+        $users = new UserManager($db);
+        $auth = new AuthManager($db, $users, $this->mail);
+        $auth->login($userId);
+
+        $result = $auth->deleteCurrentAccount();
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('auth.error.delete_blocked', $result['error']);
+        $this->assertNotFalse($users->findById($userId));
+        $this->assertTrue($auth->isAuthenticated());
+    }
+
+    public function testDeleteCurrentAccountRemovesAccountWithoutSubscriptions(): void
+    {
+        $db = SqliteTestDatabase::create();
+        $userId = SqliteTestDatabase::seedUser($db, 'leaving@example.com');
+        $users = new UserManager($db);
+        $auth = new AuthManager($db, $users, $this->mail);
+        $auth->login($userId);
+
+        $result = $auth->deleteCurrentAccount();
+
+        $this->assertTrue($result['ok']);
+        $this->assertFalse($users->findById($userId));
+        $this->assertFalse($auth->isAuthenticated());
+    }
 }
