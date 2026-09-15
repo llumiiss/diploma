@@ -4,3 +4,5 @@
 /config/mail.local.php
 /phpunit.xml
 .phpunit.result.cache
+
+/.phpunit.cache/
