@@ -539,6 +539,10 @@ Weryfikacja: 156/156 testów z integracją (bez flagi 75 zaliczonych, 81 pomini�
 
 **Świadomie nie zrobione:** cache raportów per osoba i płatnik oraz słowników i18n (§2.5 pkt 3) — korzyść mniejsza niż ryzyko pokazania nieaktualnej historii; przeniesienie cache do tabeli w bazie (pliki wystarczą przy jednym serwerze, a przy wielu instancjach wskazany byłby wspólny magazyn — kierunek rozwoju w pracy).
 
+Commit: `fbc2237`, gałąź `etap-7-ux-wydajnosc`, scalona na `master` 2026-09-17 (fast-forward).
+
+**Plan z §7 jest wykonany w całości (Etapy 0–7).** Dalej zostaje część pisemna (§9), zrzuty ekranu do rozdziału z dokumentacją użytkownika i ustalenie terminu z promotorem (decyzja D6). Kod wchodzi w tryb utrzymania: poprawki i drobne uzupełnienia, nowy zakres tylko po uzgodnieniu.
+
 **Świadomie nie zrobione:** skeleton loadery i cache agregatów z nagłówkami dla zasobów statycznych (Etap 7); przemianowanie kolumny `annual_cost` na `period_cost` (zmiana schematu bez korzyści dla obrony); testy przeglądarkowe w Selenium/Playwright — scenariusz E2E idzie przez API, bo to ta sama ścieżka, którą wykonuje panel.
 
 ---
