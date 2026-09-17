@@ -110,32 +110,6 @@ $assetUrl = static function (string $path): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars(__('corporate.title')) ?> — CertiSub Assistant</title>
     <?php require dirname(__DIR__) . '/includes/head.php'; ?>
-    <style type="text/tailwindcss">
-        @layer components {
-            .btn-primary { @apply inline-flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 text-white text-sm font-semibold rounded-lg hover:bg-brand-700 transition disabled:opacity-60 disabled:cursor-not-allowed; }
-            .btn-secondary { @apply inline-flex items-center justify-center gap-2 px-4 py-2 border border-slate-300 bg-white text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition disabled:opacity-60 disabled:cursor-not-allowed; }
-            .btn-danger { @apply inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-not-allowed; }
-            .btn-ghost { @apply inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md text-slate-600 hover:bg-slate-100 transition disabled:opacity-50; }
-            .input { @apply w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500; }
-            .input-error { @apply border-red-400 focus:ring-red-400; }
-            .card { @apply bg-white rounded-xl border border-slate-200 shadow-sm; }
-            .th { @apply text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide whitespace-nowrap; }
-            .td { @apply px-4 py-3 align-top; }
-            .badge { @apply inline-block px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap; }
-        }
-    </style>
-    <style>
-        /* Wydruk kart raportowych i harmonogramu: bez nawigacji i przycisków, treść na całą stronę. */
-        @media print {
-            body > header, #app aside, .no-print { display: none !important; }
-            html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
-            #app, #app > div, main { display: block !important; overflow: visible !important; height: auto !important; min-height: 0 !important; }
-            main { padding: 0 !important; }
-            .card { box-shadow: none !important; break-inside: avoid; }
-            table { break-inside: auto; }
-            tr { break-inside: avoid; }
-        }
-    </style>
 </head>
 <body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden">
 
@@ -174,7 +148,7 @@ $assetUrl = static function (string $path): string {
     <p class="m-6 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm"><?= htmlspecialchars(__('common.noscript')) ?></p>
 </noscript>
 
-<script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
+<script src="<?= htmlspecialchars($assetUrl('assets/vendor/vue.global.prod.js')) ?>"></script>
 <script>window.CERTISUB_BOOT = <?= $bootJson ?>;</script>
 <?php foreach ($scripts as $script): ?>
 <script src="<?= htmlspecialchars($assetUrl($script)) ?>"></script>

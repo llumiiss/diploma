@@ -30,6 +30,7 @@ final class SqliteTestDatabase
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 email TEXT NOT NULL,
+                request_ip TEXT NULL,
                 code_hash TEXT NOT NULL,
                 expires_at TEXT NOT NULL,
                 used_at TEXT NULL,

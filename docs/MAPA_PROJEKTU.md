@@ -23,7 +23,8 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 11. **Etap 2 (ewidencja, archiwizacja, RBAC) wykonany 2026-09-17 (§11):** warstwa usług i API z kontrolą ról, nowy panel firmowy (Vue bez kroku budowania, `assets/js`), archiwum, konta i role, rejestracja wyłączona (D3), zakres danych operatora (D8), testy integracyjne na osobnej bazie testowej.
 12. **Etap 3 (proces odnowień) wykonany 2026-09-17 (§11):** skaner i cron `cron/renewals.php`, lista ToDo ze statusami, przydziałem i odnowieniem certyfikatu, szablony i załączniki, wysyłka zaproszeń z rejestrem i przypomnieniami, ustawienia progów, statystyki zadań na pulpicie.
 13. **Etap 4 (raporty i przegląd) wykonany 2026-09-17 (§11):** karta użytkownika certyfikatu i karta płatnika (perspektywy z opisu pracy) z datami odnowienia, ścieżką realizacji, zaproszeniami i osią czasu; harmonogram wygaśnięć; wyszukiwarka globalna z powiązaniami; dziennik zdarzeń administratora.
-14. **Etap 5 (wymiana danych) wykonany 2026-09-17 (§11):** eksport list, kart i dziennika do CSV i XML, import płatników, osób i certyfikatów z CSV/XML z podglądem każdego wiersza przed zapisem oraz import wiadomości e-mail (EML) — własny parser MIME, rozpoznanie nadawcy, certyfikatów i załączników.
+14. **Etap 6 (jakość i domknięcie) wykonany 2026-09-17 (§11):** frontend bez CDN (Tailwind budowany lokalnie, Vue i krój Inter w repozytorium), limit wysyłek kodów OTP liczony w bazie, strona główna bez zmyślonych liczb, koszt roczny liczony wg okresu rozliczeniowego, scenariusz E2E przez API.
+15. **Etap 5 (wymiana danych) wykonany 2026-09-17 (§11):** eksport list, kart i dziennika do CSV i XML, import płatników, osób i certyfikatów z CSV/XML z podglądem każdego wiersza przed zapisem oraz import wiadomości e-mail (EML) — własny parser MIME, rozpoznanie nadawcy, certyfikatów i załączników.
 
 ---
 
@@ -198,10 +199,10 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 |---|---|---|---|
 | N1 | PHP + HTML + JavaScript | ✅ | PHP 8.3, Vue 3, Tailwind |
 | N2 | Baza zgodna z MySQL (LAMP), standardowy hosting | ✅ | MySQL 8.4, PDO, prepared statements |
-| N3 | Instalacja publiczna lub intranetowa | 🟡 ⚠️ | katalog projektu = katalog publiczny serwera, brak reguł blokujących (§5 pkt 1–2); frontend z CDN — Tailwind Play CDN (`includes/head.php:9`), Vue z unpkg bez przypiętej wersji (`includes/dashboard_app.php:576`), Google Fonts (`includes/head.php:33-35`), więc w sieci bez internetu interfejs nie działa; `display_errors=On` w php.ini Laragona |
+| N3 | Instalacja publiczna lub intranetowa | ✅ | katalogi wewnętrzne zablokowane w `.htaccess` (Etap 0); frontend bez CDN (Etap 6): Tailwind budowany do `assets/css/app.css` (`npm run css`), Vue 3.5.13 w `assets/vendor`, krój Inter w `assets/fonts` — aplikacja działa w sieci bez internetu; do produkcji zostaje `display_errors=Off` w php.ini serwera |
 | N4 | Studium wykonalności (punkt wyjścia: Java + Spring) | 🟡 | tylko jedno zdanie o Spring Boot (`docs/thesis_part1.md:74`) — potrzebne porównanie z kryteriami |
-| N5 | Ochrona danych osobowych | 🟡 | dobrze: PDO, CSRF, hash OTP, regeneracja sesji, zakres danych wg roli (D8), historia zmian w `events`, walidacja wejścia; do zrobienia: limit OTP w sesji (§5 pkt 9), punkt o RODO w pracy |
-| N6 | Testy | 🟡 | 145 testów: 68 jednostkowych (logowanie, role i uprawnienia, walidacja, jądro API, szablony, tłumaczenia, logika certyfikatów i kosztów, harmonogram, poczta, formaty CSV/XML, parser EML) + 77 integracyjnych na osobnej bazie `assistent_subscriptions_test` (migracje, ewidencja, konta, skaner, zadania, zaproszenia z przypomnieniami, szablony, załączniki, ustawienia, raporty, wyszukiwarka, dziennik zdarzeń, eksport, import CSV/XML i EML); brak scenariuszy E2E |
+| N5 | Ochrona danych osobowych | 🟡 | PDO, CSRF, hash OTP, regeneracja sesji, zakres danych wg roli (D8), historia zmian w `events`, walidacja wejścia; limit wysyłek kodów liczony w bazie per adres i per IP (Etap 6); eksport danych osobowych zapisuje zdarzenie (Etap 5); do zrobienia: punkt o RODO w części pisemnej |
+| N6 | Testy | ✅ | 149 testów: 70 jednostkowych (logowanie i limit kodów, role i uprawnienia, walidacja, jądro API, szablony, tłumaczenia, logika certyfikatów i kosztów, harmonogram, poczta, formaty CSV/XML, parser EML) + 79 integracyjnych na osobnej bazie `assistent_subscriptions_test` (migracje, ewidencja, konta, skaner, zadania, zaproszenia z przypomnieniami, szablony, załączniki, ustawienia, raporty, wyszukiwarka, dziennik zdarzeń, eksport, import CSV/XML i EML), w tym scenariusz E2E przez warstwę API: ewidencja → skaner → zaproszenie → odnowienie → karta → eksport → import → dziennik (`tests/Integration/EndToEndFlowTest.php`, Etap 6) |
 
 ---
 
@@ -249,18 +250,18 @@ Numeracja ciągła — odwołania w innych miejscach: „§5 pkt N”.
 6. **Cron gubi przypomnienia** (`cron/send_reminders.php`): warunek „dokładnie 3 dni”, brak rejestru wysyłek, treść wpisana w kodzie. W ewidencji certyfikatów rozwiązane w Etapie 3 nowym `cron/renewals.php` (margines zamiast dokładnej daty, rejestr w `invitations`, szablony z tłumaczeniami). Stary skrypt obsługuje już tylko zamrożony menedżer osobisty (D1) i zostaje bez zmian.
 7. **`cron/.htaccess`** ma niepełną dyrektywę `Require all` (bez `denied`). Apache zwraca 500 zamiast 403, czyli blokuje dostęp przypadkiem. Poprawnie: `Require all denied`.
 8. ✅ **Listy osób i płatników ukrywały rekordy bez subskrypcji** (`HAVING subscription_count > 0`). Naprawione w Etapie 2: panel firmowy korzysta z nowych usług, które pokazują wszystkie aktywne rekordy; stare zapytania zostały tylko w zamrożonym panelu prywatnym.
-9. **Limit wysyłek kodów OTP trzymany w sesji** (`classes/AuthManager.php`, metody `canSendOtp`/`markOtpSent`) — wystarczy usunąć ciasteczko, żeby go obejść. Przenieść do bazy (limit per e-mail i IP) — Etap 6.
+9. ✅ **Limit wysyłek kodów OTP trzymany w sesji** — naprawione w Etapie 6: limit liczy historię w tabeli `login_otps` (3 kody na adres e-mail i 10 na adres IP w 15 minutach, kolumna `request_ip` z migracji `otp_rate_limit`), więc usunięcie ciasteczka nic nie daje.
 10. ✅ **Walidacja daty tylko wyrażeniem regularnym** — naprawione w Etapie 2: `App\Service\Validator::date()` sprawdza datę kalendarzem; endpoint menedżera osobistego korzysta z tej samej walidacji.
-11. **Zależności z CDN** (N3) — Tailwind Play CDN nie jest przeznaczony na produkcję. W Etapie 2 przypięto wersję Vue (`vue@3.5.13`); lokalne zasoby to Etap 6.
+11. ✅ **Zależności z CDN** (N3) — naprawione w Etapie 6: Tailwind budowany poleceniem `npm run css` do `assets/css/app.css`, Vue w `assets/vendor`, krój Inter w `assets/fonts`; strony nie odwołują się już do `cdn.tailwindcss.com`, `unpkg.com` ani Google Fonts.
 
 ### 5.3. Drobne i porządki
 
-12. Model danych: `annual_cost` przechowuje koszt miesięczny, gdy `billing_cycle = monthly` (`CertificateManager::getRenewalSummary`) — w kartach płatnika i harmonogramie (Etap 4) koszt jest przeliczany na rok przez `CertificateHelper::annualizedCost` (miesięczny × 12, wieloletni ÷ liczba lat ważności); kolumna i wskaźniki pulpitu nadal do poprawy. Rozdzielenie kont i użytkowników certyfikatów zrobione w Etapie 1; `manager_subskrypcji` z polskimi nazwami kolumn zostaje jako zamrożony moduł dodatkowy (D1).
-13. Oś czasu: „Następna płatność” bez daty — w panelu firmowym zastąpiona szczegółami certyfikatu z historią zdarzeń (Etap 2); została w zamrożonym panelu prywatnym. Strona główna pokazuje zmyślone liczby (`index.php:107-116`) — Etap 6.
-14. Domyślny język interfejsu to EN (`classes/Translator.php:58`), choć projekt i praca są po polsku.
+12. ✅ Model danych: `annual_cost` przechowuje kwotę za okres rozliczeniowy. Wszystkie sumy liczą teraz koszt roczny tym samym przelicznikiem (miesięczny × 12, wieloletni ÷ liczba lat ważności): `CertificateHelper::annualizedCost` w PHP i `CertificateHelper::annualizedCostSql` w zapytaniach pulpitu oraz list płatników (Etapy 4–6). Zmiana nazwy kolumny na `period_cost` zostaje jako kierunek rozwoju. Rozdzielenie kont i użytkowników certyfikatów zrobione w Etapie 1; `manager_subskrypcji` z polskimi nazwami kolumn zostaje jako zamrożony moduł dodatkowy (D1).
+13. ✅ Oś czasu: „Następna płatność” bez daty — w panelu firmowym zastąpiona szczegółami certyfikatu z historią zdarzeń (Etap 2); została w zamrożonym panelu prywatnym. Zmyślone liczby na stronie głównej zastąpione w Etapie 6 opisem trzech funkcji systemu (skaner, zaproszenia, raporty i eksport).
+14. ✅ Domyślny język interfejsu — od Etapu 1 polski (`Translator::DEFAULT_LOCALE`), angielski jako drugi (D4).
 15. ✅ JSON w `<script>` bez `JSON_HEX_TAG` — panel firmowy przekazuje dane startowe jednym obiektem z flagami `JSON_HEX_*`, a odpowiedzi API też je stosują (Etap 2).
-16. `composer-setup.php` (instalator Composera) jest w repozytorium — usunąć. Katalog `.claude/` nie jest śledzony.
-17. Nieaktualna dokumentacja: `docs/thesis_part1.md` (uwierzytelnianie „poza MVP”, e-mail jako placeholder — `docs/thesis_part1.md:40`; 3 tabele), a README i AGENT_HANDOFF opisują zakres z panelem prywatnym.
+16. ✅ `composer-setup.php` (instalator Composera) usunięty z repozytorium w Etapie 6. Katalog `.claude/` nie jest śledzony, `node_modules/` dopisane do `.gitignore`.
+17. ✅ Nieaktualna dokumentacja: `docs/thesis_part1.md` i `docs/AGENT_HANDOFF.md` mają od Etapu 6 nagłówek „Dokument historyczny” z odesłaniem do mapy; README i `CLAUDE.md` są aktualizowane co etap.
 18. PHPStan: 1 znana uwaga (`cron/send_reminders.php:120`) — nie blokuje. Uwaga z `MigrationRunner.php:92` zniknęła w Etapie 1, bo metody sprawdzające schemat są poprawnie oznaczone jako nieczyste (`@phpstan-impure`).
 19. PHP-CS-Fixer zgłasza 27 z 32 plików „do poprawy”, bo `@PSR12` wymaga końców linii LF, a pliki w repozytorium mają CRLF (Windows). Dotyczy to także plików, których nikt nie zmieniał, więc `composer cs-fix` przepisałby cały projekt. Do zrobienia osobno: `.gitattributes` z `* text eol=lf` i jednorazowa normalizacja w dedykowanym commicie.
 21. ✅ Klasa `AddSubscriptionApiTest` nigdy się nie uruchamiała (PHPUnit wykrywa tylko klasę o nazwie pliku, a endpoint kończył się `exit`). Naprawione w Etapie 2: wspólne jądro `App\Http\ApiKernel` bez `exit` i kontrolery w `classes/Api/`; testy w `tests/Unit/ApiKernelTest.php`.
@@ -306,10 +307,10 @@ Stan na 16.09.2026. Pierwotnie: freeze 15.10.2026, część pisemna 16.10–31.1
 | 3. Proces odnowień ✅ **wykonane 2026-09-17** | skaner → zadania ToDo (priorytety, statusy, przydział); szablony + załączniki; zaproszenia; rejestr i przypomnienia; statystyki zadań; ustawienia progów (szczegóły w §11) | — |
 | 4. Raporty i przegląd ✅ **wykonane 2026-09-17** | karta beneficjenta, karta płatnika, oś czasu z `events`, wyszukiwarka globalna, dziennik zdarzeń administratora, harmonogram wygaśnięć (szczegóły w §11) | — |
 | 5. Wymiana danych ✅ **wykonane 2026-09-17** | eksport CSV/XML (listy, karty, harmonogram, dziennik); import CSV/XML z podglądem i trybem aktualizacji; import EML z załącznikami (szczegóły w §11) | — |
-| 6. Jakość i domknięcie | testy nowych serwisów, scenariusze E2E, lokalne zasoby frontendu, aktualizacja README i `CLAUDE.md`, freeze | 3–4 |
+| 6. Jakość i domknięcie ✅ **wykonane 2026-09-17** | frontend bez CDN (Tailwind budowany lokalnie, Vue i Inter w repozytorium), limit kodów OTP w bazie, strona główna bez zmyślonych liczb, jednolity koszt roczny, scenariusz E2E przez API, porządki w repozytorium i dokumentacji (szczegóły w §11) | — |
 | 7. UX i wydajność (§2.5) | skeleton loadery w panelu; cache agregatów KPI z unieważnianiem przy zapisie i kluczem roli; nagłówki cache dla lokalnych zasobów z Etapu 6 | 2–3 |
 
-**Pozostało ok. 5–7 dni roboczych** (Etapy 6–7, po odjęciu wykonanych Etapów 0–5), więc realny freeze mieści się w październiku 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
+**Pozostało ok. 2–3 dni robocze** (Etap 7, po odjęciu wykonanych Etapów 0–6), więc realny freeze mieści się w październiku 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
 
 Kolejność etapów = kolejność ważności. Gdy zabraknie czasu, najpierw upraszczać etap 5 (np. import EML ograniczony do jednego formatu wiadomości).
 
@@ -351,10 +352,11 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 
 ## 10. Stan środowiska (zweryfikowany 2026-09-16)
 
-- **Testy:** 145 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 68 zaliczonych + 77 pominiętych). Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
+- **Testy:** 149 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 70 zaliczonych + 79 pominiętych), w tym scenariusz E2E przez warstwę API. Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
 - **PHPStan (poziom 5):** 1 znana uwaga (`cron/send_reminders.php:120`); analizowane są także pliki wejściowe z katalogu głównego.
 - **PHP-CS-Fixer:** większość plików zgłaszana z powodu CRLF (§5 pkt 19) — `cs-fix` świadomie nieuruchomiony.
-- **Baza `assistent_subscriptions`:** 15 tabel, migracje `login_otp`, `manager_subskrypcji`, `certificates_model`, `accounts_and_ownership`, `renewal_process`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 138 kolumn, 72 pozycje indeksów, 21 kluczy obcych).
+- **Baza `assistent_subscriptions`:** 15 tabel, migracje `login_otp`, `manager_subskrypcji`, `certificates_model`, `accounts_and_ownership`, `renewal_process`, `otp_rate_limit`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 139 kolumn, 76 pozycji indeksów, 21 kluczy obcych).
+- **Frontend bez internetu (Etap 6):** żadna strona nie odwołuje się do CDN — `assets/css/app.css` (Tailwind zbudowany lokalnie), `assets/vendor/vue.global.prod.js`, `assets/fonts/inter-*.woff2`; sprawdzone w przeglądarce (lista żądań tylko do `localhost`) i przez HTTP (kody 200, poprawne typy MIME).
 - **Cron odnowień:** `php cron/renewals.php` na danych demo — 6 certyfikatów w marginesie, 1 nowe zadanie (Microsoft 365), 0 przypomnień do wysłania; wynik w `logs/renewals.log`.
 - **Dane demo (`scripts/seed-demo-data.php`):** 4 płatników (NovaTech z poprawnym NIP-em), 5 użytkowników certyfikatów, 2 aktywne i 1 wyłączone konto personelu demo + 3 prawdziwe konta (1 ADMIN), 12 certyfikatów firmowych (10 aktywnych, 2 w archiwum, 1 łańcuch odnowień) i 5 prywatnych, 7 zadań (todo 3, in_progress 2, done 1, abandoned 1), 4 zaproszenia, 4 szablony, 1 załącznik, 54 zdarzenia, 4 pozycje menedżera osobistego.
 - **Panel firmowy (sprawdzony w przeglądarce):** ADMIN — 10 certyfikatów, 3 płatników, archiwum (2 certyfikaty), konta; OPERATOR (Tomasz Wróbel) — 4 certyfikaty, 2 osoby, 2 płatników, a API zwraca 403 dla archiwum, kont, archiwizacji i zapisu bez tokenu CSRF. Oba panele renderują się bez ostrzeżeń PHP.
@@ -501,6 +503,24 @@ Commit: `a0b0b2f`, gałąź `etap-4-raporty`, scalona na `master` 2026-09-17 (fa
 Weryfikacja: 145/145 testów z integracją (bez flagi 68 zaliczonych, 77 pominiętych); PHPStan: 1 znana uwaga; `node --check` wszystkich plików JS; kontrola kluczy tłumaczeń; eksport i import sprawdzone w przeglądarce oraz przez HTTP (§10) — po podglądach baza bez zmian. Bez zmian w schemacie bazy.
 
 **Świadomie nie zrobione:** import tworzący brakujące rekordy powiązane „w locie” (płatnik zakładany przy imporcie certyfikatu) — kolejność plików jest prostsza do wyjaśnienia i bezpieczniejsza; harmonogram importu z katalogu albo skrzynki pocztowej (kierunek rozwoju w pracy); eksport do PDF — karty drukuje przeglądarka (Etap 4).
+
+Commit: `a26fb16`, gałąź `etap-5-wymiana-danych`, scalona na `master` 2026-09-17 (fast-forward).
+
+### Etap 6 — jakość i domknięcie (2026-09-17)
+
+| Obszar | Co zrobiono | Pliki |
+|---|---|---|
+| Frontend bez CDN (N3, §5 pkt 11) | arkusz Tailwinda budowany lokalnie (`npm install && npm run css` → `assets/css/app.css`, 42 kB) z klasami z plików PHP i szablonów Vue; klasy komponentów (`btn-primary`, `card`, `th`…), style wydruku i `[v-cloak]` przeniesione ze stron do źródła CSS; Vue 3.5.13 w `assets/vendor`, krój Inter (latin i latin-ext, 4 grubości) w `assets/fonts`; gotowe pliki są w repozytorium, więc aplikacja działa bez Node i bez internetu | `package.json`, `tailwind.config.js`, `assets/css/app.src.css`, `assets/css/app.css`, `assets/vendor/*`, `assets/fonts/*`, `includes/head.php`, `includes/dashboard_app.php`, `includes/personal_dashboard_app.php` |
+| Limit kodów logowania (§5 pkt 9, N5) | limit liczony z historii w `login_otps`: 3 kody na adres e-mail i 10 na adres IP w 15 minutach; kolumna `request_ip` i indeksy z migracji `otp_rate_limit`; czas utworzenia zapisuje PHP (ta sama strefa co reszta aplikacji), więc wyczyszczenie ciasteczka sesji nie resetuje limitu | `classes/AuthManager.php`, `classes/Migrations/OtpRateLimitMigration.php`, `database/schema.sql`, `login.php` |
+| Koszt roczny (§5 pkt 12) | jeden przelicznik w PHP i w SQL: cykl miesięczny × 12, wieloletni ÷ liczba lat ważności; używają go wskaźniki pulpitu, lista płatników i panel szczegółów płatnika (wcześniej tylko raporty z Etapu 4) | `classes/CertificateHelper.php`, `classes/CertificateManager.php`, `classes/Service/PayerService.php`, `assets/js/views/payers.js` |
+| Strona główna (§5 pkt 13) | trzy kafelki z wymyślonymi liczbami zastąpione opisem funkcji systemu (skaner odnowień, zaproszenia i przypomnienia, historia i eksport) | `index.php`, `lang/pl.php`, `lang/en.php` |
+| Testy E2E (N6) | scenariusz przez warstwę API w jednym teście: płatnik → osoba → certyfikat → skaner → zaproszenie (zamiennik poczty) → odnowienie → karta raportowa → wyszukiwarka → eksport → import → dziennik → pulpit; osobny test kodów odpowiedzi (405, 403 bez tokenu CSRF, 401 bez sesji) i uprawnień operatora (403 dla dziennika, importu i eksportu, 404 dla cudzej karty) | `tests/Integration/EndToEndFlowTest.php` |
+| Porządki (§5 pkt 16, 17) | usunięty `composer-setup.php`; `docs/thesis_part1.md` i `docs/AGENT_HANDOFF.md` oznaczone jako dokumenty historyczne z odesłaniem do mapy; `node_modules/` w `.gitignore`; martwe klucze tłumaczeń usunięte z `lang/de|es|uk.php` | j.w. |
+| Testy | +4: limit kodów per e-mail i per IP (z nową sesją), scenariusz E2E i kontrola kodów odpowiedzi API | `tests/Unit/AuthManagerTest.php`, `tests/Integration/EndToEndFlowTest.php` |
+
+Weryfikacja: kopia bazy przed migracją (`mysqldump`), migracja `otp_rate_limit` i drugi przebieg bez zmian, porównanie `information_schema` ze świeżą instalacją (139 kolumn, 76 pozycji indeksów, 21 kluczy obcych); 149/149 testów z integracją; PHPStan: 1 znana uwaga; `node --check` wszystkich plików JS; kontrola kluczy tłumaczeń; w przeglądarce pulpit, panel prywatny i strona główna renderują się bez CDN (żądania wyłącznie do `localhost`, brak błędów w konsoli), a `assets/css/app.css`, `assets/vendor/vue.global.prod.js` i pliki `woff2` zwracają 200 z poprawnym typem MIME.
+
+**Świadomie nie zrobione:** skeleton loadery i cache agregatów z nagłówkami dla zasobów statycznych (Etap 7); przemianowanie kolumny `annual_cost` na `period_cost` (zmiana schematu bez korzyści dla obrony); testy przeglądarkowe w Selenium/Playwright — scenariusz E2E idzie przez API, bo to ta sama ścieżka, którą wykonuje panel.
 
 ---
 

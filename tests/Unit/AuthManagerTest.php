@@ -57,6 +57,51 @@ final class AuthManagerTest extends TestCase
         $this->assertSame('known@example.com', $auth->getPendingEmail());
     }
 
+    public function testCodeRequestLimitIsCountedInTheDatabaseAndSurvivesANewSession(): void
+    {
+        $db = SqliteTestDatabase::create();
+        SqliteTestDatabase::seedUser($db, 'known@example.com');
+        $auth = new AuthManager($db, new UserManager($db), $this->mail);
+
+        foreach (range(1, 3) as $attempt) {
+            $this->assertTrue($auth->requestOtp('known@example.com', 'dashboard.php', '198.51.100.7')['sent'], 'próba ' . $attempt);
+        }
+
+        // Wyczyszczenie sesji (nowe ciasteczko) nie resetuje limitu — liczy go historia w bazie.
+        Session::destroy();
+        Session::ensureStarted();
+        $_SESSION = [];
+
+        $blocked = $auth->requestOtp('known@example.com', 'dashboard.php', '198.51.100.7');
+        $this->assertFalse($blocked['ok']);
+        $this->assertSame('auth.error.rate_limited', $blocked['error']);
+        $this->assertCount(3, $this->mail->sent);
+        $this->assertSame('198.51.100.7', $db->query('SELECT request_ip FROM login_otps ORDER BY id LIMIT 1')->fetchColumn());
+    }
+
+    public function testOneAddressCannotRequestCodesForManyAccounts(): void
+    {
+        $db = SqliteTestDatabase::create();
+        $auth = new AuthManager($db, new UserManager($db), $this->mail);
+        foreach (range(1, 5) as $number) {
+            SqliteTestDatabase::seedUser($db, 'osoba' . $number . '@example.com');
+        }
+
+        $sent = 0;
+        foreach (range(1, 4) as $number) {
+            foreach (range(1, 3) as $attempt) {
+                if (!empty($auth->requestOtp('osoba' . $number . '@example.com', 'dashboard.php', '203.0.113.9')['sent'])) {
+                    ++$sent;
+                }
+            }
+        }
+
+        // Limit na adres e-mail to 3 wysyłki, na adres IP — 10 w tym samym oknie czasowym.
+        $this->assertSame(10, $sent);
+        $this->assertSame('auth.error.rate_limited', $auth->requestOtp('osoba5@example.com', 'dashboard.php', '203.0.113.9')['error']);
+        $this->assertTrue($auth->requestOtp('osoba5@example.com', 'dashboard.php', '203.0.113.10')['sent']);
+    }
+
     public function testVerifyOtpLogsUserIn(): void
     {
         $db = SqliteTestDatabase::create();

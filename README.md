@@ -9,6 +9,7 @@ Engineering thesis project: a LAMP web application for managing certificates (qu
 
 - PHP 8.1+ (developed on 8.3)
 - MySQL 8 / MariaDB 10.5+
+- Node.js only to rebuild the stylesheet after UI changes (`npm run css`) — the built `assets/css/app.css` is committed, so the app runs without it
 - Apache with `mod_rewrite` and `AllowOverride All` (e.g. Laragon) — the root `.htaccess` blocks internal directories
 - Composer (`composer install`)
 
@@ -97,7 +98,7 @@ assistent_subscription/
 ├── index.php, login.php, register.php (redirect), logout.php
 ├── dashboard.php, dashboard-personal.php
 ├── api/                     # JSON endpoints — one line each, logic in classes/Api
-├── assets/js/               # corporate dashboard UI (Vue 3 components, no build step)
+├── assets/                  # css (Tailwind build), js (Vue components), fonts, vendor (Vue runtime)
 ├── classes/                 # AuthManager, Rbac, CertificateHelper, …
 │   ├── Service/             # business rules: validation, permissions, data scope, event history
 │   ├── Exchange/            # CSV, XML and EML formats: readers, writers, column aliases
@@ -126,6 +127,7 @@ assistent_subscription/
 - Renewal process: daily scanner opening prioritised ToDo tasks, task statuses and assignment, certificate renewal (new record, old one archived), e-mail invitations from PL/EN templates with attachments, invitation register with manual and automatic reminders, admin settings for thresholds, task statistics by status
 - Reports (perspectives from the thesis description): certificate user card and payer card with renewal dates, delivery path (tasks), invitations and a filterable timeline; expiry schedule by month; printable
 - Global search (Ctrl+K) across certificates, certificate users and payers including relations and match reasons; admin event log with filters and paging
+- No CDN: Tailwind CSS is built locally, Vue and the Inter font ship with the repository, so the app works on an intranet without internet access
 - Data exchange: CSV/XML export of lists, report cards, the expiry schedule and the event log; CSV/XML import of payers, certificate users and certificates with a row-by-row preview (the preview runs the real writes and rolls them back); EML import that matches a message to the registry (sender, certificates by serial number, payers by tax ID, open invitations) and imports its CSV/XML attachments
 - Corporate dashboard: KPIs, priority renewals, payments, ToDo view, search and filters
 - Personal dashboard (frozen extra module) and its payment reminder cron

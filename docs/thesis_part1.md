@@ -1,5 +1,7 @@
 # PRACA DYPLOMOWA — CZĘŚĆ I (rozdziały wstępne)
 
+> **Dokument historyczny (szkic z lipca 2026).** Opisuje trzy tabele i model sprzed Etapu 1 — nie jest zgodny z kodem. Aktualny zakres, model danych i plan: [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md).
+
 **Tytuł roboczy:** Informatyczny Asystent Zarządzania Certyfikatami i Subskrypcjami (CertiSub Assistant)
 
 *Dokument przeznaczony do skopiowania do pliku .doc — formatowanie nagłówków zachowane w konwencji Markdown.*

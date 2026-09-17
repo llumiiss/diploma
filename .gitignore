@@ -10,3 +10,4 @@
 /storage/attachments/*
 !/storage/attachments/.gitkeep
 graphify-out/
+/node_modules/

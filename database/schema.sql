@@ -1,7 +1,7 @@
 -- ============================================================
 -- CertiSub Assistant — schemat bazy danych (świeża instalacja)
 --
--- Model danych Etapów 1–3, opis w docs/MAPA_PROJEKTU.md (sekcja 2.2).
+-- Model danych Etapów 1–6, opis w docs/MAPA_PROJEKTU.md (sekcja 2.2).
 -- Kształt tabel jest taki sam jak po migracjach z classes/Migrations/ (sprawdzane porównaniem
 -- information_schema), dlatego istniejące instalacje aktualizuje się poleceniem: php scripts/migrate.php
 --
@@ -77,6 +77,7 @@ CREATE TABLE login_otps (
     id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id    INT UNSIGNED NOT NULL,
     email      VARCHAR(255) NOT NULL,
+    request_ip VARCHAR(45) NULL,
     code_hash  VARCHAR(255) NOT NULL,
     expires_at DATETIME NOT NULL,
     used_at    DATETIME NULL,
@@ -85,7 +86,9 @@ CREATE TABLE login_otps (
     CONSTRAINT fk_login_otps_user
         FOREIGN KEY (user_id) REFERENCES users(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
-    INDEX idx_login_otps_email_expires (email, expires_at)
+    INDEX idx_login_otps_email_expires (email, expires_at),
+    INDEX idx_login_otps_email_created (email, created_at),
+    INDEX idx_login_otps_ip_created (request_ip, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Menedżer osobisty (moduł dodatkowy, zamrożony — decyzja D1)

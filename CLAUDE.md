@@ -5,7 +5,7 @@ Guidance for AI agents working in this repo. **Start with `docs/MAPA_PROJEKTU.md
 ## What this is
 University thesis project (author: Maksym Litosh, Uniwersytet Śląski). A PHP 8 / MySQL LAMP web app ("CertiSub Assistant") for managing **certificates** (qualified signatures and seals, SSL, code signing, domains, SaaS) together with **certificate users (beneficiaries)** and **payers**: renewal ToDo tasks, e-mail invitations with templates and attachments, reminders, archiving, event history and reports. Two dashboards: **corporate** (`dashboard.php`, the thesis domain, new UI since Etap 2) and **personal** (`dashboard-personal.php` → `includes/personal_dashboard_app.php`, an extra module frozen by decision D1 — keep it working, do not extend it). Primary human language: Polish.
 
-Status (2026-09-17): Etapy 0–5 are done — security, data model, records CRUD + RBAC, renewal process, reports (cards, schedule, search, event log) and data exchange (CSV/XML export, CSV/XML import with preview, EML import). All 19 functional requirements of the thesis description are covered. Next: Etap 6 — quality and freeze (local frontend assets instead of CDN, OTP send limit in the database, landing page without invented numbers, E2E scenarios, docs). See map §7.
+Status (2026-09-17): Etapy 0–6 are done — security, data model, records CRUD + RBAC, renewal process, reports, data exchange and quality work (no CDN: Tailwind built locally, Vue and Inter vendored; OTP send limit in the database; one annualised-cost rule; E2E scenario through the API). All 19 functional requirements are covered. Next: Etap 7 — UX and performance (skeleton loaders, cached KPI aggregates keyed by role/owner, cache headers for the local assets). See map §7.
 
 ## Environment (Windows + Laragon — tools are NOT on the default PATH)
 - PHP 8.3.30: `C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe`
@@ -18,7 +18,7 @@ Status (2026-09-17): Etapy 0–5 are done — security, data model, records CRUD
 
 ## Commands
 ```
-composer test                                    # PHPUnit 11 — 145 tests; the 77 integration tests skip without the flag below
+composer test                                    # PHPUnit 11 — 149 tests; the 79 integration tests skip without the flag below
 $env:RUN_INTEGRATION_TESTS=1; composer test      # + integration tests on a throwaway DB assistent_subscriptions_test (recreated each run)
 composer stan                                    # PHPStan level 5 (see phpstan.neon)
 composer cs                                      # PHP-CS-Fixer dry-run (diff only)
@@ -29,15 +29,17 @@ php scripts/set-role.php --list                  # list accounts and their roles
 php scripts/test-mail.php you@example.com        # mail smoke test
 php cron/renewals.php                            # daily: renewal scanner + due invitation reminders (logs/renewals.log)
 php cron/send_reminders.php                      # frozen personal module reminders (D1)
+npm install && npm run css                       # rebuild assets/css/app.css after changing Tailwind classes (the built file is committed)
 ```
 Mail driver `log` (in `config/mail.local.php`) writes messages to `logs/mail.log` instead of sending — use it for demos; never let an agent send real invitations while testing (tests use `Tests\Support\RecordingInvitationMailer`).
 **Never run `php scripts/migrate.php --fresh` against the user's database** — it drops every table. Take a `mysqldump` of `assistent_subscriptions` before applying a new schema migration.
 
-Quality baseline (2026-09-17, after Etap 5): 145/145 tests pass with integration enabled; PHPStan reports 1 pre-existing benign note (`cron/send_reminders.php:120`). `composer cs` flags most files mainly because @PSR12 wants LF endings and the repo is CRLF — do not run `cs-fix` without a separate line-ending normalization commit.
+Quality baseline (2026-09-17, after Etap 6): 149/149 tests pass with integration enabled; PHPStan reports 1 pre-existing benign note (`cron/send_reminders.php:120`). `composer cs` flags most files mainly because @PSR12 wants LF endings and the repo is CRLF — do not run `cs-fix` without a separate line-ending normalization commit.
 
 ## Architecture (Etap 2)
 - **Services** `classes/Service/*Service.php` hold business rules: validation (`Validator`), permission checks (`Actor::authorize()` → `Rbac::can()`), data scope (`Visibility`, decision D8), history (`EventLogger` → `events`), transactions (`Transaction::run`). They take a `PDO` and an `Actor`, never read the session — so they are testable and reusable from CLI/import.
 - **HTTP**: `classes/Http/ApiKernel.php` (method → CSRF for writes → session → handler → JSON with HTTP status mapped from `ServiceException`: 400/403/404/409/422, 500 without details). Controllers in `classes/Api/*Controller.php`; each `api/*.php` is a one-liner `ApiKernel::run(new XController())`. No `exit` in library code.
+- **Frontend assets (Etap 6)**: nothing is loaded from a CDN. `assets/css/app.css` is built from `assets/css/app.src.css` with `npm run css` (Tailwind 3, config in `tailwind.config.js`, content = PHP files + `assets/js`), Vue lives in `assets/vendor`, Inter in `assets/fonts`; all three are committed, so the app runs without Node and without internet. Add new component classes to `app.src.css` (not to a `<style type="text/tailwindcss">` block) and rebuild.
 - **Corporate UI**: `includes/dashboard_app.php` checks the session and injects `window.CERTISUB_BOOT` (i18n, CSRF token, user, permission list, endpoints). Vue 3 without a build step: `assets/js/core.js` (API client, formatting, store, toasts, modal stack), `assets/js/components.js`, views in `assets/js/views/`, mounted by `assets/js/app.js`. Views are addressed by hash (`dashboard.php#/payers`). The permission list only hides buttons — the API enforces access.
 - **Renewal process (Etap 3)**: `RenewalScanner` (margin = `renewal_lead_days` or `Settings` default; one open task per certificate; a closed task with `due_date = expiry_date` marks the cycle handled) → `TaskService` (status transitions, assignment, `renew` = new certificate + archive old via `CertificateService::renewFrom`) → `InvitationService` (template render via `TemplateRenderer`, attachments via `AttachmentService`, mail via the `InvitationMailer` interface, reminders by `processDueReminders`). `App\Settings` holds admin-tunable thresholds (defaults in code, overrides in table `settings`); tests call `Settings::useDefaultsOnly()` in `tests/bootstrap.php`.
 - **Reports and search (Etap 4)**: `ReportService` builds the beneficiary/payer cards (`#/beneficiaries/N`, `#/payers/N` — routes with an id render the `card` component from `VIEWS` in `app.js`) and the expiry schedule; `SearchService` matches own fields and relations and returns `matched` reasons; `TimelineService::forContext(..., $actor)` hides events of certificates outside the operator scope, `TimelineService::journal` is the ADMIN event log. All three are read-only GET endpoints (`api/reports.php`, `api/search.php`, `api/events.php`). Event labels/details for timelines and the log are shared in `CertiSub.events` (`assets/js/components.js`).

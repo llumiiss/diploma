@@ -1,5 +1,7 @@
 # CertiSub Assistant — podsumowanie projektu + roadmapa dla agentów
 
+> **Dokument historyczny.** Roadmapa z tego pliku jest nieaktualna względem opisu pracy — obowiązuje [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) (§6 porównuje oba dokumenty).
+
 **Projekt:** Informatyczny asystent zarządzania certyfikatami i subskrypcjami (CertiSub Assistant)  
 **Autor:** Maksym Litosh  
 **Uczelnia:** Uniwersytet Śląski w Katowicach  

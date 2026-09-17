@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\CertificateHelper;
 use PDO;
 use PDOException;
 
@@ -49,7 +50,7 @@ final class PayerService
             LEFT JOIN (
                 SELECT c.payer_id,
                        COUNT(*) AS certificate_count,
-                       SUM(c.annual_cost) AS total_annual_cost,
+                       SUM(" . CertificateHelper::annualizedCostSql('c') . ") AS total_annual_cost,
                        MIN(c.expiry_date) AS earliest_expiry
                 FROM certificates c
                 WHERE c.archived_at IS NULL AND c.scope = 'corporate' AND {$certificateVisibility}
@@ -126,6 +127,7 @@ final class PayerService
         [$certificateVisibility, $certificateParams] = Visibility::certificates($actor, 'c');
         $stmt = $this->db->prepare(
             "SELECT c.id, c.name, c.certificate_type, c.serial_number, c.expiry_date, c.status, c.annual_cost, c.currency,
+                    " . CertificateHelper::annualizedCostSql('c') . " AS annualized_cost,
                     b.first_name AS beneficiary_first_name, b.last_name AS beneficiary_last_name
              FROM certificates c
              LEFT JOIN beneficiaries b ON b.id = c.beneficiary_id
@@ -136,6 +138,7 @@ final class PayerService
         $payer['certificates'] = array_map(static function (array $row): array {
             $row['id'] = (int) $row['id'];
             $row['annual_cost'] = (float) $row['annual_cost'];
+            $row['annualized_cost'] = (float) $row['annualized_cost'];
 
             return $row;
         }, $stmt->fetchAll());

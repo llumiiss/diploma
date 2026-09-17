@@ -574,7 +574,7 @@ $seesAllRecordsJson = json_encode($seesAllRecords);
     </div>
 </div>
 
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="assets/vendor/vue.global.prod.js"></script>
 <script>
 const { createApp } = Vue;
 
