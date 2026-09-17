@@ -185,121 +185,230 @@
     };
 
     /**
-     * Oś czasu zdarzeń (F17). Każde zdarzenie ma etykietę z tłumaczeń
-     * (event.<encja>.<typ>) oraz szczegóły zmian z pola payload.
+     * Opis zdarzenia z historii (F17): etykieta z tłumaczeń (event.<encja>.<typ>), ikona, kategoria
+     * i szczegóły zmian z pola payload. Wspólny dla osi czasu i dziennika zdarzeń administratora.
+     */
+    function eventValue(field, raw) {
+        if (raw === null || raw === undefined || raw === '') {
+            return '—';
+        }
+        if (field === 'certificate_type') {
+            return labels.type(raw);
+        }
+        if (field === 'status') {
+            return labels.status(raw);
+        }
+        if (field === 'payment_status') {
+            return labels.payment(raw);
+        }
+        if (field === 'billing_cycle') {
+            return labels.billing(raw);
+        }
+        if (field === 'role') {
+            return labels.role(raw);
+        }
+        if (field === 'auto_renew') {
+            return raw === true || raw === 1 || raw === '1' ? t('common.yes') : t('common.no');
+        }
+        if (/_date$|^valid_from$/.test(field)) {
+            return format.date(raw);
+        }
+        if (/_id$/.test(field)) {
+            return '#' + raw;
+        }
+        if (typeof raw === 'object') {
+            return JSON.stringify(raw);
+        }
+        return String(raw);
+    }
+
+    const EVENT_CATEGORIES = {
+        certificate: 'records',
+        beneficiary: 'records',
+        payer: 'records',
+        renewal_task: 'tasks',
+        invitation: 'invitations',
+    };
+
+    CertiSub.events = {
+        categories: ['records', 'tasks', 'invitations', 'system'],
+        category(event) {
+            return EVENT_CATEGORIES[event.entity_type] || 'system';
+        },
+        label(event) {
+            const key = 'event.' + event.entity_type + '.' + event.event_type;
+            const text = t(key);
+            return text === key ? t('event.generic', { type: event.event_type }) : text;
+        },
+        icon(event) {
+            const type = event.event_type;
+            if (type.indexOf('archived') !== -1 || type === 'task_closed' || type === 'account_deactivated') {
+                return '📦';
+            }
+            if (type.indexOf('created') !== -1 || type === 'task_opened' || type === 'attachment_uploaded') {
+                return '➕';
+            }
+            if (type.indexOf('invitation') !== -1 || type.indexOf('reminder') !== -1) {
+                return '✉️';
+            }
+            if (type === 'restored' || type === 'account_reactivated') {
+                return '♻️';
+            }
+            if (type === 'renewed') {
+                return '🔁';
+            }
+            if (event.entity_type === 'system') {
+                return '⚙️';
+            }
+            return '✏️';
+        },
+        details(event) {
+            const payload = event.payload || {};
+            const lines = [];
+            if (payload.changes) {
+                Object.keys(payload.changes).forEach((field) => {
+                    const change = payload.changes[field];
+                    lines.push(t('field.' + field) + ': ' + eventValue(field, change.from) + ' → ' + eventValue(field, change.to));
+                });
+            }
+            if (event.event_type === 'task_priority_changed') {
+                lines.push(labels.priority(payload.from) + ' → ' + labels.priority(payload.to));
+            } else if (event.entity_type === 'renewal_task' && payload.from && payload.status) {
+                lines.push(t('task.status.' + payload.from) + ' → ' + t('task.status.' + payload.status));
+            } else if (event.event_type === 'task_opened' && payload.priority) {
+                lines.push(labels.priority(payload.priority));
+            }
+            if (event.event_type === 'task_assigned') {
+                lines.push((payload.from_name || t('task.unassigned')) + ' → ' + (payload.to_name || t('task.unassigned')));
+            } else if (payload.from_name && payload.to_name) {
+                lines.push(payload.from_name + ' → ' + payload.to_name);
+            }
+            if (event.event_type === 'renewal_scan') {
+                lines.push(t('event.system.renewal_scan_detail', {
+                    scanned: payload.scanned || 0,
+                    created: payload.created || 0,
+                    updated: payload.updated || 0,
+                }));
+            }
+            if (payload.recipient_email) {
+                lines.push(payload.recipient_email);
+            }
+            if (payload.new_certificate_id) {
+                lines.push(t('event.certificate.renewed_detail', { id: payload.new_certificate_id }));
+            }
+            if (payload.error) {
+                lines.push(payload.error);
+            }
+            if (payload.note) {
+                lines.push(payload.note);
+            }
+            return lines;
+        },
+        /**
+         * Czy nazwę certyfikatu w zdarzeniu można otworzyć — certyfikat z archiwum tylko z dostępem do archiwum,
+         * a pozycje zamrożonego panelu prywatnego (D1) nie mają szczegółów w panelu firmowym.
+         */
+        certificateLink(event) {
+            return Boolean(event.certificate_id && event.certificate_name)
+                && event.certificate_scope !== 'personal'
+                && (!event.certificate_archived_at || CertiSub.can('archive.view'));
+        },
+    };
+
+    /**
+     * Oś czasu zdarzeń (F17). Opcjonalnie z filtrem kategorii i podziałem na dni,
+     * a nazwy certyfikatów otwierają ich szczegóły.
      */
     CertiSub.components.EventTimeline = {
         props: {
             events: { type: Array, default: () => [] },
             showCertificate: { type: Boolean, default: false },
+            filterable: { type: Boolean, default: false },
+            groupByDay: { type: Boolean, default: false },
+        },
+        data() {
+            return { category: '' };
+        },
+        computed: {
+            categories() {
+                const counts = {};
+                this.events.forEach((event) => {
+                    const category = CertiSub.events.category(event);
+                    counts[category] = (counts[category] || 0) + 1;
+                });
+                return CertiSub.events.categories
+                    .filter((name) => counts[name])
+                    .map((name) => ({ name, count: counts[name] }));
+            },
+            visible() {
+                if (!this.category) {
+                    return this.events;
+                }
+                return this.events.filter((event) => CertiSub.events.category(event) === this.category);
+            },
+            groups() {
+                if (!this.groupByDay) {
+                    return [{ day: 'all', events: this.visible }];
+                }
+                const groups = [];
+                this.visible.forEach((event) => {
+                    const day = String(event.occurred_at || '').slice(0, 10);
+                    const last = groups[groups.length - 1];
+                    if (last && last.day === day) {
+                        last.events.push(event);
+                    } else {
+                        groups.push({ day, events: [event] });
+                    }
+                });
+                return groups;
+            },
         },
         methods: {
-            label(event) {
-                const key = 'event.' + event.entity_type + '.' + event.event_type;
-                const text = t(key);
-                return text === key ? t('event.generic', { type: event.event_type }) : text;
+            label: (event) => CertiSub.events.label(event),
+            icon: (event) => CertiSub.events.icon(event),
+            details: (event) => CertiSub.events.details(event),
+            canOpen: (event) => CertiSub.events.certificateLink(event),
+            openCertificate(event) {
+                CertiSub.openDrawer('certificate', event.certificate_id);
             },
-            icon(event) {
-                const type = event.event_type;
-                if (type.indexOf('archived') !== -1 || type === 'task_closed' || type === 'account_deactivated') {
-                    return '📦';
-                }
-                if (type.indexOf('created') !== -1 || type === 'task_opened') {
-                    return '➕';
-                }
-                if (type.indexOf('invitation') !== -1 || type === 'reminder_sent') {
-                    return '✉️';
-                }
-                if (type === 'restored' || type === 'account_reactivated') {
-                    return '♻️';
-                }
-                if (type === 'renewed') {
-                    return '🔁';
-                }
-                return '✏️';
-            },
-            details(event) {
-                const payload = event.payload || {};
-                const lines = [];
-                if (payload.changes) {
-                    Object.keys(payload.changes).forEach((field) => {
-                        const change = payload.changes[field];
-                        lines.push(t('field.' + field) + ': ' + this.value(field, change.from) + ' → ' + this.value(field, change.to));
-                    });
-                }
-                if (event.event_type === 'task_priority_changed') {
-                    lines.push(labels.priority(payload.from) + ' → ' + labels.priority(payload.to));
-                } else if (event.entity_type === 'renewal_task' && payload.from && payload.status) {
-                    lines.push(t('task.status.' + payload.from) + ' → ' + t('task.status.' + payload.status));
-                } else if (event.event_type === 'task_opened' && payload.priority) {
-                    lines.push(labels.priority(payload.priority));
-                }
-                if (event.event_type === 'task_assigned') {
-                    lines.push((payload.from_name || t('task.unassigned')) + ' → ' + (payload.to_name || t('task.unassigned')));
-                } else if (payload.from_name && payload.to_name) {
-                    lines.push(payload.from_name + ' → ' + payload.to_name);
-                }
-                if (payload.recipient_email) {
-                    lines.push(payload.recipient_email);
-                }
-                if (payload.new_certificate_id) {
-                    lines.push(t('event.certificate.renewed_detail', { id: payload.new_certificate_id }));
-                }
-                if (payload.error) {
-                    lines.push(payload.error);
-                }
-                if (payload.note) {
-                    lines.push(payload.note);
-                }
-                return lines;
-            },
-            value(field, raw) {
-                if (raw === null || raw === undefined || raw === '') {
-                    return '—';
-                }
-                if (field === 'certificate_type') {
-                    return labels.type(raw);
-                }
-                if (field === 'status') {
-                    return labels.status(raw);
-                }
-                if (field === 'payment_status') {
-                    return labels.payment(raw);
-                }
-                if (field === 'billing_cycle') {
-                    return labels.billing(raw);
-                }
-                if (field === 'role') {
-                    return labels.role(raw);
-                }
-                if (field === 'auto_renew') {
-                    return raw === true || raw === 1 || raw === '1' ? t('common.yes') : t('common.no');
-                }
-                if (/_date$|^valid_from$/.test(field)) {
-                    return format.date(raw);
-                }
-                if (/_id$/.test(field)) {
-                    return '#' + raw;
-                }
-                return String(raw);
+            chipClass(active) {
+                return ['badge border transition', active ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'];
             },
         },
         template: `
-            <p v-if="events.length === 0" class="text-sm text-slate-400">{{ t('timeline.empty') }}</p>
-            <ol v-else class="relative border-l-2 border-slate-200 ml-2 space-y-4">
-                <li v-for="event in events" :key="event.id" class="ml-5">
-                    <span class="absolute -left-[11px] flex items-center justify-center w-5 h-5 rounded-full bg-white border border-slate-200 text-[10px]">{{ icon(event) }}</span>
-                    <div class="text-sm font-medium text-slate-800">{{ label(event) }}</div>
-                    <div class="text-xs text-slate-500">
-                        {{ format.dateTime(event.occurred_at) }}
-                        <span v-if="event.user_name"> · {{ event.user_name }}</span>
-                        <span v-if="showCertificate && event.certificate_name"> · {{ event.certificate_name }}</span>
-                    </div>
-                    <ul v-if="details(event).length" class="mt-1 text-xs text-slate-600 space-y-0.5">
-                        <li v-for="(line, index) in details(event)" :key="index" class="break-words">{{ line }}</li>
-                    </ul>
-                </li>
-            </ol>
+            <div>
+                <div v-if="filterable && categories.length > 1" class="flex flex-wrap gap-2 mb-4 no-print" role="group" :aria-label="t('timeline.filter')">
+                    <button type="button" :class="chipClass(category === '')" :aria-pressed="category === ''" @click="category = ''">
+                        {{ t('timeline.category.all') }} · {{ events.length }}
+                    </button>
+                    <button v-for="item in categories" :key="item.name" type="button" :class="chipClass(category === item.name)"
+                            :aria-pressed="category === item.name" @click="category = item.name">
+                        {{ t('timeline.category.' + item.name) }} · {{ item.count }}
+                    </button>
+                </div>
+                <p v-if="visible.length === 0" class="text-sm text-slate-400">{{ t('timeline.empty') }}</p>
+                <div v-for="group in groups" :key="group.day" :class="groupByDay ? 'mb-5 break-inside-avoid' : ''">
+                    <p v-if="groupByDay" class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{{ format.date(group.day) }}</p>
+                    <ol class="relative border-l-2 border-slate-200 ml-2 space-y-4">
+                        <li v-for="event in group.events" :key="event.id" class="ml-5">
+                            <span class="absolute -left-[11px] flex items-center justify-center w-5 h-5 rounded-full bg-white border border-slate-200 text-[10px]" aria-hidden="true">{{ icon(event) }}</span>
+                            <div class="text-sm font-medium text-slate-800">{{ label(event) }}</div>
+                            <div class="text-xs text-slate-500">
+                                {{ groupByDay ? format.time(event.occurred_at) : format.dateTime(event.occurred_at) }}
+                                <span> · {{ event.user_name || t('eventlog.system_user') }}</span>
+                                <template v-if="showCertificate && event.certificate_name">
+                                    ·
+                                    <button v-if="canOpen(event)" type="button" class="text-brand-700 hover:underline" @click="openCertificate(event)">{{ event.certificate_name }}</button>
+                                    <span v-else>{{ event.certificate_name }}</span>
+                                </template>
+                            </div>
+                            <ul v-if="details(event).length" class="mt-1 text-xs text-slate-600 space-y-0.5">
+                                <li v-for="(line, index) in details(event)" :key="index" class="break-words">{{ line }}</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+            </div>
         `,
     };
 

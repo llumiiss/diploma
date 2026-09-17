@@ -33,6 +33,28 @@ final class CertificateHelperTest extends TestCase
         $this->assertSame('ok', CertificateHelper::resolvePriority(31, 'corporate'));
     }
 
+    public function testPriorityForUsesGivenThresholds(): void
+    {
+        $this->assertSame('expired', CertificateHelper::priorityFor(-3, 5, 20));
+        $this->assertSame('critical', CertificateHelper::priorityFor(0, 5, 20));
+        $this->assertSame('critical', CertificateHelper::priorityFor(5, 5, 20));
+        $this->assertSame('warning', CertificateHelper::priorityFor(6, 5, 20));
+        $this->assertSame('warning', CertificateHelper::priorityFor(20, 5, 20));
+        $this->assertSame('ok', CertificateHelper::priorityFor(21, 5, 20));
+    }
+
+    public function testAnnualizedCostFollowsBillingCycle(): void
+    {
+        $this->assertSame(1200.0, CertificateHelper::annualizedCost(100.0, 'monthly', null, '2027-01-01'));
+        $this->assertSame(320.0, CertificateHelper::annualizedCost(320.0, 'annual', '2026-01-01', '2027-01-01'));
+        // Certyfikat trzyletni: kwota za cały okres dzielona przez liczbę lat ważności.
+        $this->assertSame(300.0, CertificateHelper::annualizedCost(900.0, 'multi_year', '2025-03-01', '2028-03-01'));
+        $this->assertSame(450.0, CertificateHelper::annualizedCost(900.0, 'multi_year', '2026-01-10', '2028-01-05'));
+        // Bez daty początku nie da się ustalić liczby lat — kwota bez zmian.
+        $this->assertSame(900.0, CertificateHelper::annualizedCost(900.0, 'multi_year', null, '2028-03-01'));
+        $this->assertSame(900.0, CertificateHelper::annualizedCost(900.0, 'multi_year', '2026-01-01', '2026-03-01'));
+    }
+
     public function testPersonalThresholdsAreShorter(): void
     {
         $this->assertSame('critical', CertificateHelper::resolvePriority(3, 'personal'));

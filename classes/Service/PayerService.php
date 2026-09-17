@@ -358,7 +358,7 @@ final class PayerService
     /**
      * @return array<string, mixed>
      */
-    private function findVisible(Actor $actor, int $id, bool $includeArchived): array
+    public function findVisible(Actor $actor, int $id, bool $includeArchived): array
     {
         [$visibility, $params] = Visibility::payers($actor, 'p');
         $stmt = $this->db->prepare("SELECT p.* FROM payers p WHERE p.id = :id AND {$visibility} LIMIT 1");
@@ -392,7 +392,7 @@ final class PayerService
     /**
      * Płatnik używany wyłącznie przez zamrożony panel prywatny (D1) nie należy do ewidencji firmowej.
      */
-    private static function notPersonalOnly(string $alias): string
+    public static function notPersonalOnly(string $alias): string
     {
         return "NOT (EXISTS (SELECT 1 FROM certificates personal_c WHERE personal_c.payer_id = {$alias}.id AND personal_c.scope = 'personal')"
             . " AND NOT EXISTS (SELECT 1 FROM certificates corporate_c WHERE corporate_c.payer_id = {$alias}.id AND corporate_c.scope = 'corporate'))";

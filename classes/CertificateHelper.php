@@ -70,17 +70,47 @@ final class CertificateHelper
     {
         $t = self::getThresholds($scope);
 
+        return self::priorityFor($daysLeft, $t['critical'], $t['warning']);
+    }
+
+    /**
+     * Priorytet wg progów podanych wprost (raporty czytają progi z bazy w ramach jednego żądania).
+     */
+    public static function priorityFor(int $daysLeft, int $criticalDays, int $warningDays): string
+    {
         if ($daysLeft < 0) {
             return 'expired';
         }
-        if ($daysLeft <= $t['critical']) {
+        if ($daysLeft <= $criticalDays) {
             return 'critical';
         }
-        if ($daysLeft <= $t['warning']) {
+        if ($daysLeft <= $warningDays) {
             return 'warning';
         }
 
         return 'ok';
+    }
+
+    /**
+     * Koszt w przeliczeniu na rok (§5 pkt 12). Kolumna annual_cost przechowuje kwotę za okres
+     * rozliczeniowy: przy cyklu miesięcznym to kwota miesięczna, przy wieloletnim — za cały okres
+     * ważności (dzielona przez liczbę lat między datą „ważny od” a wygaśnięciem, co najmniej 1).
+     */
+    public static function annualizedCost(float $amount, string $billingCycle, ?string $validFrom, string $expiryDate): float
+    {
+        if ($billingCycle === 'monthly') {
+            return round($amount * 12, 2);
+        }
+
+        if ($billingCycle === 'multi_year' && $validFrom !== null && $validFrom !== '') {
+            $span = (new DateTimeImmutable($validFrom))->diff(new DateTimeImmutable($expiryDate));
+            $months = $span->invert === 1 ? 0 : $span->y * 12 + $span->m + ($span->d >= 15 ? 1 : 0);
+            $years = max(1, (int) round($months / 12));
+
+            return round($amount / $years, 2);
+        }
+
+        return round($amount, 2);
     }
 
     public static function priorityLabel(string $priority, string $scope = 'corporate'): string

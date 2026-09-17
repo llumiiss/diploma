@@ -24,6 +24,11 @@ final class TemplateAttachmentSettingsTest extends IntegrationTestCase
 
     protected function tearDown(): void
     {
+        // Bez RUN_INTEGRATION_TESTS setUp kończy się pominięciem testu, zanim powstanie katalog.
+        if (!isset($this->storage)) {
+            return;
+        }
+
         foreach (glob($this->storage . DIRECTORY_SEPARATOR . '*') ?: [] as $file) {
             @unlink($file);
         }

@@ -51,6 +51,9 @@
             open(item) {
                 CertiSub.openDrawer('payer', item.id);
             },
+            openCard(item) {
+                CertiSub.navigate('payers', item.id);
+            },
             add() {
                 CertiSub.openModal('PayerForm', {});
             },
@@ -100,6 +103,7 @@
                                 <td class="td text-right whitespace-nowrap">{{ format.money(item.total_annual_cost) }}</td>
                                 <td class="td whitespace-nowrap">{{ format.date(item.earliest_expiry) }}</td>
                                 <td class="td text-right whitespace-nowrap" @click.stop>
+                                    <button v-if="can('reports.view')" type="button" class="btn-ghost" :title="t('report.card')" @click="openCard(item)">📈 {{ t('report.card_short') }}</button>
                                     <button v-if="can('payers.update')" type="button" class="btn-ghost" @click="edit(item)">{{ t('common.edit') }}</button>
                                     <button v-if="can('payers.archive')" type="button" class="btn-ghost text-red-600" @click="archive(item)">{{ t('common.archive') }}</button>
                                 </td>
@@ -185,10 +189,14 @@
             openBeneficiary(item) {
                 CertiSub.openDrawer('beneficiary', item.id);
             },
+            openCard() {
+                CertiSub.navigate('payers', this.id);
+            },
         },
         template: `
             <DrawerShell :title="payer ? payer.company_name : ''" :subtitle="t('payer.singular')" :loading="loading" :error="error" @close="close">
                 <template #actions>
+                    <button v-if="payer && can('reports.view')" type="button" class="btn-secondary" @click="openCard">📈 {{ t('report.card') }}</button>
                     <template v-if="payer && !payer.archived_at">
                         <button v-if="can('payers.update')" type="button" class="btn-secondary" @click="edit">✏️ {{ t('common.edit') }}</button>
                         <button v-if="can('beneficiaries.create')" type="button" class="btn-secondary" @click="addBeneficiary">+ {{ t('beneficiary.add') }}</button>

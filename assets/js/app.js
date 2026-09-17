@@ -12,9 +12,18 @@
         todo: { component: 'TasksView', icon: '✅', label: 'nav.todo', permission: 'tasks.view' },
         invitations: { component: 'InvitationsView', icon: '✉️', label: 'nav.invitations', permission: 'invitations.view' },
         certificates: { component: 'CertificatesView', icon: '📜', label: 'nav.certificates', props: { mode: 'all' }, permission: 'certificates.view' },
-        beneficiaries: { component: 'BeneficiariesView', icon: '👤', label: 'nav.beneficiaries', permission: 'beneficiaries.view' },
-        payers: { component: 'PayersView', icon: '🏢', label: 'nav.payers', permission: 'payers.view' },
+        beneficiaries: {
+            component: 'BeneficiariesView', icon: '👤', label: 'nav.beneficiaries', permission: 'beneficiaries.view',
+            card: { component: 'BeneficiaryCardView', permission: 'reports.view' },
+        },
+        payers: {
+            component: 'PayersView', icon: '🏢', label: 'nav.payers', permission: 'payers.view',
+            card: { component: 'PayerCardView', permission: 'reports.view' },
+        },
+        reports: { component: 'ReportsView', icon: '📈', label: 'nav.reports', permission: 'reports.view' },
+        search: { component: 'SearchView', icon: '🔍', label: 'search.title', permission: 'search.use', hidden: true },
         archive: { component: 'ArchiveView', icon: '📦', label: 'nav.archive', permission: 'archive.view', group: 'manage' },
+        events: { component: 'EventLogView', icon: '🧾', label: 'nav.events', permission: 'events.view_all', group: 'admin' },
         templates: { component: 'TemplatesView', icon: '🧩', label: 'nav.templates', permission: 'templates.manage', group: 'admin' },
         accounts: { component: 'AccountsView', icon: '🔐', label: 'nav.accounts', permission: 'accounts.manage', group: 'admin' },
         settings: { component: 'SettingsView', icon: '⚙️', label: 'nav.settings', permission: 'settings.manage', group: 'admin' },
@@ -33,9 +42,21 @@
         return Boolean(view) && (!view.permission || can(view.permission));
     }
 
-    function viewFromHash() {
-        const id = String(window.location.hash || '').replace(/^#\/?/, '').split('/')[0];
-        return allowed(id) ? id : 'dashboard';
+    /**
+     * Adres widoku: #/payers — lista, #/payers/12 — karta rekordu (gdy widok ma kartę i rola ma do niej dostęp).
+     */
+    function routeFromHash() {
+        const parts = String(window.location.hash || '').replace(/^#\/?/, '').split('/');
+        const view = allowed(parts[0]) ? parts[0] : 'dashboard';
+        const card = VIEWS[view].card;
+        const id = /^\d+$/.test(parts[1] || '') ? Number(parts[1]) : null;
+        return { view, recordId: id && card && can(card.permission) ? id : null };
+    }
+
+    function applyRoute() {
+        const route = routeFromHash();
+        ui.view = route.view;
+        ui.recordId = route.recordId;
     }
 
     const Root = {
@@ -51,7 +72,7 @@
         },
         computed: {
             navItems() {
-                return Object.keys(VIEWS).filter(allowed).map((id) => {
+                return Object.keys(VIEWS).filter((id) => allowed(id) && !VIEWS[id].hidden).map((id) => {
                     const view = VIEWS[id];
                     let badgeCount = null;
                     if (id === 'todo' && store.taskStats) {
@@ -67,17 +88,33 @@
                 return this.navItems.filter((item) => item.group !== 'main');
             },
             currentView() {
-                return VIEWS[ui.view] || VIEWS.dashboard;
+                const view = VIEWS[ui.view] || VIEWS.dashboard;
+                if (ui.recordId && view.card) {
+                    return { component: view.card.component, props: { id: ui.recordId } };
+                }
+                return view;
+            },
+            routeKey() {
+                return ui.view + (ui.recordId ? '/' + ui.recordId : '');
+            },
+            showSearch() {
+                return can('search.use') && ui.view !== 'search';
             },
             drawerComponent() {
                 return ui.drawer ? DRAWERS[ui.drawer.type] : null;
             },
         },
+        watch: {
+            routeKey() {
+                // Nowy widok albo karta zaczyna się od góry, a nie w miejscu przewinięcia poprzedniego.
+                if (this.$refs.main) {
+                    this.$refs.main.scrollTop = 0;
+                }
+            },
+        },
         created() {
-            ui.view = viewFromHash();
-            window.addEventListener('hashchange', () => {
-                ui.view = viewFromHash();
-            });
+            applyRoute();
+            window.addEventListener('hashchange', applyRoute);
             window.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape' && ui.modals.length === 0 && ui.drawer) {
                     CertiSub.closeDrawer();
@@ -93,7 +130,7 @@
                 if (window.location.hash !== '#/' + id) {
                     window.location.hash = '#/' + id;
                 } else {
-                    ui.view = id;
+                    applyRoute();
                 }
             },
             closeModal(key) {
@@ -123,7 +160,7 @@
         },
         template: `
             <div class="flex flex-1 min-h-0">
-                <aside class="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col shrink-0">
+                <aside class="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col shrink-0 no-print">
                     <nav class="flex-1 overflow-y-auto py-4 px-2" :aria-label="t('dash.navigation')">
                         <p class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{{ t('dash.navigation') }}</p>
                         <button v-for="item in mainItems" :key="item.id" type="button" @click="go(item.id)"
@@ -149,14 +186,15 @@
                     </div>
                 </aside>
 
-                <main class="flex-1 overflow-y-auto p-4 sm:p-6 min-w-0">
-                    <label class="md:hidden block mb-4">
+                <main ref="main" class="flex-1 overflow-y-auto p-4 sm:p-6 min-w-0">
+                    <div v-if="showSearch" class="mb-5"><GlobalSearch /></div>
+                    <label class="md:hidden block mb-4 no-print">
                         <span class="sr-only">{{ t('dash.navigation') }}</span>
                         <select class="input" :value="ui.view" @change="go($event.target.value)">
                             <option v-for="item in navItems" :key="item.id" :value="item.id">{{ item.icon }} {{ item.label }}</option>
                         </select>
                     </label>
-                    <component :is="currentView.component" v-bind="currentView.props || {}" :key="ui.view" />
+                    <component :is="currentView.component" v-bind="currentView.props || {}" :key="routeKey" />
                 </main>
 
                 <component v-if="drawerComponent" :is="drawerComponent" :id="ui.drawer.id" :key="ui.drawer.key" />

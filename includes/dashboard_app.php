@@ -59,6 +59,9 @@ $boot = [
         'templates'      => 'api/templates.php',
         'attachments'    => 'api/attachments.php',
         'settings'       => 'api/settings.php',
+        'reports'        => 'api/reports.php',
+        'search'         => 'api/search.php',
+        'events'         => 'api/events.php',
         'delete_account' => 'api/delete_account.php',
     ],
     'links'       => [
@@ -84,6 +87,9 @@ $scripts = [
     'assets/js/views/tasks.js',
     'assets/js/views/invitations.js',
     'assets/js/views/templates.js',
+    'assets/js/views/search.js',
+    'assets/js/views/reports.js',
+    'assets/js/views/events.js',
     'assets/js/app.js',
 ];
 
@@ -113,6 +119,18 @@ $assetUrl = static function (string $path): string {
             .th { @apply text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide whitespace-nowrap; }
             .td { @apply px-4 py-3 align-top; }
             .badge { @apply inline-block px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap; }
+        }
+    </style>
+    <style>
+        /* Wydruk kart raportowych i harmonogramu: bez nawigacji i przycisków, treść na całą stronę. */
+        @media print {
+            body > header, #app aside, .no-print { display: none !important; }
+            html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+            #app, #app > div, main { display: block !important; overflow: visible !important; height: auto !important; min-height: 0 !important; }
+            main { padding: 0 !important; }
+            .card { box-shadow: none !important; break-inside: avoid; }
+            table { break-inside: auto; }
+            tr { break-inside: avoid; }
         }
     </style>
 </head>

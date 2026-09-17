@@ -1,6 +1,6 @@
 # CertiSub Assistant — instrukcja obsługi i scenariusz demonstracji
 
-> Stan na 2026-09-17, po Etapie 3 (proces odnowień: zadania ToDo, zaproszenia, szablony, przypomnienia). Opisuje aplikację na danych z `scripts/seed-demo-data.php`.
+> Stan na 2026-09-17, po Etapie 4 (raporty: karty użytkownika certyfikatu i płatnika, harmonogram wygaśnięć, wyszukiwarka globalna, dziennik zdarzeń). Opisuje aplikację na danych z `scripts/seed-demo-data.php`.
 > Dokument służy dwóm celom: pokazaniu wszystkich paneli i funkcji oraz jako zalążek rozdziału „dokumentacja użytkownika” w pracy (§9 w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md)).
 
 ---
@@ -41,9 +41,9 @@ Hierarchia ról: **ADMIN > MANAGER > OPERATOR**.
 
 | Rola | Co może |
 |---|---|
-| ADMIN | wszystko, co MANAGER, oraz konta i role (zakładanie, zmiana roli, wyłączanie, przekazywanie rekordów), **szablony i załączniki**, **ustawienia** procesu odnowień |
-| MANAGER | dane całej organizacji, archiwizacja i przywracanie, ekran **Archiwum**, wybór opiekuna certyfikatu, **przydział zadań**, ponowne otwieranie zadań, **uruchamianie skanera**, statystyki wg osób |
-| OPERATOR | ewidencja w swoim zakresie: certyfikaty, których jest opiekunem (albo ma do nich przydzielone zadanie), oraz osoby i płatnicy, których sam wprowadził lub którzy są z tymi certyfikatami powiązani; **zadania ToDo, zaproszenia i przypomnienia, odnawianie certyfikatów** w tym zakresie; nie archiwizuje i nie widzi archiwum |
+| ADMIN | wszystko, co MANAGER, oraz konta i role (zakładanie, zmiana roli, wyłączanie, przekazywanie rekordów), **szablony i załączniki**, **ustawienia** procesu odnowień, **dziennik zdarzeń** całego systemu |
+| MANAGER | dane całej organizacji, archiwizacja i przywracanie, ekran **Archiwum** (także historia certyfikatów w kartach i rekordy z archiwum w wyszukiwarce), wybór opiekuna certyfikatu, **przydział zadań**, ponowne otwieranie zadań, **uruchamianie skanera**, statystyki wg osób |
+| OPERATOR | ewidencja w swoim zakresie: certyfikaty, których jest opiekunem (albo ma do nich przydzielone zadanie), oraz osoby i płatnicy, których sam wprowadził lub którzy są z tymi certyfikatami powiązani; **zadania ToDo, zaproszenia i przypomnienia, odnawianie certyfikatów, raporty (karty osób i płatników, harmonogram) i wyszukiwarka** w tym zakresie; nie archiwizuje i nie widzi archiwum |
 
 Kontrolę dostępu wykonuje serwer (API) — ukryte przyciski w przeglądarce to tylko wygoda. Szczegóły reguły zakresu danych: decyzja **D8** w mapie projektu.
 
@@ -91,7 +91,23 @@ Warte pokazania jako element bezpieczeństwa:
 
 ## 4. Panel firmowy
 
-Układ: nagłówek (asystent, przełącznik panelu prywatnego, język, konto, wylogowanie), menu po lewej, widok w środku. Adres widoku jest w pasku adresu (np. `dashboard.php#/payers`), więc odświeżenie strony zostawia Cię w tym samym miejscu. Kliknięcie wiersza otwiera **panel szczegółów** z prawej strony.
+Układ: nagłówek (asystent, przełącznik panelu prywatnego, język, konto, wylogowanie), menu po lewej, nad widokiem **wyszukiwarka globalna**, widok w środku. Adres widoku jest w pasku adresu (np. `dashboard.php#/payers`, a karta płatnika `dashboard.php#/payers/22`), więc odświeżenie strony zostawia Cię w tym samym miejscu. Kliknięcie wiersza otwiera **panel szczegółów** z prawej strony.
+
+### Wyszukiwarka globalna
+
+Pole nad każdym widokiem; skrót **Ctrl+K** albo **/**. Po wpisaniu co najmniej 2 znaków podpowiada wyniki w trzech grupach: **certyfikaty**, **użytkownicy certyfikatów**, **płatnicy**. Strzałki wybierają wynik, **Enter** go otwiera (certyfikat w panelu szczegółów, osobę i płatnika na karcie raportowej), a **Enter bez wybranego wyniku** albo „Pokaż wszystkie wyniki” przechodzi do pełnej listy (do 50 wyników w grupie, powiązania jako odnośniki).
+
+Wyszukiwarka pokazuje powiązania i powód dopasowania:
+
+| Wpisz | Znajdziesz |
+|---|---|
+| `nova` | płatnika NovaTech (nazwa), jego osoby (przez płatnika i e-mail) oraz certyfikaty (nazwa lub przez płatnika) |
+| `5A3F9C21` | certyfikat po numerze seryjnym, a przez niego osobę i płatnika |
+| `634-285-19` | płatnika po NIP-ie (kreski i spacje nie mają znaczenia) i jego certyfikaty |
+| `600 100 200` | osobę po numerze telefonu |
+| `Wróbel` | certyfikaty, których opiekunem jest Tomasz Wróbel |
+
+Pod każdym wynikiem jest wiersz „dopasowano: …” albo „przez powiązanie: …”. Dopasowania bezpośrednie są wyżej. OPERATOR widzi tylko rekordy ze swojego zakresu, a rekordy z archiwum (oznaczone „W archiwum”) pojawiają się od roli MANAGER.
 
 ### Pulpit
 
@@ -170,19 +186,51 @@ Każda zmiana ustawień trafia do historii zdarzeń.
 
 ### Użytkownicy certyfikatów
 
-Lista osób z płatnikiem, liczbą certyfikatów i najbliższym wygaśnięciem. Szczegóły osoby pokazują jej certyfikaty; z panelu można dodać certyfikat od razu przypisany do tej osoby. Osoby z aktywnymi certyfikatami **nie da się zarchiwizować** — najpierw trzeba zarchiwizować certyfikaty albo przypisać je komuś innemu.
+Lista osób z płatnikiem, liczbą certyfikatów i najbliższym wygaśnięciem. Szczegóły osoby pokazują jej certyfikaty; z panelu można dodać certyfikat od razu przypisany do tej osoby. Przycisk **Karta** w wierszu (i **Karta raportowa** w panelu szczegółów) otwiera kartę użytkownika certyfikatu — opis niżej w „Raportach”. Osoby z aktywnymi certyfikatami **nie da się zarchiwizować** — najpierw trzeba zarchiwizować certyfikaty albo przypisać je komuś innemu.
 
 ### Płatnicy
 
-Lista z NIP-em, osobą kontaktową, miejscowością, liczbą osób i certyfikatów oraz kosztem rocznym. Szczegóły płatnika pokazują powiązane osoby i certyfikaty z sumą kosztów.
+Lista z NIP-em, osobą kontaktową, miejscowością, liczbą osób i certyfikatów oraz kosztem rocznym. Szczegóły płatnika pokazują powiązane osoby i certyfikaty z sumą kosztów, a przycisk **Karta** otwiera kartę płatnika.
 
 - **NIP** jest sprawdzany sumą kontrolną (można wpisać go z kreskami lub z prefiksem PL) i musi być unikalny. Przy próbie dodania istniejącego NIP-u formularz pokazuje nazwę istniejącego płatnika i odnośnik do niego — operator, który tego płatnika nie widzi, dostaje komunikat bez szczegółów.
 - Płatnika z aktywnymi certyfikatami lub osobami **nie da się zarchiwizować** (komunikat podaje liczby).
 - Płatnik „Budżet domowy” z panelu prywatnego nie pojawia się w ewidencji firmowej.
 
+### Raporty — perspektywy Użytkownika, Płatnika i Administratora
+
+Widok **Raporty** odpowiada perspektywom z opisu systemu. Trzy kafelki: wybór osoby → **Otwórz kartę**, wybór płatnika → **Otwórz kartę**, a dla administratora skróty do dziennika zdarzeń, kont, szablonów i ustawień. Niżej jest **harmonogram wygaśnięć**.
+
+**Karta użytkownika certyfikatu** (perspektywa Użytkownika; np. Jan Kowalski):
+
+| Sekcja | Co pokazuje |
+|---|---|
+| Dane i wskaźniki | kontakt, płatnik (odnośnik do karty płatnika); bieżące certyfikaty, najbliższe wygaśnięcie, wymagające uwagi (wygasłe, krytyczne, w progu ostrzeżenia), otwarte zadania, wysłane zaproszenia z liczbą przypomnień, ostatni kontakt |
+| Certyfikaty i daty odnowienia | ważność, **odnowienie od** (data wygaśnięcia minus wymagany czas odnowienia, a bez niego domyślny margines 30 dni) z oznaczeniem „w oknie odnowienia”, priorytet z liczbą dni, otwarte zadanie z osobą, kontakt; informacja, który certyfikat został odnowiony |
+| Historia certyfikatów (archiwum) | certyfikaty zastąpione przy odnowieniu lub zarchiwizowane i to, co je zastąpiło — od roli MANAGER |
+| Ścieżka realizacji | wszystkie zadania odnowień, także zamknięte, z notatką z realizacji |
+| Zaproszenia i przypomnienia | wysyłki z odbiorcą, statusem, datą i terminem następnego przypomnienia |
+| Historia na osi czasu | zdarzenia dotyczące osoby, pogrupowane wg dni, z filtrem: ewidencja / zadania / zaproszenia; nazwy certyfikatów otwierają szczegóły |
+
+**Karta płatnika** (perspektywa Płatnika; np. NovaTech): te same sekcje oraz **powiązane osoby** (przypisane do płatnika i te, których certyfikaty płatnik opłaca), **harmonogram wygaśnięć na 12 miesięcy** z wykresem i **koszt roczny** (koszt miesięczny × 12, wieloletni podzielony przez lata ważności). Na danych demo: 2 osoby, 4 bieżące certyfikaty, 1 w archiwum, koszt 1 819,00 PLN.
+
+**Harmonogram wygaśnięć** (w „Raportach”): bieżące certyfikaty wg miesiąca wygaśnięcia na 3, 6, 12 albo 24 miesiące, z filtrem płatnika i typu; już wygasłe są w grupie **Zaległe**. Każda pozycja ma odnośniki do certyfikatu, osoby, płatnika i zadania.
+
+Karty i harmonogram mają przycisk **Drukuj** — wydruk (albo zapis do PDF w oknie drukowania) nie zawiera menu ani przycisków. OPERATOR widzi w kartach tylko swoje certyfikaty i zdarzenia, które ich dotyczą.
+
 ### Archiwum (MANAGER, ADMIN)
 
 Trzy zakładki: certyfikaty, użytkownicy certyfikatów, płatnicy — z datą archiwizacji i przyciskiem **Przywróć**. Na danych demo są tu 2 certyfikaty (poprzedni SSL EV i porzucona domena). Certyfikatu nie da się przywrócić, jeśli jego płatnik lub osoba są w archiwum. Rekord z archiwum można obejrzeć, ale nie edytować.
+
+### Dziennik zdarzeń (ADMIN)
+
+Wszystkie zdarzenia systemu od najnowszych (na danych demo ok. 57): zmiany w ewidencji, zadania, wysyłki, konta, szablony, załączniki, ustawienia i przebiegi skanera. Filtry:
+
+- **Szukaj** — nazwa certyfikatu, osoby lub płatnika, autor albo treść zdarzenia (np. adres e-mail odbiorcy),
+- **Obszar** i **Zdarzenie** (z liczbą wystąpień),
+- **Autor** — konto albo „System” (cron i skaner),
+- **Od / Do** — zakres dat, dzień końcowy włącznie.
+
+Kolumna „Dotyczy” prowadzi do certyfikatu, karty osoby lub płatnika, zadania albo zaproszenia. Stronicowanie po 25, 50 lub 100 zdarzeń. Dziennik jest tylko do odczytu — historii nie da się edytować ani usunąć z panelu.
 
 ### Konta i role (ADMIN)
 
@@ -224,7 +272,7 @@ Najlepszy fragment na obronę, bo różnicę widać natychmiast.
 php scripts/set-role.php mobi.litosh@gmail.com OPERATOR
 ```
 
-Odśwież panel firmowy: zostaną **2 certyfikaty** (te, których jesteś opiekunem), z menu znikną **Archiwum** i **Konta i role**, na listach osób i płatników zostaną tylko rekordy powiązane z Twoimi certyfikatami, a przy certyfikatach nie ma przycisku **Archiwizuj**. Potem:
+Odśwież panel firmowy: zostaną **2 certyfikaty** (te, których jesteś opiekunem), z menu znikną **Archiwum**, **Dziennik zdarzeń** i **Konta i role**, na listach osób i płatników oraz w wyszukiwarce i kartach zostaną tylko rekordy powiązane z Twoimi certyfikatami, a przy certyfikatach nie ma przycisku **Archiwizuj**. Potem:
 
 ```bash
 php scripts/set-role.php mobi.litosh@gmail.com ADMIN
@@ -232,7 +280,7 @@ php scripts/set-role.php mobi.litosh@gmail.com ADMIN
 
 Po odświeżeniu znów widać **10 certyfikatów**, archiwum i konta. Ponowne logowanie nie jest potrzebne — rola czytana jest z bazy przy każdym żądaniu.
 
-Dodatkowy dowód, że to serwer pilnuje uprawnień: jako OPERATOR wywołanie `api/accounts.php` albo `api/dashboard.php?view=archive` zwraca **403** z komunikatem „Nie masz uprawnień do tej operacji”.
+Dodatkowy dowód, że to serwer pilnuje uprawnień: jako OPERATOR wywołanie `api/accounts.php`, `api/events.php` albo `api/dashboard.php?view=archive` zwraca **403** z komunikatem „Nie masz uprawnień do tej operacji”, a karta płatnika spoza zakresu (`api/reports.php?view=payer&id=…`) — **404**.
 
 ---
 
@@ -281,7 +329,7 @@ W **HeidiSQL** (Laragon → Database → baza `assistent_subscriptions`) — mat
 | `email_templates` | 4 szablony: zaproszenie i przypomnienie, PL i EN, z polami `{imie}`, `{numer_seryjny}`, `{data_waznosci}`… |
 | `attachments` | 1 załącznik (instrukcja odnowienia) — plik w `storage/attachments`, niedostępny z przeglądarki |
 | `invitations` | 4 zaproszenia: wysłane z 2 przypomnieniami, z odpowiedzią, nieudane (z treścią błędu), zamknięte |
-| `events` | ok. 55 zdarzeń historii; każda zmiana wykonana w panelu, skaner i wysyłki dopisują kolejne (np. `payload.changes` ze zmienionymi polami) |
+| `events` | ok. 55 zdarzeń historii; każda zmiana wykonana w panelu, skaner i wysyłki dopisują kolejne (np. `payload.changes` ze zmienionymi polami); w panelu to **Dziennik zdarzeń** i osie czasu na kartach |
 | `settings` | tylko zmienione ustawienia procesu odnowień (pusta = wartości domyślne) |
 
 Gotowe zapytania do pokazania:
@@ -332,12 +380,12 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 | `php scripts/test-mail.php adres@example.com` | test konfiguracji poczty |
 | `php cron/renewals.php` | skaner odnowień i zaległe przypomnienia o zaproszeniach (codziennie) |
 | `php cron/send_reminders.php` | przypomnienia o płatnościach menedżera osobistego |
-| `composer test` | 91 testów; 43 integracyjne wymagają `RUN_INTEGRATION_TESTS=1` i tworzą osobną bazę `assistent_subscriptions_test` |
+| `composer test` | 114 testów; 61 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
 | `composer stan` | analiza statyczna (PHPStan) |
 
 ---
 
-## 10. Scenariusz demonstracji (ok. 20 minut)
+## 10. Scenariusz demonstracji (ok. 25 minut)
 
 1. Laragon → Start All, `php scripts/migrate.php`, `php scripts/seed-demo-data.php --force`.
 2. Strona główna → `/register.php` przekierowuje do logowania: konta zakłada administrator.
@@ -354,11 +402,15 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 13. **Edytuj** ten certyfikat (np. datę wygaśnięcia) → w historii pojawia się zmiana „z → na”.
 14. Płatnicy → **Dodaj płatnika** z NIP-em `987-654-32-10` → komunikat o istniejącym płatniku Grupa Wisła z odnośnikiem; **Archiwizuj** NovaTech → blokada (aktywne certyfikaty i osoby).
 15. Certyfikaty → **Archiwizuj** certyfikat dodany w kroku 12 → Archiwum → **Przywróć**.
-16. Konta i role → **Dodaj konto** (np. nowy OPERATOR), wyłączone konto Adama Nowickiego, okno **Przekaż rekordy**.
-17. Demonstracja ról (§6): `set-role.php … OPERATOR` → 2 certyfikaty, brak archiwum, szablonów, kont i ustawień → powrót do ADMIN.
-18. Przełącznik języka (PL → EN) — interfejs, komunikaty walidacji i opisy zdarzeń się tłumaczą.
-19. HeidiSQL: tabele modelu, zapytanie „ostatnie zmiany wykonane w panelu” (§8), nieudana próba drugiego otwartego zadania.
-20. Bezpieczeństwo: `/.git/config`, `/storage/attachments/`, `/classes/Rbac.php` → **403**; `/api/accounts.php` bez logowania → **401**.
+16. **Wyszukiwarka** (Ctrl+K): `nova` → płatnik, jego osoby i certyfikaty z opisem „przez powiązanie”; `634-285-19` → płatnik po NIP-ie; Enter → pełna lista wyników.
+17. **Raporty** → perspektywa Użytkownika: karta Jana Kowalskiego — „odnowienie od”, ścieżka realizacji, zaproszenia, oś czasu z filtrem „Zadania” → **Drukuj**.
+18. Perspektywa Płatnika: karta NovaTech — powiązane osoby, harmonogram wygaśnięć z wykresem, koszt roczny; w „Raportach” harmonogram całej organizacji z filtrem płatnika.
+19. **Dziennik zdarzeń** (ADMIN) → filtr autora „System” (skaner), potem wyszukiwanie adresu e-mail odbiorcy zaproszenia.
+20. Konta i role → **Dodaj konto** (np. nowy OPERATOR), wyłączone konto Adama Nowickiego, okno **Przekaż rekordy**.
+21. Demonstracja ról (§6): `set-role.php … OPERATOR` → 2 certyfikaty, brak archiwum, dziennika, szablonów, kont i ustawień, karty i wyszukiwarka tylko w zakresie operatora → powrót do ADMIN.
+22. Przełącznik języka (PL → EN) — interfejs, komunikaty walidacji i opisy zdarzeń się tłumaczą.
+23. HeidiSQL: tabele modelu, zapytanie „ostatnie zmiany wykonane w panelu” (§8), nieudana próba drugiego otwartego zadania.
+24. Bezpieczeństwo: `/.git/config`, `/storage/attachments/`, `/classes/Rbac.php` → **403**; `/api/accounts.php` bez logowania → **401**.
 
 ---
 
@@ -366,8 +418,7 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 
 Pełna macierz jest w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) §3. Najważniejsze braki widoczne podczas demonstracji:
 
-- **raporty perspektyw** — karty osoby i płatnika z historią, wyszukiwarka globalna, dziennik zdarzeń administratora (Etap 4); dziś historia jest w szczegółach certyfikatu, zadania i zaproszenia,
-- **import i eksport** CSV/XML/EML (Etap 5),
+- **import i eksport** CSV/XML/EML, w tym eksport kart raportowych i list (Etap 5); do tego czasu karty można wydrukować lub zapisać jako PDF,
 - lokalne zasoby frontendu zamiast CDN, limit wysyłek kodów OTP w bazie (Etap 6),
 - skeleton loadery i cache wskaźników (Etap 7).
 
@@ -398,3 +449,7 @@ Pełna macierz jest w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) §3. Najważniejsze b
 | Skaner nie zakłada zadania dla certyfikatu | certyfikat jest poza marginesem odnowienia, w archiwum, ma już otwarte zadanie albo zadanie dla tej daty wygaśnięcia zostało zamknięte → sprawdź „wymagany czas odnowienia” i Ustawienia |
 | Nie przychodzą automatyczne przypomnienia | cron `cron/renewals.php` nie jest uruchamiany, limit przypomnień wynosi 0, zaproszenie ma odpowiedź lub zadanie jest zamknięte |
 | Nie mogę dodać załącznika | niedozwolony typ, zawartość niepasująca do rozszerzenia albo plik większy niż 10 MB (komunikat podaje przyczynę) |
+| Wyszukiwarka nic nie pokazuje | wpisano mniej niż 2 znaki, rekord jest poza zakresem operatora (D8) albo w archiwum (widoczne od MANAGER) |
+| Karta pokazuje mniej certyfikatów niż u kolegi | OPERATOR widzi w kartach tylko swoje certyfikaty i ich zdarzenia; historia z archiwum jest od roli MANAGER |
+| „Nie znaleziono” po otwarciu karty z zakładki | adres `#/payers/N` wskazuje rekord spoza zakresu konta albo z archiwum → wróć do listy |
+| Wydruk karty ucina tabelę | szerokie tabele (certyfikaty z kosztem) — w oknie drukowania wybierz orientację poziomą |
