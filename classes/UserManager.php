@@ -61,7 +61,8 @@ final class UserManager
     public function findByEmail(string $email): array|false
     {
         $stmt = $this->db->prepare(
-            'SELECT id, first_name, last_name, role, email FROM users WHERE LOWER(email) = LOWER(:email) LIMIT 1'
+            'SELECT id, first_name, last_name, role, email, deactivated_at
+             FROM users WHERE LOWER(email) = LOWER(:email) LIMIT 1'
         );
         $stmt->execute(['email' => trim($email)]);
 
@@ -74,11 +75,21 @@ final class UserManager
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare(
-            'SELECT id, first_name, last_name, role, email FROM users WHERE id = :id LIMIT 1'
+            'SELECT id, first_name, last_name, role, email, deactivated_at FROM users WHERE id = :id LIMIT 1'
         );
         $stmt->execute(['id' => $id]);
 
         return $stmt->fetch();
+    }
+
+    /**
+     * Konto wyłączone przez administratora nie może się logować (decyzja D3).
+     *
+     * @param array<string, mixed> $user
+     */
+    public static function isActive(array $user): bool
+    {
+        return empty($user['deactivated_at']);
     }
 
     public function emailExists(string $email): bool
@@ -89,7 +100,7 @@ final class UserManager
     /**
      * @return int|false New user id
      */
-    public function create(string $firstName, string $lastName, string $email): int|false
+    public function create(string $firstName, string $lastName, string $email, string $role = Rbac::OPERATOR): int|false
     {
         $stmt = $this->db->prepare(
             'INSERT INTO users (first_name, last_name, role, email)
@@ -98,7 +109,7 @@ final class UserManager
         $ok = $stmt->execute([
             'first_name' => trim($firstName),
             'last_name'  => trim($lastName),
-            'role'       => 'OPERATOR',
+            'role'       => Rbac::isRole($role) ? Rbac::normalize($role) : Rbac::OPERATOR,
             'email'      => trim(strtolower($email)),
         ]);
 

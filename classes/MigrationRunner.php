@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Migrations\AccountsAndOwnershipMigration;
 use App\Migrations\CertificatesModelMigration;
 use App\Migrations\SchemaInspector;
 use PDO;
@@ -145,6 +146,10 @@ final class MigrationRunner
             // Etap 1: subscriptions → certificates + beneficjenci, zadania, szablony, załączniki, zaproszenia, historia.
             'certificates_model' => static function (PDO $db): void {
                 CertificatesModelMigration::up($db);
+            },
+            // Etap 2: wyłączanie kont (D3) i autor rekordów osób i płatników (D8).
+            'accounts_and_ownership' => static function (PDO $db): void {
+                AccountsAndOwnershipMigration::up($db);
             },
         ];
     }

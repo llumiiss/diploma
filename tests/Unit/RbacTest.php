@@ -37,4 +37,38 @@ final class RbacTest extends TestCase
         $this->assertTrue(Rbac::seesAllRecords(' manager '));
         $this->assertSame(['OPERATOR', 'MANAGER', 'ADMIN'], Rbac::roles());
     }
+
+    public function testActionPermissionsFollowTheRoleHierarchy(): void
+    {
+        $this->assertTrue(Rbac::can(Rbac::OPERATOR, 'certificates.create'));
+        $this->assertFalse(Rbac::can(Rbac::OPERATOR, 'certificates.archive'));
+        $this->assertFalse(Rbac::can(Rbac::OPERATOR, 'certificates.assign_owner'));
+
+        $this->assertTrue(Rbac::can(Rbac::MANAGER, 'certificates.archive'));
+        $this->assertTrue(Rbac::can(Rbac::MANAGER, 'archive.view'));
+        $this->assertFalse(Rbac::can(Rbac::MANAGER, 'accounts.manage'));
+
+        $this->assertTrue(Rbac::can(Rbac::ADMIN, 'accounts.manage'));
+        $this->assertTrue(Rbac::can('admin', 'payers.archive'));
+    }
+
+    public function testUnknownPermissionOrRoleIsDenied(): void
+    {
+        $this->assertFalse(Rbac::can(Rbac::ADMIN, 'certificates.delete'));
+        $this->assertFalse(Rbac::can('GUEST', 'certificates.view'));
+        $this->assertFalse(Rbac::can(null, 'certificates.view'));
+    }
+
+    public function testPermissionListGrowsWithRank(): void
+    {
+        $operator = Rbac::permissionsFor(Rbac::OPERATOR);
+        $manager = Rbac::permissionsFor(Rbac::MANAGER);
+        $admin = Rbac::permissionsFor(Rbac::ADMIN);
+
+        $this->assertSame([], array_diff($operator, $manager));
+        $this->assertSame([], array_diff($manager, $admin));
+        $this->assertContains('accounts.manage', $admin);
+        $this->assertNotContains('accounts.manage', $manager);
+        $this->assertSame([], Rbac::permissionsFor('GUEST'));
+    }
 }

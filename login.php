@@ -27,8 +27,7 @@ $step = 'email';
 $email = '';
 $error = '';
 $success = '';
-
-$registerUrl = 'register.php?cancel=1&redirect=' . urlencode($redirect) . ($langQ !== '' ? '&' . substr($langQ, 1) : '');
+$info = isset($_GET['registration_closed']) ? __('auth.registration_closed') : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Csrf::validate($_POST['_csrf'] ?? null)) {
@@ -126,6 +125,12 @@ if ($step === 'email' && $email === '' && !isset($_GET['cancel'])) {
                 </div>
             <?php endif; ?>
 
+            <?php if ($info !== '' && $error === '' && $success === ''): ?>
+                <div class="mb-6 px-4 py-3 rounded-lg bg-brand-50 border border-brand-200 text-brand-800 text-sm">
+                    <?= htmlspecialchars($info) ?>
+                </div>
+            <?php endif; ?>
+
             <?php if ($step === 'email'): ?>
                 <form method="post" class="space-y-4">
                     <?= Csrf::field() ?>
@@ -144,9 +149,7 @@ if ($step === 'email' && $email === '' && !isset($_GET['cancel'])) {
                     </button>
                 </form>
                 <p class="text-center mt-4 text-sm text-slate-500">
-                    <?= htmlspecialchars(__('auth.no_account')) ?>
-                    <a href="<?= htmlspecialchars($registerUrl) ?>"
-                       class="text-brand-600 font-medium hover:underline"><?= htmlspecialchars(__('auth.register_link')) ?></a>
+                    <?= htmlspecialchars(__('auth.no_account_admin')) ?>
                 </p>
             <?php else: ?>
                 <form method="post" class="space-y-4">
@@ -180,12 +183,6 @@ if ($step === 'email' && $email === '' && !isset($_GET['cancel'])) {
                             ← <?= htmlspecialchars(__('auth.change_email')) ?>
                         </button>
                     </form>
-                    <p class="text-slate-500">
-                        <?= htmlspecialchars(__('auth.no_account')) ?>
-                        <a href="<?= htmlspecialchars($registerUrl) ?>" class="text-brand-600 font-medium hover:underline">
-                            <?= htmlspecialchars(__('auth.register_link')) ?>
-                        </a>
-                    </p>
                 </div>
             <?php endif; ?>
         </div>

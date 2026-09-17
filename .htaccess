@@ -2,7 +2,7 @@
 #
 # Katalog projektu jest jednocześnie katalogiem publicznym serwera, więc przez HTTP
 # udostępniamy tylko punkty wejścia (index.php, login.php, register.php, logout.php,
-# dashboard*.php, api/). Wszystko inne — kod, konfiguracja, logi, baza, skrypty CLI,
+# dashboard*.php, api/) i skrypty interfejsu (assets/). Wszystko inne — kod, konfiguracja, logi, baza, skrypty CLI,
 # testy, dokumentacja i repozytorium git — jest blokowane.
 #
 # Docelowo (patrz docs/MAPA_PROJEKTU.md) katalogiem głównym serwera powinien być
