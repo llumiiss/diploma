@@ -6,8 +6,8 @@ namespace App;
 
 use App\Migrations\AccountsAndOwnershipMigration;
 use App\Migrations\CertificatesModelMigration;
-use App\Migrations\RenewalProcessMigration;
 use App\Migrations\OtpRateLimitMigration;
+use App\Migrations\RenewalProcessMigration;
 use App\Migrations\SchemaInspector;
 use PDO;
 use PDOException;

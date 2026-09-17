@@ -53,8 +53,8 @@ final class BeneficiaryService
                 GROUP BY c.beneficiary_id
             ) cs ON cs.beneficiary_id = b.id
             WHERE {$archivedCondition} AND {$beneficiaryVisibility}
-            ORDER BY " . ($archived ? 'b.archived_at DESC' : 'b.last_name, b.first_name') . "
-        ";
+            ORDER BY " . ($archived ? 'b.archived_at DESC' : 'b.last_name, b.first_name') . '
+        ';
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params + $certificateParams);

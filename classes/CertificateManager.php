@@ -168,8 +168,8 @@ final class CertificateManager
                 SUM(CASE WHEN expiry_date < CURDATE() THEN 1 ELSE 0 END) AS expired,
                 SUM(CASE WHEN expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL {$criticalDays} DAY) THEN 1 ELSE 0 END) AS expiring_critical,
                 SUM(CASE WHEN expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL {$warningDays} DAY) THEN 1 ELSE 0 END) AS expiring_warning,
-                COALESCE(SUM(" . CertificateHelper::annualizedCostSql('c') . "), 0) AS annual_commitment,
-                COALESCE(SUM((" . CertificateHelper::annualizedCostSql('c') . ") / 12), 0) AS monthly_spend
+                COALESCE(SUM(" . CertificateHelper::annualizedCostSql('c') . '), 0) AS annual_commitment,
+                COALESCE(SUM((' . CertificateHelper::annualizedCostSql('c') . ") / 12), 0) AS monthly_spend
             FROM certificates c
             WHERE scope = :scope
               AND archived_at IS NULL{$ownerFilter}

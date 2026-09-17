@@ -290,8 +290,17 @@ final class InvitationService
         $files = $this->attachments->filesFor($this->invitationAttachmentIds($id));
         $recipient = ['email' => (string) $invitation['recipient_email'], 'name' => (string) $invitation['recipient_name'], 'type' => $invitation['recipient_type']];
 
-        $delivered = $this->deliver($actor, $id, $certificate, $recipient, (string) $invitation['subject'], (string) $invitation['body_html'],
-            TemplateRenderer::htmlToText((string) $invitation['body_html']), $files, ['retry' => true]);
+        $delivered = $this->deliver(
+            $actor,
+            $id,
+            $certificate,
+            $recipient,
+            (string) $invitation['subject'],
+            (string) $invitation['body_html'],
+            TemplateRenderer::htmlToText((string) $invitation['body_html']),
+            $files,
+            ['retry' => true]
+        );
 
         if ($delivered && $invitation['renewal_task_id'] !== null) {
             $this->tasks->markInProgress($actor, (int) $invitation['renewal_task_id']);

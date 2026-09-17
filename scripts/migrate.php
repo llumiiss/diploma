@@ -73,7 +73,7 @@ try {
         exit(0);
     }
 
-    echo "Pending migrations: " . implode(', ', $pending) . "\n";
+    echo 'Pending migrations: ' . implode(', ', $pending) . "\n";
     $applied = $runner->runPending();
 
     if ($applied === []) {
@@ -81,7 +81,7 @@ try {
         exit(0);
     }
 
-    echo "Applied: " . implode(', ', $applied) . "\n";
+    echo 'Applied: ' . implode(', ', $applied) . "\n";
     exit(0);
 } catch (Throwable $e) {
     fwrite(STDERR, 'Migration failed: ' . $e->getMessage() . PHP_EOL);

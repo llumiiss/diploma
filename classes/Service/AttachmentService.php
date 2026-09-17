@@ -278,7 +278,7 @@ final class AttachmentService
     {
         $name = basename(str_replace('\\', '/', $name));
         $name = (string) preg_replace('/[\x00-\x1F\x7F"<>:|?*]/u', '', $name);
-        $name = trim($name, " .");
+        $name = trim($name, ' .');
 
         if ($name === '') {
             $name = 'plik';
