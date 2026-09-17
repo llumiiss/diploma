@@ -6,3 +6,7 @@
 .phpunit.result.cache
 
 /.phpunit.cache/
+
+/storage/attachments/*
+!/storage/attachments/.gitkeep
+graphify-out/

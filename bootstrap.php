@@ -1,5 +1,10 @@
 <?php
 
+// PHP i MySQL muszą liczyć daty w tej samej strefie. Bez tego progi odnowień
+// (dni do wygaśnięcia liczone w PHP) rozjeżdżają się o jeden dzień z zapytaniami
+// opartymi na CURDATE() — czyli z licznikami KPI i cronem przypomnień.
+date_default_timezone_set('Europe/Warsaw');
+
 $vendorAutoload = __DIR__ . '/vendor/autoload.php';
 if (is_file($vendorAutoload)) {
     require $vendorAutoload;

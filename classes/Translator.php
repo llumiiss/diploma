@@ -16,6 +16,12 @@ final class Translator
     /** @var list<string> */
     public const SUPPORTED = ['en', 'pl', 'es', 'de', 'uk'];
 
+    /**
+     * Język interfejsu, gdy użytkownik go nie wybrał (decyzja D4). Brakujące klucze w każdym
+     * języku uzupełnia plik angielski — nowe teksty utrzymujemy tylko w PL i EN.
+     */
+    public const DEFAULT_LOCALE = 'pl';
+
     /** @return array<string, array{flag: string, label_key: string}> */
     public static function availableLocales(): array
     {
@@ -55,9 +61,9 @@ final class Translator
             $_SESSION['lang'] = $_GET['lang'];
         }
 
-        $locale = $_SESSION['lang'] ?? 'en';
+        $locale = $_SESSION['lang'] ?? self::DEFAULT_LOCALE;
         if (!in_array($locale, self::SUPPORTED, true)) {
-            $locale = 'en';
+            $locale = self::DEFAULT_LOCALE;
         }
 
         if (self::$instance === null || self::$instance->locale !== $locale) {
@@ -100,8 +106,11 @@ final class Translator
         return $script . '?lang=' . urlencode($lang);
     }
 
+    /**
+     * Sufiks przenoszący wybrany język w linkach — pusty dla języka domyślnego.
+     */
     public function querySuffix(): string
     {
-        return $this->locale === 'en' ? '' : '?lang=' . urlencode($this->locale);
+        return $this->locale === self::DEFAULT_LOCALE ? '' : '?lang=' . urlencode($this->locale);
     }
 }

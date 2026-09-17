@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Migrations\CertificatesModelMigration;
+use App\Migrations\SchemaInspector;
 use PDO;
 use PDOException;
 
@@ -85,17 +87,17 @@ final class MigrationRunner
     {
         return [
             'login_otp' => static function (PDO $db): void {
-                if (!self::indexExists($db, 'users', 'uq_users_email')) {
+                if (!SchemaInspector::indexExists($db, 'users', 'uq_users_email')) {
                     try {
                         $db->exec('ALTER TABLE users ADD UNIQUE KEY uq_users_email (email)');
                     } catch (PDOException $e) {
-                        if (!self::indexExists($db, 'users', 'uq_users_email')) {
+                        if (!SchemaInspector::indexExists($db, 'users', 'uq_users_email')) {
                             throw $e;
                         }
                     }
                 }
 
-                if (!self::tableExists($db, 'login_otps')) {
+                if (!SchemaInspector::tableExists($db, 'login_otps')) {
                     $db->exec(
                         'CREATE TABLE login_otps (
                             id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -112,7 +114,7 @@ final class MigrationRunner
                             INDEX idx_login_otps_email_expires (email, expires_at)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
                     );
-                } elseif (!self::columnExists($db, 'login_otps', 'attempt_count')) {
+                } elseif (!SchemaInspector::columnExists($db, 'login_otps', 'attempt_count')) {
                     $db->exec(
                         'ALTER TABLE login_otps
                          ADD COLUMN attempt_count TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER used_at'
@@ -120,7 +122,7 @@ final class MigrationRunner
                 }
             },
             'manager_subskrypcji' => static function (PDO $db): void {
-                if (!self::tableExists($db, 'manager_subskrypcji')) {
+                if (!SchemaInspector::tableExists($db, 'manager_subskrypcji')) {
                     $db->exec(
                         'CREATE TABLE manager_subskrypcji (
                             id                        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -140,39 +142,10 @@ final class MigrationRunner
                     );
                 }
             },
+            // Etap 1: subscriptions → certificates + beneficjenci, zadania, szablony, załączniki, zaproszenia, historia.
+            'certificates_model' => static function (PDO $db): void {
+                CertificatesModelMigration::up($db);
+            },
         ];
-    }
-
-    private static function tableExists(PDO $db, string $table): bool
-    {
-        $stmt = $db->prepare(
-            'SELECT 1 FROM information_schema.tables
-             WHERE table_schema = DATABASE() AND table_name = :table LIMIT 1'
-        );
-        $stmt->execute(['table' => $table]);
-
-        return $stmt->fetchColumn() !== false;
-    }
-
-    private static function columnExists(PDO $db, string $table, string $column): bool
-    {
-        $stmt = $db->prepare(
-            'SELECT 1 FROM information_schema.columns
-             WHERE table_schema = DATABASE() AND table_name = :table AND column_name = :column LIMIT 1'
-        );
-        $stmt->execute(['table' => $table, 'column' => $column]);
-
-        return $stmt->fetchColumn() !== false;
-    }
-
-    private static function indexExists(PDO $db, string $table, string $index): bool
-    {
-        $stmt = $db->prepare(
-            'SELECT 1 FROM information_schema.statistics
-             WHERE table_schema = DATABASE() AND table_name = :table AND index_name = :index LIMIT 1'
-        );
-        $stmt->execute(['table' => $table, 'index' => $index]);
-
-        return $stmt->fetchColumn() !== false;
     }
 }

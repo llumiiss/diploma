@@ -1,74 +1,73 @@
 # CertiSub Assistant — README
 
-Demo application on the LAMP stack for tracking SSL certificates, SaaS subscriptions, domains, and renewal payments.
+Engineering thesis project: a LAMP web application for managing certificates (qualified signatures and seals, SSL, code signing, domains, SaaS) together with their users (beneficiaries) and payers — renewal tasks, invitations, reminders and history.
+
+- Project map, requirements, plan and changelog: [`docs/MAPA_PROJEKTU.md`](docs/MAPA_PROJEKTU.md)
+- User manual and demo script (Polish): [`docs/INSTRUKCJA_OBSLUGI.md`](docs/INSTRUKCJA_OBSLUGI.md)
 
 ## Requirements
 
-- PHP 8.x
-- MySQL 5.7+ / MariaDB 10+
-- Web server (Apache/Nginx) — e.g. Laragon
-- Composer (`composer install` for PHPMailer)
+- PHP 8.1+ (developed on 8.3)
+- MySQL 8 / MariaDB 10.5+
+- Apache with `mod_rewrite` and `AllowOverride All` (e.g. Laragon) — the root `.htaccess` blocks internal directories
+- Composer (`composer install`)
 
 ## Installation
 
-### 1. Fresh database (new project / empty MySQL)
-
-In Laragon: **Menu → MySQL → HeidiSQL** (or Terminal), then import `database/schema.sql`.
-
-PowerShell (when `mysql` is in PATH):
+### New database
 
 ```powershell
-Get-Content database\schema.sql | mysql -u root
+composer install
+php scripts\migrate.php --fresh
 ```
 
-### 2. Existing database (you already have data — your case)
+`--fresh` **drops all tables**, imports `database/schema.sql` and runs the migrations (they add the default e-mail templates). Use it only on a new or throwaway database.
 
-The app added OTP login and user subscriptions after the first schema. Run **migrations** once:
+Alternatively import `database/schema.sql` in HeidiSQL / phpMyAdmin, then run `php scripts\migrate.php`.
 
-**Option A — recommended (automatic, idempotent):**
-
-```powershell
-C:\laragon\bin\php\php-8.3.XX\php.exe scripts\migrate.php
-```
-
-Replace `php-8.3.XX` with your Laragon PHP folder name. Or open **Laragon → Terminal** (PHP is in PATH there):
+### Existing database
 
 ```powershell
-cd C:\laragon\www\assistent_subscription
 php scripts\migrate.php
 ```
 
-**Option B — manual in HeidiSQL / phpMyAdmin:**
+Migrations are idempotent — run them after every update. The `database/migration_*.sql` snippets cover only the first two historical migrations; use `migrate.php` for everything else.
 
-1. Open database `assistent_subscriptions`
-2. Run SQL from `database/migration_login_otp.sql`
-3. Run SQL from `database/migration_manager_subskrypcji.sql`
+### Demo data
 
-You only need migrations if tables like `login_otps` or `manager_subskrypcji` are missing.
+```powershell
+php scripts\seed-demo-data.php
+```
+
+Fills every panel: certificates in all priorities, beneficiaries, payers, an archive with a renewal chain, ToDo tasks in every status, invitations with an attachment, event history and the personal module. Re-create with `--force`; remove with `php scripts\cleanup-demo-data.php`.
+
+### Roles
+
+```powershell
+php scripts\set-role.php you@example.com ADMIN
+```
+
+Hierarchy: ADMIN > MANAGER > OPERATOR. An OPERATOR sees only the records they own.
 
 ### Mail (OTP codes)
 
 1. Copy `config/mail.local.php.example` → `config/mail.local.php`
 2. **Mailtrap Sandbox** (`driver => sandbox`) — mail appears only at [mailtrap.io](https://mailtrap.io), **not** in Gmail/Outlook
-3. **Real delivery** — set `driver => smtp` with Gmail app password or Mailtrap Email Sending (`live.smtp.mailtrap.io`)
-
-Test configuration:
+3. **Real delivery** — set `driver => smtp` with a Gmail app password or Mailtrap Email Sending (`live.smtp.mailtrap.io`)
 
 ```powershell
-php scripts\test-mail.php twoj@email.com
+php scripts\test-mail.php you@example.com
 ```
 
 ### Tests
 
 ```powershell
-composer install
 composer test
-
-# MySQL integration tests (migrations):
-$env:RUN_INTEGRATION_TESTS=1; composer test
+$env:RUN_INTEGRATION_TESTS=1; composer test   # + MySQL integration tests
+composer stan
 ```
 
-### 4. URLs
+## URLs
 
 - Landing: http://localhost/assistent_subscription/
 - Corporate dashboard: http://localhost/assistent_subscription/dashboard.php
@@ -76,7 +75,7 @@ $env:RUN_INTEGRATION_TESTS=1; composer test
 
 ## Cron (payment reminders)
 
-Run daily at 08:00:
+Run daily at 08:00 (CLI only):
 
 ```powershell
 php cron\send_reminders.php
@@ -88,22 +87,27 @@ Windows Task Scheduler: program = full path to `php.exe`, argument = full path t
 
 ```
 assistent_subscription/
-├── index.php, login.php, register.php
+├── index.php, login.php, register.php, logout.php
 ├── dashboard.php, dashboard-personal.php
-├── scripts/migrate.php      # DB migrations (existing installs)
-├── api/add_subscription.php
+├── api/                     # JSON endpoints (CSRF + auth)
+├── classes/                 # AuthManager, Rbac, CertificateManager, CertificateHelper, …
+│   └── Migrations/          # idempotent schema migrations
 ├── cron/send_reminders.php
-├── classes/                 # AuthManager, SubscriptionManager, …
-├── database/
-│   ├── schema.sql           # full fresh install
-│   └── migration_*.sql      # manual migration snippets
-└── docs/thesis_part1.md
+├── database/schema.sql      # fresh install (same structure as a migrated database)
+├── scripts/                 # migrate, seed-demo-data, cleanup-demo-data, set-role, test-mail
+├── storage/attachments/     # stored files (not served over HTTP)
+├── docs/                    # project map, user manual, thesis drafts
+└── tests/                   # PHPUnit (unit + integration)
 ```
 
-## Features
+## Data model
 
-- Email OTP login (passwordless)
-- Corporate & personal subscription dashboards
-- User-owned subscriptions (`manager_subskrypcji`)
-- Payment reminders cron
-- i18n: EN, PL, ES, DE, UK
+`certificates`, `beneficiaries`, `payers`, `users`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events` (+ join tables), `login_otps`, `manager_subskrypcji`. Details: `docs/MAPA_PROJEKTU.md` §2.2.
+
+## Features (current)
+
+- Passwordless e-mail OTP login, CSRF protection, role-based data visibility
+- Corporate and personal dashboards: KPIs, priorities, payments, ToDo view, search and filters
+- Data model for certificates, beneficiaries, payers, tasks, templates, attachments, invitations and history (screens follow in later stages)
+- Payment reminder cron (personal module)
+- i18n: PL (default), EN, ES, DE, UK

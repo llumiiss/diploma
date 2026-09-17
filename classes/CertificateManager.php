@@ -6,7 +6,11 @@ namespace App;
 
 use PDO;
 
-final class SubscriptionManager
+/**
+ * Odczyt certyfikatów i usług wraz ze wskaźnikami pulpitu.
+ * Rekordy zarchiwizowane (archived_at) są pomijane we wszystkich widokach bieżących.
+ */
+final class CertificateManager
 {
     private PDO $db;
 
@@ -20,38 +24,49 @@ final class SubscriptionManager
      *                          (rola bez dostępu do danych całej organizacji).
      * @return array<int, array<string, mixed>>
      */
-    public function getAllSubscriptions(string $scope = 'corporate', ?int $ownerId = null): array
+    public function getAllCertificates(string $scope = 'corporate', ?int $ownerId = null): array
     {
-        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope], 's.user_id');
+        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope], 'c.user_id');
 
         $sql = <<<SQL
             SELECT
-                s.id,
-                s.name,
-                s.scope,
-                s.subscription_type,
-                s.expiry_date,
-                s.status,
-                s.annual_cost,
-                s.billing_cycle,
-                s.currency,
-                s.payment_status,
-                s.last_payment_date,
-                s.auto_renew,
-                s.notes,
-                s.user_id,
-                s.payer_id,
+                c.id,
+                c.name,
+                c.scope,
+                c.certificate_type,
+                c.serial_number,
+                c.issuer,
+                c.valid_from,
+                c.expiry_date,
+                c.renewal_lead_days,
+                c.status,
+                c.annual_cost,
+                c.billing_cycle,
+                c.currency,
+                c.payment_status,
+                c.last_payment_date,
+                c.auto_renew,
+                c.notes,
+                c.user_id,
+                c.beneficiary_id,
+                c.payer_id,
+                c.previous_certificate_id,
                 u.first_name   AS user_first_name,
                 u.last_name    AS user_last_name,
                 u.role         AS user_role,
                 u.email        AS user_email,
+                b.first_name   AS beneficiary_first_name,
+                b.last_name    AS beneficiary_last_name,
+                b.email        AS beneficiary_email,
                 p.company_name,
                 p.contact_person
-            FROM subscriptions s
-            INNER JOIN users u ON s.user_id = u.id
-            INNER JOIN payers p ON s.payer_id = p.id
-            WHERE s.scope = :scope{$ownerFilter}
-            ORDER BY s.expiry_date ASC
+            FROM certificates c
+            INNER JOIN users u ON c.user_id = u.id
+            INNER JOIN payers p ON c.payer_id = p.id
+            LEFT JOIN beneficiaries b ON c.beneficiary_id = b.id
+            WHERE c.scope = :scope
+              AND c.archived_at IS NULL{$ownerFilter}
+            ORDER BY c.expiry_date ASC
         SQL;
 
         $stmt = $this->db->prepare($sql);
@@ -69,8 +84,9 @@ final class SubscriptionManager
 
         $sql = <<<SQL
             SELECT status, COUNT(*) AS total
-            FROM subscriptions
-            WHERE scope = :scope{$ownerFilter}
+            FROM certificates
+            WHERE scope = :scope
+              AND archived_at IS NULL{$ownerFilter}
             GROUP BY status
         SQL;
 
@@ -103,8 +119,9 @@ final class SubscriptionManager
                 payment_status,
                 COUNT(*) AS total,
                 COALESCE(SUM(annual_cost), 0) AS amount
-            FROM subscriptions
-            WHERE scope = :scope{$ownerFilter}
+            FROM certificates
+            WHERE scope = :scope
+              AND archived_at IS NULL{$ownerFilter}
               AND payment_status IN ('due_soon', 'overdue')
             GROUP BY payment_status
         SQL;
@@ -125,7 +142,8 @@ final class SubscriptionManager
         }
 
         $paidStmt = $this->db->prepare(
-            "SELECT COUNT(*) FROM subscriptions WHERE scope = :scope{$ownerFilter} AND payment_status = 'paid'"
+            "SELECT COUNT(*) FROM certificates
+             WHERE scope = :scope AND archived_at IS NULL{$ownerFilter} AND payment_status = 'paid'"
         );
         $paidStmt->execute($params);
         $summary['paid'] = (int) $paidStmt->fetchColumn();
@@ -138,7 +156,7 @@ final class SubscriptionManager
      */
     public function getRenewalSummary(string $scope = 'corporate', ?int $ownerId = null): array
     {
-        $thresholds = SubscriptionHelper::getThresholds($scope);
+        $thresholds = CertificateHelper::getThresholds($scope);
         $criticalDays = (int) $thresholds['critical'];
         $warningDays = (int) $thresholds['warning'];
 
@@ -157,8 +175,9 @@ final class SubscriptionManager
                         ELSE annual_cost / 12
                     END
                 ), 0) AS monthly_spend
-            FROM subscriptions
-            WHERE scope = :scope{$ownerFilter}
+            FROM certificates
+            WHERE scope = :scope
+              AND archived_at IS NULL{$ownerFilter}
         ";
 
         $stmt = $this->db->prepare($sql);

@@ -11,14 +11,15 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 ## 0. Najważniejsze wnioski
 
 1. **Kod realizuje inny produkt niż opis pracy.** Opis: system ewidencji certyfikatów (np. kwalifikowanych) z użytkownikami certyfikatów, płatnikami, listą zadań, zaproszeniami e-mail, importem/eksportem i raportami. Kod: tracker subskrypcji firmowych (SSL, SaaS, domeny) i prywatnych (Netflix, Spotify).
-2. **Pokrycie 19 wymagań funkcjonalnych: 0 kompletnych, 8 częściowych, 11 brakujących** (macierz w §3).
-3. **Rdzeń nie działa od początku do końca:** w aplikacji nie da się dodać certyfikatu ani płatnika. Baza: 0 subskrypcji, 0 płatników, 3 konta (wszystkie OPERATOR, brak ADMIN).
+2. **Pokrycie 19 wymagań funkcjonalnych po Etapie 1: 0 kompletnych, 14 częściowych, 5 brakujących** (na starcie 0 / 8 / 11; macierz w §3). Większość częściowych to „model danych gotowy, brak ekranów i logiki”.
+3. **Rdzeń wciąż nie działa od początku do końca:** w aplikacji nadal nie da się dodać certyfikatu ani płatnika (Etap 2). Dane do demonstracji wprowadza `scripts/seed-demo-data.php`.
 4. **`CLAUDE.md` jest spójny z kodem, ale nie z opisem pracy.** Roadmapa pomija m.in. import/eksport, szablony i załączniki, rejestr zaproszeń, archiwizację, zadania ze statusami i statystykami, historię na osi czasu oraz raporty perspektyw (§6).
 5. **Harmonogram jest przesunięty:** CRUD (lipiec), RBAC (sierpień), cron + UX (1–15.09) nie są w kodzie. Freeze 15.10.2026 jest nierealny przy pełnym zakresie (§7).
 6. **Błędy krytyczne z §5.1 zostały naprawione w Etapie 0 (2026-09-16)** — dziennik zmian w §11. Były to: skrypt z `scripts/` kasujący dane bez logowania, publiczny dostęp do `.git/` i logów, niedziałające wylogowanie, brak kontroli dostępu do danych oraz kasowanie rekordów biznesowych przy usuwaniu konta.
 7. **Mocne strony do ponownego użycia (§4):** logowanie OTP z testami, CSRF, migracje, mailer, layout panelu, narzędzia jakości.
 8. **Dodatkowe wymagania autora (§2.5):** skeleton loadery i cache'owanie — zaplanowane jako Etap 7.
 9. **Decyzje D1–D5 i D7 podjęte 2026-09-16 (§8):** panel prywatny zamrożony, perspektywy jako raporty dla personelu, rejestracja tylko przez ADMIN, nowe teksty PL+EN z domyślnym PL, `subscriptions` → `certificates`, ogólny model typów certyfikatów. Otwarty zostaje D6 (harmonogram).
+10. **Etap 1 (model danych) wykonany 2026-09-16 (§11):** certyfikaty z typami wg D7, użytkownicy certyfikatów, rozszerzeni płatnicy, archiwizacja, zadania ToDo ze statusami, szablony, załączniki, zaproszenia i historia zdarzeń. Struktura po migracji jest identyczna ze świeżą instalacją. Brakuje ekranów i logiki (Etapy 2–7).
 
 ---
 
@@ -33,24 +34,24 @@ CertiSub Assistant (docelowo)
 │   ├── 🟡 Hierarchia ról — klasa Rbac + filtrowanie danych wg roli (Etap 0);
 │   │       zostaje egzekwowanie uprawnień do akcji i API (Etap 2)
 │   └── ⚠️ Publiczna rejestracja — do wyłączenia, konta zakłada ADMIN (D3, Etap 2)
-├── Ewidencja
-│   ├── 🟡 Certyfikaty / usługi — tylko odczyt; brak nr seryjnego, daty wystawienia, wymagań odnowienia
-│   ├── ❌ Użytkownicy certyfikatów (beneficjenci, dane osobowe) — pomyleni z kontami logowania
-│   ├── 🟡 Płatnicy — tylko odczyt, brak danych kontaktowych
-│   └── ❌ Archiwizacja — zamiast niej twarde usuwanie
-├── Proces odnowień
+├── Ewidencja  (model danych ✅ Etap 1 — ekrany w Etapie 2)
+│   ├── 🟡 Certyfikaty / usługi — nr seryjny, wystawca, ważność, wymagany czas odnowienia; w UI tylko odczyt
+│   ├── 🟡 Użytkownicy certyfikatów (beneficjenci) — osobna tabela powiązana z płatnikiem; brak ekranu
+│   ├── 🟡 Płatnicy — dane kontaktowe i adres; w UI tylko odczyt
+│   └── 🟡 Archiwizacja — archived_at, widoki pomijają zarchiwizowane; brak ekranu archiwum
+├── Proces odnowień  (model danych ✅ Etap 1 — logika w Etapie 3)
 │   ├── 🟡 Skaner (cron) — działa tylko dla prywatnego menedżera, „dokładnie za 3 dni”
-│   ├── 🟡 Lista ToDo — filtr listy z priorytetami, brak trwałych zadań i statusów
-│   ├── ❌ Szablony wiadomości + załączniki
-│   ├── ❌ Zaproszenia do odnowienia + przypomnienia (rejestr wysyłek)
-│   └── ❌ Statystyki zadań (do zrobienia / zrobione / porzucone)
+│   ├── 🟡 Lista ToDo — tabela zadań ze statusami gotowa; w panelu nadal filtr listy
+│   ├── 🟡 Szablony wiadomości + załączniki — 4 szablony PL/EN, tabela załączników; brak ekranu
+│   ├── 🟡 Zaproszenia + przypomnienia — rejestr wysyłek w bazie; brak wysyłki
+│   └── 🟡 Statystyki zadań — dane do grupowania wg statusów; brak widoku
 ├── Przegląd i raporty
 │   ├── 🟡 Pulpit KPI (statusy, płatności, priorytety)
 │   ├── ❌ Karta użytkownika certyfikatu (perspektywa Użytkownika)
 │   ├── ❌ Karta płatnika (perspektywa Płatnika)
 │   ├── ❌ Panel administratora
 │   ├── 🟡 Wyszukiwarka — tylko lista subskrypcji, po stronie przeglądarki
-│   └── 🟡 Oś czasu — statyczny pasek dat, brak historii zdarzeń
+│   └── 🟡 Oś czasu — tabela events z kontekstem certyfikat/użytkownik/płatnik; w panelu nadal statyczny pasek
 ├── Wymiana danych
 │   ├── ❌ Eksport CSV / XML
 │   └── ❌ Import CSV / XML / EML
@@ -93,19 +94,21 @@ Każdy krok zapisuje zdarzenie w historii (`events`) — z niej powstaje oś cza
 
 ### 2.2. Model danych (docelowy)
 
-| Encja (tabela) | Najważniejsze pola | Dziś |
+| Encja (tabela) | Najważniejsze pola | Stan po Etapie 1 |
 |---|---|---|
-| Konta systemowe (`users`) | imię, nazwisko, e-mail, rola, aktywne | 🟡 istnieje, ale służy też jako „właściciel” subskrypcji |
-| Użytkownicy certyfikatów (`beneficiaries`) | imię, nazwisko, e-mail, telefon, `payer_id`, `archived_at` | ❌ |
-| Płatnicy (`payers`) | nazwa, NIP, adres, osoba kontaktowa, e-mail, telefon, `archived_at` | 🟡 brak kontaktu i archiwizacji |
-| Certyfikaty (`certificates`, dziś `subscriptions`) | typ, numer seryjny, wystawca, ważny od, ważny do, wymagany czas odnowienia (dni), cena, status, `beneficiary_id`, `payer_id`, `previous_certificate_id`, `archived_at` | 🟡 brak nr seryjnego, daty wystawienia, wymagań odnowienia i łańcucha odnowień |
-| Zadania ToDo (`renewal_tasks`) | `certificate_id`, priorytet, status (do zrobienia / w toku / zrobione / porzucone), przypisane konto, termin, data zamknięcia, wynik | ❌ |
-| Szablony (`email_templates`) | nazwa, temat, treść z polami `{imie}`, `{numer_seryjny}`, `{data_waznosci}` | ❌ |
-| Załączniki (`attachments`) | plik, nazwa, typ MIME, rozmiar, powiązanie z szablonem | ❌ |
-| Zaproszenia (`invitations`) | `task_id`, odbiorca, szablon, data wysłania, status, liczba przypomnień, następne przypomnienie, błąd | ❌ |
-| Historia (`events`) | typ encji, id encji, typ zdarzenia, konto, dane (JSON), data | ❌ |
+| Konta personelu (`users`) | imię, nazwisko, e-mail, rola | ✅ opiekunowie rekordów (`certificates.user_id`) i przydział zadań |
+| Użytkownicy certyfikatów (`beneficiaries`) | imię, nazwisko, e-mail, telefon, `payer_id`, notatki, `archived_at` | ✅ |
+| Płatnicy (`payers`) | nazwa, osoba kontaktowa, NIP (unikalny), e-mail, telefon, adres, kod pocztowy, miasto, `archived_at` | ✅ |
+| Certyfikaty (`certificates`, dawniej `subscriptions`) | `certificate_type` (D7), numer seryjny (unikalny u wystawcy), wystawca, ważny od / do, `renewal_lead_days`, `user_id`, `beneficiary_id`, `payer_id`, `previous_certificate_id`, koszt i płatność, `archived_at` | ✅ |
+| Zadania ToDo (`renewal_tasks`) | `certificate_id`, przypisane konto, status (todo / in_progress / done / abandoned), priorytet, termin, wynik, data zamknięcia; co najwyżej jedno otwarte zadanie na certyfikat | ✅ |
+| Szablony (`email_templates`) | kod, język, nazwa, temat, treść HTML i tekstowa z polami `{imie}`, `{nazwisko}`, `{typ_certyfikatu}`, `{numer_seryjny}`, `{data_waznosci}`, `{dni_do_wygasniecia}`, `{platnik}` | ✅ 4 domyślne (zaproszenie i przypomnienie, PL i EN) |
+| Załączniki (`attachments` + `email_template_attachments`) | nazwa oryginalna, nazwa pliku w `storage/attachments`, typ MIME, rozmiar, SHA-256 | ✅ |
+| Zaproszenia (`invitations` + `invitation_attachments`) | certyfikat, zadanie, szablon, odbiorca (użytkownik certyfikatu lub płatnik), treść z chwili wysyłki, status (queued / sent / failed / responded / closed), przypomnienia, błąd | ✅ |
+| Historia (`events`) | typ i id encji, typ zdarzenia, konto, kontekst (certyfikat, użytkownik, płatnik), dane JSON, czas — celowo bez kluczy obcych | ✅ |
 | `login_otps`, `schema_migrations` | — | ✅ |
-| `manager_subskrypcji` | — | poza opisem → D1 |
+| `manager_subskrypcji` | — | 🧊 moduł dodatkowy, zamrożony (D1) |
+
+Tabele są gotowe w bazie; ekrany i logika dla nich powstają w Etapach 2–5.
 
 Relacje: płatnik 1–N użytkownik certyfikatu · użytkownik 1–N certyfikat · płatnik 1–N certyfikat · certyfikat 1–N zadanie · zadanie 1–N zaproszenie · szablon N–N załącznik · wszystkie encje → `events`.
 
@@ -166,24 +169,24 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 
 | ID | Wymaganie z opisu | Stan | Dowód w kodzie | Do zrobienia |
 |---|---|---|---|---|
-| F1 | Dane certyfikatu: nr seryjny, ważność, wygaśnięcie, wymagania odnowienia | 🟡 | `subscriptions` ma `expiry_date`, typ, koszt, status (`database/schema.sql:67-97`) | nr seryjny, wystawca, ważny od, wymagany czas odnowienia |
-| F2 | Użytkownicy certyfikatu (dane osobowe beneficjentów) | ❌ | `users` = konta logowania (`database/schema.sql:18-26`), tworzone tylko przez `register.php` | encja `beneficiaries` + formularze |
-| F3 | Płatnicy (dane płatnika) | 🟡 | tylko odczyt (`classes/PayerManager.php:21-42`) | CRUD + dane kontaktowe |
-| F4 | Beneficjent powiązany z płatnikiem | 🟡 | FK certyfikat→osoba i certyfikat→płatnik (`database/schema.sql:87-92`); brak relacji osoba→płatnik | `beneficiaries.payer_id` |
-| F5 | Dodawanie, edycja, archiwizacja | ❌ | jedyny zapis to dodanie do `manager_subskrypcji` (`api/add_subscription.php`); brak edycji i archiwizacji (usuwanie konta już nie kasuje rekordów — Etap 0) | API CRUD, `archived_at`, widok archiwum |
+| F1 | Dane certyfikatu: nr seryjny, ważność, wygaśnięcie, wymagania odnowienia | 🟡 | model gotowy: `certificates` z `serial_number`, `issuer`, `valid_from`, `expiry_date`, `renewal_lead_days` (Etap 1) | formularze i API zapisu (Etap 2) |
+| F2 | Użytkownicy certyfikatu (dane osobowe beneficjentów) | 🟡 | tabela `beneficiaries` oddzielona od kont logowania (Etap 1) | ekran ewidencji (Etap 2) |
+| F3 | Płatnicy (dane płatnika) | 🟡 | dane kontaktowe i adres w modelu (Etap 1); w UI tylko odczyt (`classes/PayerManager.php`) | CRUD (Etap 2) |
+| F4 | Beneficjent powiązany z płatnikiem | 🟡 | klucze obce `beneficiaries.payer_id`, `certificates.beneficiary_id`, `certificates.payer_id` (Etap 1) | widoki powiązań (Etapy 2 i 4) |
+| F5 | Dodawanie, edycja, archiwizacja | 🟡 | `archived_at` w certyfikatach, użytkownikach certyfikatów i płatnikach; widoki pomijają zarchiwizowane (Etap 1); zapis z UI tylko w menedżerze osobistym | API CRUD, akcja „archiwizuj”, widok archiwum (Etap 2) |
 | F6 | Perspektywa Użytkownika: daty odnowienia, szczegóły, historia | ❌ | brak widoku osoby i historii | karta użytkownika certyfikatu |
 | F7 | Perspektywa Płatnika: certyfikaty, wygaśnięcia, historia, osoby | ❌ | widok płatników = nazwa, kontakt, liczba, suma (`includes/dashboard_app.php:469-492`) | karta płatnika |
 | F8 | Perspektywa Administratora | ❌ | brak panelu | panel administracyjny |
 | F9 | Eksport CSV / XML | ❌ | — | eksport list i kart (`fputcsv`, `XMLWriter`) |
 | F10 | Import CSV / XML / EML | ❌ | — | import z podglądem; EML przez parser MIME w czystym PHP (np. `zbateson/mail-mime-parser`) |
-| F11 | Regularne skanowanie i margines odnowienia | 🟡 | cron tylko dla `manager_subskrypcji`, warunek „dokładnie za 3 dni” (`cron/send_reminders.php:46-48`); progi 7/30 dni liczone tylko przy wyświetlaniu (`classes/SubscriptionHelper.php:16-30`) | skaner certyfikatów tworzący zadania |
-| F12 | Lista ToDo z priorytetami wg zakresów dat | 🟡 | ToDo = filtr listy (`includes/dashboard_app.php:655-663`); priorytety w `classes/SubscriptionHelper.php:64-79` | trwałe zadania (`renewal_tasks`) |
-| F13 | Zaproszenia e-mail z szablonem i załącznikami | ❌ | poza OTP jedyny e-mail to polski tekst wpisany w cronie (`cron/send_reminders.php:67-84`); `Mailer::send` bez załączników (`classes/Mailer.php:23-69`) | szablony w bazie + `addAttachment` |
-| F14 | Zarządzanie wysłanymi zaproszeniami (przypomnienia) | ❌ | wysyłki trafiają tylko do `logs/reminders.log` | tabela `invitations` + reguły przypomnień |
+| F11 | Regularne skanowanie i margines odnowienia | 🟡 | cron tylko dla `manager_subskrypcji`, warunek „dokładnie za 3 dni” (`cron/send_reminders.php`); progi 7/30 dni liczone przy wyświetlaniu (`classes/CertificateHelper.php`); wymagany czas odnowienia per certyfikat w modelu (`renewal_lead_days`) | skaner certyfikatów tworzący zadania (Etap 3) |
+| F12 | Lista ToDo z priorytetami wg zakresów dat | 🟡 | tabela `renewal_tasks` ze statusami i priorytetem (Etap 1); w panelu ToDo to nadal filtr listy | tworzenie zadań przez skaner i ekran zadań (Etap 3) |
+| F13 | Zaproszenia e-mail z szablonem i załącznikami | 🟡 | tabele `email_templates` (4 domyślne szablony), `attachments`, `invitations` (Etap 1); `Mailer::send` wciąż bez załączników (`classes/Mailer.php`) | wysyłka z szablonu + `addAttachment` (Etap 3) |
+| F14 | Zarządzanie wysłanymi zaproszeniami (przypomnienia) | 🟡 | rejestr `invitations`: status, liczba i termin przypomnień, błąd wysyłki (Etap 1) | reguły przypomnień i ekran rejestru (Etap 3) |
 | F15 | Dostęp oparty o konta użytkowników | 🟡 | OTP, sesje, CSRF, wylogowanie i testy działają (`classes/AuthManager.php`, `tests/Unit/AuthManagerTest.php`, Etap 0); publiczna rejestracja wciąż otwarta | wyłączyć rejestrację, konta zakłada ADMIN (D3, Etap 2) |
 | F16 | Wyszukiwanie usług, osób, płatników i powiązań | 🟡 | filtr w przeglądarce tylko po liście subskrypcji (`includes/dashboard_app.php:669-678`) | wyszukiwarka serwerowa po wszystkich encjach |
-| F17 | Ścieżka realizacji i powiązania na osi czasu | 🟡 | statyczny pasek dat jednej subskrypcji (`includes/dashboard_app.php:345-370`) | historia `events` + widok osi czasu |
-| F18 | Statystyki zadań wg statusów | ❌ | są statystyki statusów subskrypcji (`classes/SubscriptionManager.php:62-86`), nie zadań | agregaty z `renewal_tasks` |
+| F17 | Ścieżka realizacji i powiązania na osi czasu | 🟡 | tabela `events` z kontekstem certyfikat / użytkownik / płatnik (Etap 1); w panelu nadal statyczny pasek dat | zapis zdarzeń przy każdej akcji (Etapy 2–3), widok osi czasu (Etap 4) |
+| F18 | Statystyki zadań wg statusów | 🟡 | dane w `renewal_tasks.status`: do zrobienia / w toku / zrobione / porzucone (Etap 1) | agregaty i wykres na pulpicie (Etap 3) |
 | F19 | Hierarchiczny plan kont z rolami | 🟡 | klasa `Rbac` (ADMIN > MANAGER > OPERATOR), filtrowanie rekordów po właścicielu i ukryty katalog osób/płatników (Etap 0, `classes/Rbac.php`) | egzekwowanie uprawnień do akcji i endpointów API, zarządzanie kontami i rolami w panelu (Etap 2) |
 
 ### 3.2. Niefunkcjonalne i techniczne
@@ -195,7 +198,7 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | N3 | Instalacja publiczna lub intranetowa | 🟡 ⚠️ | katalog projektu = katalog publiczny serwera, brak reguł blokujących (§5 pkt 1–2); frontend z CDN — Tailwind Play CDN (`includes/head.php:9`), Vue z unpkg bez przypiętej wersji (`includes/dashboard_app.php:576`), Google Fonts (`includes/head.php:33-35`), więc w sieci bez internetu interfejs nie działa; `display_errors=On` w php.ini Laragona |
 | N4 | Studium wykonalności (punkt wyjścia: Java + Spring) | 🟡 | tylko jedno zdanie o Spring Boot (`docs/thesis_part1.md:74`) — potrzebne porównanie z kryteriami |
 | N5 | Ochrona danych osobowych | 🟡 | dobrze: PDO, CSRF, hash OTP, regeneracja sesji; źle: §5.1, brak historii zmian, limit OTP w sesji |
-| N6 | Testy | 🟡 | 10 testów jednostkowych (auth, konfiguracja poczty) + 1 integracyjny (migracje); zero dla subskrypcji, API i crona |
+| N6 | Testy | 🟡 | 28 testów: 26 jednostkowych (logowanie, role, tłumaczenia, logika certyfikatów, poczta) + 2 integracyjne (migracje i model Etapu 1); wciąż brak testów API i crona |
 
 ---
 
@@ -206,13 +209,15 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | Logowanie OTP (TTL 10 min, 5 prób, hash kodów, bez ujawniania istnienia kont) + testy | `classes/AuthManager.php` | bez zmian; dodać zakładanie kont przez ADMIN |
 | CSRF dla formularzy i API | `classes/Csrf.php` | wszystkie nowe endpointy |
 | Wzorzec endpointu JSON (metoda → CSRF → auth → walidacja) | `api/add_subscription.php` | szablon nowych API |
-| Idempotentne migracje | `classes/MigrationRunner.php` | każda zmiana schematu jako nowa migracja |
-| Progi i priorytety | `classes/SubscriptionHelper.php` | priorytety zadań ToDo |
+| Idempotentne migracje | `classes/MigrationRunner.php`, `classes/Migrations/` | każda zmiana schematu jako nowa migracja; `SchemaInspector` sprawdza stan przed każdym krokiem |
+| Progi i priorytety | `classes/CertificateHelper.php` | priorytety zadań ToDo |
 | Wysyłka e-mail (PHPMailer) | `classes/Mailer.php` | dodać załączniki i szablony |
 | Szkielet crona z logowaniem | `cron/send_reminders.php` | przebudować na skaner certyfikatów |
 | Layout panelu, karty KPI, tabele, modale | `includes/dashboard_app.php` | nowe widoki |
 | i18n z fallbackiem do EN | `classes/Translator.php` | nowe klucze |
 | PHPUnit, PHPStan (poziom 5), PHP-CS-Fixer | `composer.json` | bramka jakości |
+| Dane demonstracyjne | `scripts/seed-demo-data.php` | wypełnia bazę pod demo, testy ręczne i zrzuty ekranu do pracy; `--force` odtwarza od zera |
+| Instrukcja obsługi | `docs/INSTRUKCJA_OBSLUGI.md` | opis paneli, scenariusz demonstracji, rozwiązywanie problemów; baza rozdziału P5 |
 
 ---
 
@@ -242,14 +247,19 @@ Numeracja ciągła — odwołania w innych miejscach: „§5 pkt N”.
 
 ### 5.3. Drobne i porządki
 
-12. Model danych: `annual_cost` przechowuje koszt miesięczny, gdy `billing_cycle = monthly` (`classes/SubscriptionManager.php:143-149`); `users` łączy konta i beneficjentów; są dwie równoległe tabele subskrypcji, w tym `manager_subskrypcji` z polskimi nazwami kolumn.
+12. Model danych: `annual_cost` przechowuje koszt miesięczny, gdy `billing_cycle = monthly` (`CertificateManager::getRenewalSummary`) — nadal do poprawy. Rozdzielenie kont i użytkowników certyfikatów zrobione w Etapie 1; `manager_subskrypcji` z polskimi nazwami kolumn zostaje jako zamrożony moduł dodatkowy (D1).
 13. Oś czasu: „Następna płatność” bez daty (`includes/dashboard_app.php:356`). Strona główna pokazuje zmyślone liczby (`index.php:107-116`).
 14. Domyślny język interfejsu to EN (`classes/Translator.php:58`), choć projekt i praca są po polsku.
 15. JSON w `<script>` bez `JSON_HEX_TAG` dla users, payers, i18n i config (`includes/dashboard_app.php:99-106`). Dziś bezpieczne, bo `json_encode` escapuje `/`, ale warto ujednolicić z resztą.
 16. `composer-setup.php` (instalator Composera) jest w repozytorium — usunąć. Katalog `.claude/` nie jest śledzony.
 17. Nieaktualna dokumentacja: `docs/thesis_part1.md` (uwierzytelnianie „poza MVP”, e-mail jako placeholder — `docs/thesis_part1.md:40`; 3 tabele), a README i AGENT_HANDOFF opisują zakres z panelem prywatnym.
-18. PHPStan: 2 znane uwagi (`classes/MigrationRunner.php:92`, `cron/send_reminders.php:120`) — nie blokują.
+18. PHPStan: 1 znana uwaga (`cron/send_reminders.php:120`) — nie blokuje. Uwaga z `MigrationRunner.php:92` zniknęła w Etapie 1, bo metody sprawdzające schemat są poprawnie oznaczone jako nieczyste (`@phpstan-impure`).
 19. PHP-CS-Fixer zgłasza 27 z 32 plików „do poprawy”, bo `@PSR12` wymaga końców linii LF, a pliki w repozytorium mają CRLF (Windows). Dotyczy to także plików, których nikt nie zmieniał, więc `composer cs-fix` przepisałby cały projekt. Do zrobienia osobno: `.gitattributes` z `* text eol=lf` i jednorazowa normalizacja w dedykowanym commicie.
+21. Klasa `AddSubscriptionApiTest` w pliku `tests/Integration/MigrationRunnerTest.php` nigdy się nie uruchamia — PHPUnit wykrywa tylko klasę o nazwie pliku. Samo przeniesienie do osobnego pliku nie wystarczy: testowany `api/add_subscription.php` kończy się `exit`, co przerwałoby cały proces PHPUnit. Rozwiązanie to wydzielenie logiki endpointów do klas — naturalnie przy API CRUD w Etapie 2.
+
+### 5.4. ✅ Wykryte i naprawione po Etapie 0 (2026-09-16)
+
+20. **Różne strefy czasowe PHP i MySQL.** PHP działał w `UTC` (php.ini Laragona), a MySQL w strefie systemowej — o 01:36 czasu lokalnego PHP widział jeszcze poprzedni dzień. Skutek: `days_left` i priorytety liczone w PHP (`classes/SubscriptionHelper.php:36-62`) rozjeżdżały się o jeden dzień z licznikami KPI i cronem opartymi na `CURDATE()`, więc przypomnienie „za 3 dni” nigdy nie trafiało w swoją datę. Wykryte przy przygotowaniu danych demonstracyjnych. Naprawa: `bootstrap.php` ustawia `Europe/Warsaw`, a `scripts/seed-demo-data.php` liczy wszystkie daty od `CURDATE()` z bazy.
 
 ---
 
@@ -283,15 +293,15 @@ Stan na 16.09.2026. Pierwotnie: freeze 15.10.2026, część pisemna 16.10–31.1
 | Etap | Zakres | Dni |
 |---|---|---|
 | 0. Naprawy krytyczne ✅ **wykonane 2026-09-16** | wszystko z §5.1; `cron/.htaccess`; konto ADMIN; PHPStan także dla plików z katalogu głównego (szczegóły w §11) | — |
-| 1. Model danych | migracje: `subscriptions` → `certificates` z typami wg D7, beneficjenci, rozszerzenie płatników, `archived_at`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events`; język domyślny PL (D4); panel prywatny zostaje nietknięty (D1); dane demonstracyjne do obrony | 3–4 |
-| 2. Ewidencja + archiwizacja + RBAC | API i formularze dla certyfikatów, beneficjentów, płatników; archiwum; role w API i UI; wyłączenie publicznej rejestracji i zakładanie kont przez ADMIN (D3); zapis zdarzeń | 5–6 |
+| 1. Model danych ✅ **wykonane 2026-09-16** | migracje: `subscriptions` → `certificates` z typami wg D7, beneficjenci, rozszerzenie płatników, `archived_at`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events`; język domyślny PL (D4); panel prywatny nietknięty (D1); dane demonstracyjne (szczegóły w §11) | — |
+| 2. Ewidencja + archiwizacja + RBAC | API i formularze dla certyfikatów, beneficjentów, płatników; archiwum; role w API i UI; wyłączenie publicznej rejestracji i zakładanie kont przez ADMIN (D3); zapis zdarzeń; etykiety „certyfikaty” w panelu i klucze i18n (przeniesione z D5) | 5–6 |
 | 3. Proces odnowień | skaner → zadania ToDo (priorytety, statusy, przydział); szablony + załączniki; zaproszenia; rejestr i przypomnienia; statystyki zadań | 5–6 |
 | 4. Raporty i przegląd | karta beneficjenta, karta płatnika, oś czasu z `events`, wyszukiwarka globalna | 3–4 |
 | 5. Wymiana danych | eksport CSV/XML; import CSV/XML z podglądem; import EML | 3–4 |
 | 6. Jakość i domknięcie | testy nowych serwisów, scenariusze E2E, lokalne zasoby frontendu, aktualizacja README i `CLAUDE.md`, freeze | 3–4 |
 | 7. UX i wydajność (§2.5) | skeleton loadery w panelu; cache agregatów KPI z unieważnianiem przy zapisie i kluczem roli; nagłówki cache dla lokalnych zasobów z Etapu 6 | 2–3 |
 
-**Pozostało ok. 24–31 dni roboczych** (Etapy 1–7, po odjęciu wykonanego Etapu 0), więc realny freeze wypada w połowie listopada 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
+**Pozostało ok. 21–27 dni roboczych** (Etapy 2–7, po odjęciu wykonanych Etapów 0 i 1), więc realny freeze wypada w połowie listopada 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
 
 Kolejność etapów = kolejność ważności. Gdy zabraknie czasu, najpierw upraszczać etap 5 (np. import EML ograniczony do jednego formatu wiadomości).
 
@@ -304,10 +314,10 @@ Kolejność etapów = kolejność ważności. Gdy zabraknie czasu, najpierw upra
 | D1 | Panel prywatny (`dashboard-personal.php`, `manager_subskrypcji`, typy STREAMING, MUSIC…) | **b) zamrożony jako dodatek** — nie rozwijamy | kod zostaje bez zmian; kolumna `scope` zostaje; nowe funkcje (zadania, zaproszenia, import/eksport, raporty, archiwum) budujemy wyłącznie dla części certyfikatowej; w pracy opisać jako moduł dodatkowy i kierunek rozwoju |
 | D2 | Perspektywy Użytkownik / Płatnik | **a) raporty w panelu dla personelu** | karta beneficjenta i karta płatnika jako widoki (Etap 4); osobne logowanie dla beneficjentów i płatników → rozdział „kierunki rozwoju” |
 | D3 | Rejestracja | **a) wyłączona, konta zakłada ADMIN** | `register.php` przestaje być publiczny; ADMIN tworzy konto (imię, nazwisko, e-mail, rola), użytkownik loguje się kodem OTP; potrzebny ekran „Konta” w panelu administracyjnym (Etap 2) |
-| D4 | i18n dla nowych funkcji | **b) PL + EN** | nowe klucze tylko w `lang/pl.php` i `lang/en.php` (ES/DE/UK dziedziczą EN dzięki fallbackowi w `Translator`); język domyślny zmieniamy na PL (`classes/Translator.php:58`, Etap 1) |
-| D5 | Nazwa głównej encji | **a) `subscriptions` → `certificates`** | migracja zmieniająca nazwę tabeli oraz zmiana nazw klas (`SubscriptionManager` → `CertificateManager`, `SubscriptionHelper` → `CertificateHelper`) i kluczy i18n; robimy w Etapie 1, dopóki nie ma danych produkcyjnych |
+| D4 | i18n dla nowych funkcji | **b) PL + EN** | nowe klucze tylko w `lang/pl.php` i `lang/en.php` (ES/DE/UK dziedziczą EN dzięki fallbackowi w `Translator`); ✅ język domyślny PL (`Translator::DEFAULT_LOCALE`, Etap 1) |
+| D5 | Nazwa głównej encji | **a) `subscriptions` → `certificates`** | ✅ Etap 1: tabela, kolumna `certificate_type`, klasy `CertificateManager` i `CertificateHelper`. Zmianę kluczy i18n przeniesiono do Etapu 2 — etykiety panelu zmienią się razem z nowym UI |
 | D6 | Harmonogram | **otwarte — do ustalenia z promotorem** | plan §7 zakłada freeze w połowie listopada 2026 |
-| D7 | Rodzaje certyfikatów | **b) ogólny model z typem** | `certificates.type`: QUALIFIED_SIGNATURE, QUALIFIED_SEAL, SSL_CERTIFICATE, CODE_SIGNING, DOMAIN, OTHER + pola wspólne (numer seryjny, wystawca, ważny od/do, wymagany czas odnowienia); w pracy przykłady na certyfikatach kwalifikowanych |
+| D7 | Rodzaje certyfikatów | **b) ogólny model z typem** | ✅ Etap 1: `certificates.certificate_type` — QUALIFIED_SIGNATURE, QUALIFIED_SEAL, SSL_CERTIFICATE, CODE_SIGNING, DOMAIN, SAAS, CLOUD_SUPPORT, OTHER (+ typy zamrożonego panelu prywatnego) oraz pola wspólne: numer seryjny, wystawca, ważny od/do, wymagany czas odnowienia; w pracy przykłady na certyfikatach kwalifikowanych |
 
 ---
 
@@ -322,7 +332,7 @@ Szkic: `docs/Szkic pracy Litosh.pdf` (treść w `docs/generate_thesis_pdfs.py`).
 | Analiza istniejących rozwiązań | rozdz. 2 | 🟡 | dziś: Excel, aplikacje mobilne, ITSM, portale; dodać narzędzia do zarządzania cyklem życia certyfikatów (np. Keyfactor, DigiCert CertCentral) i portale polskich dostawców certyfikatów kwalifikowanych (np. Certum, KIR, EuroCert) |
 | Studium wykonalności (Java/Spring vs PHP) | brak osobnego punktu (jest tylko 5.1) | 🟡 | osobny podrozdział z kryteriami: dostępność na standardowym hostingu, koszt, wdrożenie, kompetencje |
 | Projekt ogólny i techniczny | rozdz. 3–5 | 🟡 | `docs/thesis_part1.md` rozdz. 2 nieaktualny — pisać po etapie 1 |
-| **Dokumentacja użytkownika** | **brak** | ❌ | dodać rozdział (instrukcje dla każdej roli, zrzuty ekranu) |
+| **Dokumentacja użytkownika** | brak w spisie treści | 🟡 | szkic powstał jako `docs/INSTRUKCJA_OBSLUGI.md` (2026-09-16) — do rozdziału dodać zrzuty ekranu i podział na role |
 | Opis testów | rozdz. 7 | ❌ | są tylko tytuły |
 | Zakończenie, podsumowanie, kierunki rozwoju | rozdz. 8 | ❌ | w spisie są bibliografia i spisy, brak podsumowania i kierunków rozwoju |
 
@@ -332,13 +342,15 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 
 ## 10. Stan środowiska (zweryfikowany 2026-09-16)
 
-- **Testy:** 17 → 16 zaliczonych, 1 integracyjny pominięty (wymaga `RUN_INTEGRATION_TESTS=1`). Przed Etapem 0 było ich 11.
-- **PHPStan (poziom 5):** 2 znane uwagi; analizowane są teraz także pliki wejściowe z katalogu głównego.
-- **PHP-CS-Fixer:** 27 z 32 plików zgłoszonych wyłącznie z powodu CRLF (§5 pkt 19) — `cs-fix` świadomie nieuruchomiony.
-- **Baza `assistent_subscriptions`:** 6 tabel. `users` = 3 (1 ADMIN — `mobi.litosh@gmail.com`, 2 OPERATOR), `payers` = 0, `subscriptions` = 0, `manager_subskrypcji` = 1. Zastosowane migracje: `login_otp`, `manager_subskrypcji`.
-- **HTTP:** `/`, `/login.php`, `/register.php` → 200; panele → 302 do logowania; `/logout.php` → 302 na `login.php?logged_out=1`; `.git/`, `.gitignore`, `logs/`, `classes/`, `includes/`, `lang/`, `database/`, `docs/`, `scripts/`, `cron/`, `bootstrap.php`, `composer.lock` → 403.
-- **Filtrowanie wg roli:** sprawdzone na danych tymczasowych — ADMIN/MANAGER widzi 2 z 2 rekordów, OPERATOR tylko swój 1, trzecie konto 0. Dane testowe usunięte po weryfikacji (baza wróciła do 0 subskrypcji i 0 płatników).
-- **Git:** 2 commity z 15.09.2026, brak remote; zmiany z Etapu 0 nie są zacommitowane.
+- **Testy:** 28 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 26 zaliczonych + 2 pominięte). Przed Etapem 0 było ich 11.
+- **PHPStan (poziom 5):** 1 znana uwaga (`cron/send_reminders.php:120`); analizowane są także pliki wejściowe z katalogu głównego.
+- **PHP-CS-Fixer:** większość plików zgłaszana z powodu CRLF (§5 pkt 19) — `cs-fix` świadomie nieuruchomiony.
+- **Baza `assistent_subscriptions`:** 15 tabel, migracje `login_otp`, `manager_subskrypcji`, `certificates_model`. Struktura po migracji sprawdzona jako identyczna ze świeżą instalacją z `database/schema.sql` (131 kolumn, 56 indeksów, 18 kluczy obcych).
+- **Dane demo (`scripts/seed-demo-data.php`):** 4 płatników, 5 użytkowników certyfikatów, 2 konta personelu demo + 3 prawdziwe konta (1 ADMIN), 12 certyfikatów firmowych (10 aktywnych, 2 w archiwum, 1 łańcuch odnowień) i 5 prywatnych, 7 zadań (todo 3, in_progress 2, done 1, abandoned 1), 4 zaproszenia (sent, responded, failed, closed), 4 szablony, 1 załącznik, 50 zdarzeń, 5 pozycji menedżera osobistego.
+- **Panel (render z symulowaną sesją, bez ostrzeżeń PHP):** ADMIN — 10 pozycji firmowych i katalogi osób/płatników, 5 prywatnych; OPERATOR (konto demo) — 4 własne pozycje, bez katalogów.
+- **Strefa czasowa:** PHP i MySQL liczą w `Europe/Warsaw` (§5.4); cron znajduje zaplanowaną płatność.
+- **HTTP:** `/`, `/login.php`, `/register.php` → 200; panele → 302 do logowania; `/logout.php` → 302 na `login.php?logged_out=1`; katalogi wewnętrzne (w tym `storage/`), `.git/`, `bootstrap.php`, `composer.lock` → 403.
+- **Git:** Etap 0 = `f9ec9df`; prace po Etapie 0 i Etap 1 w commicie z gałęzi `etap-1-model-danych`, scalonym na `master`; remote `origin` = github.com/llumiiss/diploma.
 
 ---
 
@@ -359,7 +371,36 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 
 Weryfikacja: 16/17 testów zaliczonych (1 integracyjny pominięty), PHPStan bez nowych uwag, `php -l` czysty dla wszystkich zmienionych plików, matryca kodów HTTP i filtrowanie wg roli sprawdzone na działającym serwerze.
 
-**Świadomie nie zrobione w Etapie 0:** publiczna rejestracja nadal działa (decyzja D3), `composer-setup.php` nadal w repozytorium (§5 pkt 16), `composer cs-fix` nieuruchomiony (§5 pkt 19), zmiany niezacommitowane.
+**Świadomie nie zrobione w Etapie 0:** publiczna rejestracja nadal działa (decyzja D3), `composer-setup.php` nadal w repozytorium (§5 pkt 16), `composer cs-fix` nieuruchomiony (§5 pkt 19).
+
+Commit: `f9ec9df`, gałąź `etap-0-naprawy-krytyczne`, scalona na `master` 2026-09-16 (fast-forward).
+
+### Po Etapie 0 — demo i instrukcja (2026-09-16)
+
+| Co | Szczegóły | Pliki |
+|---|---|---|
+| Dane demonstracyjne | skrypt CLI wypełnia bazę: 4 płatników, 3 konta beneficjentów `@example.com`, 10 certyfikatów firmowych i 5 subskrypcji prywatnych rozłożonych na wszystkie priorytety i statusy płatności, 4 pozycje menedżera osobistego; `--force` odtwarza dane, `--owner=` wskazuje konto właściciela części rekordów | `scripts/seed-demo-data.php` |
+| Strefa czasowa (nowy błąd — §5.4) | `bootstrap.php` ustawia `Europe/Warsaw`; seed liczy daty od `CURDATE()` z bazy | `bootstrap.php`, `scripts/seed-demo-data.php` |
+| Instrukcja obsługi | wszystkie panele i funkcje, scenariusz demonstracji na 10 minut, rozwiązywanie problemów; zalążek rozdziału „dokumentacja użytkownika” (P5) | `docs/INSTRUKCJA_OBSLUGI.md` |
+
+Weryfikacja: 16/17 testów, PHPStan bez nowych uwag, cron po naprawie znajduje 1 płatność na 19.09.2026.
+
+### Etap 1 — model danych (2026-09-16)
+
+| Obszar | Co zrobiono | Pliki |
+|---|---|---|
+| Migracja | nowa migracja `certificates_model` (idempotentna, każdy krok sprawdza stan schematu): `subscriptions` → `certificates` z przemianowaniem kluczy obcych i indeksów, kolumna `certificate_type` z typami wg D7, nowe pola certyfikatu, rozszerzenie płatników, tabele `beneficiaries`, `renewal_tasks`, `email_templates`, `attachments`, `email_template_attachments`, `invitations`, `invitation_attachments`, `events`, 4 domyślne szablony PL/EN | `classes/Migrations/CertificatesModelMigration.php`, `classes/Migrations/SchemaInspector.php`, `classes/MigrationRunner.php` |
+| Świeża instalacja | `schema.sql` przepisany na model Etapu 1 (struktura identyczna jak po migracji); `migrate.php --fresh` po imporcie uruchamia migracje i pomija fragmenty złożone z samych komentarzy | `database/schema.sql`, `scripts/migrate.php` |
+| Integralność w bazie | co najwyżej jedno otwarte zadanie na certyfikat (kolumna generowana + indeks unikalny), numer seryjny unikalny u wystawcy, NIP płatnika unikalny, archiwizacja zamiast usuwania (`ON DELETE RESTRICT`), historia bez kluczy obcych | j.w. |
+| Klasy domenowe (D5) | `SubscriptionManager` → `CertificateManager`, `SubscriptionHelper` → `CertificateHelper`; zapytania pomijają rekordy zarchiwizowane i zwracają dane użytkownika certyfikatu; `UserManager::countOwnedCertificates` | `classes/CertificateManager.php`, `classes/CertificateHelper.php`, `classes/UserManager.php`, `classes/PayerManager.php`, `classes/AuthManager.php`, `includes/dashboard_app.php` |
+| Język (D4) | domyślny PL (`Translator::DEFAULT_LOCALE`), etykiety nowych typów w PL i EN, nowe typy w filtrze panelu | `classes/Translator.php`, `lang/pl.php`, `lang/en.php`, `includes/dashboard_app.php` |
+| Załączniki | katalog `storage/attachments` zablokowany przez HTTP i ignorowany przez git | `.htaccess`, `storage/.htaccess`, `.gitignore` |
+| Dane demo | seed pod nowy model: użytkownicy certyfikatów, archiwum z łańcuchem odnowień, zadania we wszystkich statusach, zaproszenia z treścią z szablonu i załącznikiem, 50 zdarzeń; konta personelu demo zamiast kont-beneficjentów | `scripts/seed-demo-data.php`, `scripts/cleanup-demo-data.php` |
+| Testy | +11: `TranslatorTest` (5), `CertificateHelperTest` (5), integracyjny test modelu Etapu 1 | `tests/Unit/TranslatorTest.php`, `tests/Unit/CertificateHelperTest.php`, `tests/Integration/MigrationRunnerTest.php`, `tests/Support/SqliteTestDatabase.php` |
+
+Weryfikacja: kopia bazy przed migracją (`mysqldump`); migracja na bazie użytkownika z zachowaniem danych i drugi przebieg bez zmian; świeża instalacja na bazie tymczasowej z logiką `--fresh` i porównanie struktur (identyczne: 131 kolumn, 56 indeksów, 18 kluczy obcych), baza tymczasowa usunięta; próby naruszenia ograniczeń odrzucone przez bazę (duplikat otwartego zadania, duplikat numeru seryjnego); 28/28 testów z integracją; PHPStan: 1 znana uwaga (było 2); render panelu z symulowaną sesją dla ADMIN i OPERATOR bez ostrzeżeń PHP; kody HTTP bez zmian, `storage/` → 403.
+
+**Świadomie nie zrobione:** ekrany i API dla nowych tabel (Etapy 2–5), zmiana kluczy i18n i etykiet „subskrypcje” w panelu (Etap 2), wykorzystanie `renewal_lead_days` w wyliczaniu priorytetów (Etap 3).
 
 ---
 

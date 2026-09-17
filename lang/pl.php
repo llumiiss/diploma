@@ -177,6 +177,8 @@ return [
     'personal.expiring_label' => 'Płatności ≤ :days dni',
     'personal.expiring_critical' => ':count odnawia się za ≤ :days dni',
 
+    'type.qualified_signature' => 'Certyfikat kwalifikowany',
+    'type.qualified_seal' => 'Pieczęć kwalifikowana',
     'type.ssl' => 'Certyfikat SSL',
     'type.saas' => 'SaaS',
     'type.domain' => 'Domena',

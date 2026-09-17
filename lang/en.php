@@ -183,6 +183,8 @@ return [
     'personal.expiring_critical' => ':count renew in ≤ :days days',
 
     // Types
+    'type.qualified_signature' => 'Qualified certificate',
+    'type.qualified_seal' => 'Qualified seal',
     'type.ssl' => 'SSL Certificate',
     'type.saas' => 'SaaS',
     'type.domain' => 'Domain',

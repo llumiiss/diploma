@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 /**
- * Removes demo seed data (example.com users, all legacy subscriptions and payers).
- * Keeps real accounts registered through the app.
+ * Removes business data and demo accounts. Keeps real accounts and system data
+ * (email templates and their attachments).
+ *
+ * Deletes: event history, invitations, renewal tasks, ALL certificates, beneficiaries
+ * and payers, plus accounts with @example.com addresses.
  *
  *   php scripts/cleanup-demo-data.php
  */
@@ -20,28 +23,37 @@ use App\Database;
 
 $db = Database::getInstance()->getConnection();
 
+// Kolejność zgodna z kluczami obcymi: najpierw rekordy zależne.
+$steps = [
+    'events'                    => 'DELETE FROM events',
+    'invitation attachments'    => 'DELETE FROM invitation_attachments',
+    'invitations'               => 'DELETE FROM invitations',
+    'renewal tasks'             => 'DELETE FROM renewal_tasks',
+    'renewal chain links'       => 'UPDATE certificates SET previous_certificate_id = NULL WHERE previous_certificate_id IS NOT NULL',
+    'certificates'              => 'DELETE FROM certificates',
+    'beneficiaries'             => 'DELETE FROM beneficiaries',
+    'payers'                    => 'DELETE FROM payers',
+    'demo users (@example.com)' => "DELETE FROM users WHERE email LIKE '%@example.com'",
+];
+
+$counts = [];
 $db->beginTransaction();
 
 try {
-    $deletedSubs = (int) $db->exec('DELETE FROM subscriptions');
-    $deletedPayers = (int) $db->exec('DELETE FROM payers');
-
-    $stmt = $db->prepare("DELETE FROM users WHERE email LIKE '%@example.com'");
-    $stmt->execute();
-    $deletedDemoUsers = $stmt->rowCount();
+    foreach ($steps as $label => $sql) {
+        $counts[$label] = (int) $db->exec($sql);
+    }
 
     $db->commit();
-
-    echo "Cleanup complete.\n";
-    echo "  Subscriptions removed: {$deletedSubs}\n";
-    echo "  Payers removed: {$deletedPayers}\n";
-    echo "  Demo users removed (@example.com): {$deletedDemoUsers}\n";
-
-    $remaining = (int) $db->query('SELECT COUNT(*) FROM users')->fetchColumn();
-    echo "  Users remaining: {$remaining}\n";
-    exit(0);
 } catch (Throwable $e) {
     $db->rollBack();
     fwrite(STDERR, 'Cleanup failed: ' . $e->getMessage() . PHP_EOL);
     exit(1);
 }
+
+echo "Cleanup complete.\n";
+foreach ($counts as $label => $count) {
+    printf("  %-28s %d\n", $label . ':', $count);
+}
+printf("  %-28s %d\n", 'users remaining:', (int) $db->query('SELECT COUNT(*) FROM users')->fetchColumn());
+exit(0);

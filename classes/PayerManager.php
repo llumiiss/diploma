@@ -16,6 +16,9 @@ final class PayerManager
     }
 
     /**
+     * Płatnicy z bieżącymi (niezarchiwizowanymi) certyfikatami w danym zakresie.
+     * Alias subscription_count zostaje, bo czyta go widok panelu.
+     *
      * @return array<int, array<string, mixed>>
      */
     public function getAllPayers(string $scope = 'corporate'): array
@@ -26,10 +29,15 @@ final class PayerManager
                 p.company_name,
                 p.contact_person,
                 p.tax_id,
-                COUNT(s.id) AS subscription_count,
-                COALESCE(SUM(s.annual_cost), 0) AS total_annual_cost
+                p.email,
+                p.phone,
+                p.city,
+                COUNT(c.id) AS subscription_count,
+                COALESCE(SUM(c.annual_cost), 0) AS total_annual_cost
             FROM payers p
-            LEFT JOIN subscriptions s ON s.payer_id = p.id AND s.scope = :scope
+            LEFT JOIN certificates c
+                ON c.payer_id = p.id AND c.scope = :scope AND c.archived_at IS NULL
+            WHERE p.archived_at IS NULL
             GROUP BY p.id
             HAVING subscription_count > 0
             ORDER BY p.company_name

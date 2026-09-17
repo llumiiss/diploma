@@ -27,9 +27,10 @@ final class UserManager
                 u.last_name,
                 u.role,
                 u.email,
-                COUNT(s.id) AS subscription_count
+                COUNT(c.id) AS subscription_count
             FROM users u
-            LEFT JOIN subscriptions s ON s.user_id = u.id AND s.scope = :scope
+            LEFT JOIN certificates c
+                ON c.user_id = u.id AND c.scope = :scope AND c.archived_at IS NULL
             GROUP BY u.id
             HAVING subscription_count > 0
             ORDER BY u.last_name, u.first_name
@@ -116,11 +117,12 @@ final class UserManager
     }
 
     /**
-     * Liczba rekordów biznesowych, których ta osoba jest właścicielem.
+     * Liczba certyfikatów, których ta osoba jest opiekunem — także zarchiwizowanych,
+     * bo klucz obcy chroni wszystkie rekordy.
      */
-    public function countOwnedSubscriptions(int $userId): int
+    public function countOwnedCertificates(int $userId): int
     {
-        $stmt = $this->db->prepare('SELECT COUNT(*) FROM subscriptions WHERE user_id = :id');
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM certificates WHERE user_id = :id');
         $stmt->execute(['id' => $userId]);
 
         return (int) $stmt->fetchColumn();
@@ -147,12 +149,12 @@ final class UserManager
 
     /**
      * Usuwa konto wraz z kodami logowania i prywatnym menedżerem (FK ON DELETE CASCADE).
-     * Rekordów biznesowych (subscriptions) NIE usuwa — jeśli osoba jest ich właścicielem,
-     * konto zostaje, żeby nie stracić danych ani historii (docs/MAPA_PROJEKTU.md §5).
+     * Certyfikatów NIE usuwa — jeśli osoba jest ich opiekunem, konto zostaje,
+     * żeby nie stracić danych ani historii (docs/MAPA_PROJEKTU.md §5).
      */
     public function deleteAccountCompletely(int $userId): bool
     {
-        if ($this->countOwnedSubscriptions($userId) > 0) {
+        if ($this->countOwnedCertificates($userId) > 0) {
             return false;
         }
 

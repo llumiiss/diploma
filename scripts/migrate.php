@@ -11,7 +11,8 @@ declare(strict_types=1);
  * Or if php is in PATH:
  *   php scripts\migrate.php
  *
- * Fresh install (drops demo data — use only on empty DB):
+ * Fresh install — DROPS ALL TABLES, use only on a new or throwaway database.
+ * Imports database/schema.sql, then runs migrations (they add the default email templates):
  *   php scripts\migrate.php --fresh
  */
 
@@ -49,14 +50,18 @@ if ($fresh) {
         exit(1);
     }
 
-    foreach (array_filter(array_map('trim', explode(';', $sql))) as $statement) {
-        if ($statement !== '') {
+    foreach (array_map('trim', explode(';', $sql)) as $statement) {
+        // Fragment złożony wyłącznie z komentarzy nie jest poleceniem SQL.
+        $withoutComments = trim((string) preg_replace('/^\s*--.*$/m', '', $statement));
+
+        if ($withoutComments !== '') {
             $pdo->exec($statement);
         }
     }
 
     echo "Fresh schema imported into {$config['dbname']}.\n";
-    exit(0);
+    // Świeży schemat ma już docelowy kształt — migracje poniżej tylko to potwierdzą
+    // i wstawią dane słownikowe (domyślne szablony wiadomości).
 }
 
 try {
