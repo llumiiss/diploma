@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'request_otp') {
             $email = trim((string) ($_POST['email'] ?? ''));
             $redirect = $auth->sanitizeRedirect((string) ($_POST['redirect'] ?? $redirect));
-            $result = $auth->requestOtp($email, $redirect);
+            $result = $auth->requestOtp($email, $redirect, is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : null);
 
             if ($result['ok']) {
                 if (!empty($result['sent'])) {

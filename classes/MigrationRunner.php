@@ -7,6 +7,7 @@ namespace App;
 use App\Migrations\AccountsAndOwnershipMigration;
 use App\Migrations\CertificatesModelMigration;
 use App\Migrations\RenewalProcessMigration;
+use App\Migrations\OtpRateLimitMigration;
 use App\Migrations\SchemaInspector;
 use PDO;
 use PDOException;
@@ -155,6 +156,10 @@ final class MigrationRunner
             // Etap 3: ustawienia procesu odnowień (progi, przypomnienia).
             'renewal_process' => static function (PDO $db): void {
                 RenewalProcessMigration::up($db);
+            },
+            // Etap 6: limit wysyłek kodów logowania liczony w bazie (§5 pkt 9).
+            'otp_rate_limit' => static function (PDO $db): void {
+                OtpRateLimitMigration::up($db);
             },
         ];
     }

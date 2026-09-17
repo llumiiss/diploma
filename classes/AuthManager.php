@@ -11,7 +11,9 @@ final class AuthManager
     private const OTP_LENGTH = 6;
     private const OTP_TTL_MINUTES = 10;
     private const OTP_MAX_ATTEMPTS = 5;
+    /** Limit próśb o kod: na adres e-mail i (luźniejszy) na adres IP w oknie czasowym. */
     private const OTP_SEND_LIMIT = 3;
+    private const OTP_SEND_LIMIT_PER_IP = 10;
     private const OTP_SEND_WINDOW_SECONDS = 900;
     private const SESSION_USER_KEY = 'user_id';
     private const SESSION_PENDING_EMAIL = 'auth_pending_email';
@@ -64,7 +66,7 @@ final class AuthManager
     /**
      * @return array{ok: bool, sent?: bool, error?: string}
      */
-    public function requestOtp(string $email, string $redirect = 'dashboard.php'): array
+    public function requestOtp(string $email, string $redirect = 'dashboard.php', ?string $ip = null): array
     {
         $email = $this->normalizeEmail($email);
         if ($email === '') {
@@ -79,7 +81,7 @@ final class AuthManager
             return ['ok' => true, 'sent' => false];
         }
 
-        $result = $this->sendOtpForUser((int) $user['id'], $email, $redirect);
+        $result = $this->sendOtpForUser((int) $user['id'], $email, $redirect, self::normalizeIp($ip));
 
         return array_merge($result, ['sent' => $result['ok']]);
     }
@@ -158,11 +160,11 @@ final class AuthManager
     /**
      * @return array{ok: bool, error?: string}
      */
-    private function sendOtpForUser(int $userId, string $email, string $redirect): array
+    private function sendOtpForUser(int $userId, string $email, string $redirect, ?string $ip): array
     {
         Session::ensureStarted();
 
-        if (!$this->canSendOtp($email)) {
+        if (!$this->canSendOtp($email, $ip)) {
             return ['ok' => false, 'error' => 'auth.error.rate_limited'];
         }
 
@@ -173,14 +175,18 @@ final class AuthManager
 
         $this->invalidatePendingOtps($email);
 
+        // created_at zapisujemy z PHP, bo limit porównuje czasy z tej samej strefy co reszta aplikacji.
         $stmt = $this->db->prepare(
-            'INSERT INTO login_otps (user_id, email, code_hash, expires_at) VALUES (:user_id, :email, :code_hash, :expires_at)'
+            'INSERT INTO login_otps (user_id, email, request_ip, code_hash, expires_at, created_at)
+             VALUES (:user_id, :email, :request_ip, :code_hash, :expires_at, :created_at)'
         );
         $stmt->execute([
             'user_id'    => $userId,
             'email'      => $email,
+            'request_ip' => $ip,
             'code_hash'  => $codeHash,
             'expires_at' => $expiresAt,
+            'created_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
         ]);
 
         $_SESSION[self::SESSION_PENDING_EMAIL] = $email;
@@ -191,8 +197,6 @@ final class AuthManager
 
             return ['ok' => false, 'error' => 'auth.error.mail_failed'];
         }
-
-        $this->markOtpSent($email);
 
         return ['ok' => true];
     }
@@ -328,40 +332,35 @@ final class AuthManager
         ]);
     }
 
-    private function canSendOtp(string $email): bool
+    /**
+     * Limit próśb o kod liczony z historii w bazie (§5 pkt 9): każda prośba zapisuje wiersz
+     * w login_otps, więc limitu nie da się obejść czyszczeniem ciasteczka sesji.
+     */
+    private function canSendOtp(string $email, ?string $ip): bool
     {
-        Session::ensureStarted();
-        $key = 'otp_send_times';
-        $now = time();
+        $since = (new \DateTimeImmutable('-' . self::OTP_SEND_WINDOW_SECONDS . ' seconds'))->format('Y-m-d H:i:s');
 
-        if (!isset($_SESSION[$key]) || !is_array($_SESSION[$key])) {
-            $_SESSION[$key] = [];
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM login_otps WHERE email = :email AND created_at >= :since');
+        $stmt->execute(['email' => $email, 'since' => $since]);
+        if ((int) $stmt->fetchColumn() >= self::OTP_SEND_LIMIT) {
+            return false;
         }
 
-        $times = array_values(array_filter(
-            $_SESSION[$key][$email] ?? [],
-            static fn (int $timestamp): bool => ($now - $timestamp) < self::OTP_SEND_WINDOW_SECONDS
-        ));
+        if ($ip === null) {
+            return true;
+        }
 
-        return count($times) < self::OTP_SEND_LIMIT;
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM login_otps WHERE request_ip = :ip AND created_at >= :since');
+        $stmt->execute(['ip' => $ip, 'since' => $since]);
+
+        return (int) $stmt->fetchColumn() < self::OTP_SEND_LIMIT_PER_IP;
     }
 
-    private function markOtpSent(string $email): void
+    private static function normalizeIp(?string $ip): ?string
     {
-        Session::ensureStarted();
-        $key = 'otp_send_times';
-        $now = time();
+        $ip = trim((string) $ip);
 
-        if (!isset($_SESSION[$key]) || !is_array($_SESSION[$key])) {
-            $_SESSION[$key] = [];
-        }
-
-        $times = array_values(array_filter(
-            $_SESSION[$key][$email] ?? [],
-            static fn (int $timestamp): bool => ($now - $timestamp) < self::OTP_SEND_WINDOW_SECONDS
-        ));
-        $times[] = $now;
-        $_SESSION[$key][$email] = $times;
+        return $ip !== '' && filter_var($ip, FILTER_VALIDATE_IP) !== false ? substr($ip, 0, 45) : null;
     }
 
     private function simulateOtpDeliveryDelay(): void

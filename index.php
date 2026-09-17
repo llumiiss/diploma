@@ -101,20 +101,15 @@ $featureIconBg = [
             </div>
         </div>
 
-        <!-- Preview cards -->
+        <!-- Co robi asystent (bez zmyślonych liczb — §5 pkt 13) -->
         <div class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <?php foreach (['scan' => '🔎', 'invite' => '✉️', 'report' => '📈'] as $feature => $icon): ?>
             <div class="bg-white/10 backdrop-blur rounded-xl p-5 border border-white/20">
-                <p class="text-3xl font-bold">12</p>
-                <p class="text-blue-200 text-sm mt-1"><?= htmlspecialchars(__('landing.hero.stat_expiring')) ?></p>
+                <p class="text-2xl" aria-hidden="true"><?= $icon ?></p>
+                <p class="font-semibold mt-2"><?= htmlspecialchars(__('landing.hero.feature_' . $feature)) ?></p>
+                <p class="text-blue-200 text-sm mt-1"><?= htmlspecialchars(__('landing.hero.feature_' . $feature . '_desc')) ?></p>
             </div>
-            <div class="bg-white/10 backdrop-blur rounded-xl p-5 border border-white/20">
-                <p class="text-3xl font-bold">48 000 PLN</p>
-                <p class="text-blue-200 text-sm mt-1"><?= htmlspecialchars(__('landing.hero.stat_commitment')) ?></p>
-            </div>
-            <div class="bg-white/10 backdrop-blur rounded-xl p-5 border border-white/20">
-                <p class="text-3xl font-bold">3</p>
-                <p class="text-blue-200 text-sm mt-1"><?= htmlspecialchars(__('landing.hero.stat_overdue')) ?></p>
-            </div>
+            <?php endforeach; ?>
         </div>
     </div>
 </section>

@@ -138,7 +138,8 @@
                 ];
             },
             totalCost() {
-                return this.payer.certificates.reduce((sum, item) => sum + Number(item.annual_cost || 0), 0);
+                // Koszt w przeliczeniu na rok (miesięczny × 12, wieloletni ÷ lata ważności) — §5 pkt 12.
+                return this.payer.certificates.reduce((sum, item) => sum + Number(item.annualized_cost || 0), 0);
             },
         },
         mounted() {

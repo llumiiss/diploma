@@ -1,6 +1,6 @@
 # CertiSub Assistant — instrukcja obsługi i scenariusz demonstracji
 
-> Stan na 2026-09-17, po Etapie 5 (wymiana danych: eksport CSV/XML, import CSV/XML z podglądem, import wiadomości EML). Opisuje aplikację na danych z `scripts/seed-demo-data.php`.
+> Stan na 2026-09-17, po Etapie 6 (jakość i domknięcie: frontend bez CDN, limit kodów logowania w bazie, testy E2E). Opisuje aplikację na danych z `scripts/seed-demo-data.php`.
 > Dokument służy dwóm celom: pokazaniu wszystkich paneli i funkcji oraz jako zalążek rozdziału „dokumentacja użytkownika” w pracy (§9 w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md)).
 
 ---
@@ -13,6 +13,8 @@
 | 2 | `php scripts/migrate.php` — po każdej aktualizacji kodu. Drugi przebieg niczego nie zmienia. |
 | 3 | `php scripts/seed-demo-data.php --force` — dane do pokazania (odtwarza je od zera). |
 | 4 | Otwórz `http://localhost/assistent_subscription/` |
+
+Aplikacja nie pobiera niczego z internetu: arkusz stylów, biblioteka Vue i krój pisma są w katalogu `assets/`. Po zmianie klas w szablonach trzeba przebudować arkusz (`npm install && npm run css`) — sam kod PHP działa bez Node.
 
 Adresy:
 
@@ -118,7 +120,7 @@ Na danych demo (jako ADMIN):
 | Karta „Certyfikaty w ewidencji” | liczba bieżących certyfikatów + aktywne/wygasłe | **10**, z tego 7 aktywnych i 1 wygasły |
 | Karta „Odnowienia ≤ 30 dni” | certyfikaty w progu ostrzeżenia | **5**, z tego 2 krytyczne (≤ 7 dni) |
 | Karta „Płatności do obsługi” | wkrótce + zaległe | **5**, w tym 1 zaległa |
-| Karta „Zobowiązanie roczne” | suma kosztów | **33 448,00 PLN** |
+| Karta „Zobowiązanie roczne” | suma kosztów w przeliczeniu na rok (cykl miesięczny × 12, wieloletni ÷ lata ważności) | **32 978,50 PLN** |
 | Kafelki statusów | oczekujące / odnowienie w toku / aktywne / wygasłe | 1 / 1 / 7 / 1 |
 | „Priorytetowe odnowienia” | najpilniejsze certyfikaty, sortowane po dniach | na górze wygasły certyfikat kwalifikowany Jana Kowalskiego |
 | „Płatności wymagające działania” | płatności wkrótce i zaległe + suma | 5 pozycji, **11 579,00 PLN** |
@@ -409,7 +411,8 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 | `php scripts/test-mail.php adres@example.com` | test konfiguracji poczty |
 | `php cron/renewals.php` | skaner odnowień i zaległe przypomnienia o zaproszeniach (codziennie) |
 | `php cron/send_reminders.php` | przypomnienia o płatnościach menedżera osobistego |
-| `composer test` | 145 testów; 77 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
+| `composer test` | 149 testów (w tym scenariusz E2E przez API); 79 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
+| `npm install && npm run css` | przebudowanie arkusza stylów `assets/css/app.css` po zmianie klas Tailwinda (potrzebne tylko przy zmianach w interfejsie) |
 | `composer stan` | analiza statyczna (PHPStan) |
 
 ---
@@ -449,8 +452,9 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 
 Pełna macierz jest w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) §3. Najważniejsze braki widoczne podczas demonstracji:
 
-- lokalne zasoby frontendu zamiast CDN, limit wysyłek kodów OTP w bazie (Etap 6),
-- skeleton loadery i cache wskaźników (Etap 7).
+- skeleton loadery i cache wskaźników (Etap 7),
+- testy w prawdziwej przeglądarce (Selenium/Playwright) — scenariusz E2E idzie przez API,
+- osobne logowanie dla użytkowników certyfikatów i płatników (kierunek rozwoju, decyzja D2).
 
 ---
 
@@ -488,3 +492,5 @@ Pełna macierz jest w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) §3. Najważniejsze b
 | Import: „Nie znaleziono płatnika” | najpierw zaimportuj płatników, a w pliku osób i certyfikatów podaj NIP albo dokładną nazwę płatnika |
 | Import: wszystkie wiersze „Pominięty” | rekordy już są w ewidencji — wybierz tryb **Aktualizuj**, aby nadpisać kolumny z pliku |
 | Import EML: „To nie jest wiadomość e-mail w formacie EML” | zapisz wiadomość z programu pocztowego jako `.eml` (nie `.msg` ani zrzut ekranu) |
+| Strony wyglądają „gołe”, bez stylów | brakuje `assets/css/app.css` → `npm install && npm run css` (plik jest w repozytorium, więc zwykle wystarczy pobrać projekt ponownie) |
+| „Zbyt wiele próśb o kod” mimo nowego okna przeglądarki | limit liczy historię w bazie: 3 kody na adres e-mail i 10 na adres IP w 15 minutach — odczekaj albo użyj kodu z `logs/otp.log` |

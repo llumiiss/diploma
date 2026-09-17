@@ -92,6 +92,18 @@ final class CertificateHelper
     }
 
     /**
+     * Ten sam przelicznik co annualizedCost(), ale w SQL — do sum liczonych po stronie bazy.
+     */
+    public static function annualizedCostSql(string $alias = 'c'): string
+    {
+        return "CASE {$alias}.billing_cycle
+                    WHEN 'monthly' THEN {$alias}.annual_cost * 12
+                    WHEN 'multi_year' THEN {$alias}.annual_cost / GREATEST(1, ROUND(TIMESTAMPDIFF(MONTH, COALESCE({$alias}.valid_from, {$alias}.expiry_date), {$alias}.expiry_date) / 12))
+                    ELSE {$alias}.annual_cost
+                END";
+    }
+
+    /**
      * Koszt w przeliczeniu na rok (§5 pkt 12). Kolumna annual_cost przechowuje kwotę za okres
      * rozliczeniowy: przy cyklu miesięcznym to kwota miesięczna, przy wieloletnim — za cały okres
      * ważności (dzielona przez liczbę lat między datą „ważny od” a wygaśnięciem, co najmniej 1).

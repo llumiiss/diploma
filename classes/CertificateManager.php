@@ -161,22 +161,16 @@ final class CertificateManager
         $criticalDays = (int) $thresholds['critical'];
         $warningDays = (int) $thresholds['warning'];
 
-        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope]);
+        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope], 'c');
 
         $sql = "
             SELECT
                 SUM(CASE WHEN expiry_date < CURDATE() THEN 1 ELSE 0 END) AS expired,
                 SUM(CASE WHEN expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL {$criticalDays} DAY) THEN 1 ELSE 0 END) AS expiring_critical,
                 SUM(CASE WHEN expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL {$warningDays} DAY) THEN 1 ELSE 0 END) AS expiring_warning,
-                COALESCE(SUM(annual_cost), 0) AS annual_commitment,
-                COALESCE(SUM(
-                    CASE
-                        WHEN billing_cycle = 'monthly' THEN annual_cost
-                        WHEN billing_cycle = 'annual' THEN annual_cost / 12
-                        ELSE annual_cost / 12
-                    END
-                ), 0) AS monthly_spend
-            FROM certificates
+                COALESCE(SUM(" . CertificateHelper::annualizedCostSql('c') . "), 0) AS annual_commitment,
+                COALESCE(SUM((" . CertificateHelper::annualizedCostSql('c') . ") / 12), 0) AS monthly_spend
+            FROM certificates c
             WHERE scope = :scope
               AND archived_at IS NULL{$ownerFilter}
         ";

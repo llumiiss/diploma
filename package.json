@@ -1,0 +1,13 @@
+{
+    "name": "certisub-assistant",
+    "description": "Budowanie arkusza stylów (Tailwind) dla CertiSub Assistant — aplikacja działa bez Node, plik assets/css/app.css jest w repozytorium.",
+    "private": true,
+    "license": "MIT",
+    "scripts": {
+        "css": "tailwindcss -i assets/css/app.src.css -o assets/css/app.css --minify",
+        "css:watch": "tailwindcss -i assets/css/app.src.css -o assets/css/app.css --watch"
+    },
+    "devDependencies": {
+        "tailwindcss": "^3.4.17"
+    }
+}
