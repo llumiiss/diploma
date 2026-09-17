@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Service\Visibility;
 use PDO;
 
 /**
@@ -26,7 +27,7 @@ final class CertificateManager
      */
     public function getAllCertificates(string $scope = 'corporate', ?int $ownerId = null): array
     {
-        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope], 'c.user_id');
+        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope], 'c');
 
         $sql = <<<SQL
             SELECT
@@ -196,19 +197,20 @@ final class CertificateManager
     }
 
     /**
-     * Zwraca warunek SQL i parametry ograniczające wynik do właściciela rekordów.
+     * Zwraca warunek SQL i parametry ograniczające wynik do rekordów widocznych dla konta:
+     * certyfikatów, których jest opiekunem, i tych z przydzielonym mu zadaniem odnowienia (D8).
      *
      * @param array<string, mixed> $params
      * @return array{0: string, 1: array<string, mixed>}
      */
-    private function ownerFilter(?int $ownerId, array $params, string $column = 'user_id'): array
+    private function ownerFilter(?int $ownerId, array $params, string $alias = 'certificates'): array
     {
         if ($ownerId === null) {
             return ['', $params];
         }
 
-        $params['owner_id'] = $ownerId;
+        [$condition, $visibilityParams] = Visibility::certificatesForUserId($ownerId, $alias);
 
-        return [' AND ' . $column . ' = :owner_id', $params];
+        return [' AND ' . $condition, $params + $visibilityParams];
     }
 }

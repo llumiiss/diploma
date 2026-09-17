@@ -1,0 +1,134 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Support;
+
+use App\Rbac;
+use App\Service\Actor;
+use App\Session;
+use PDO;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Baza dla testów usług na prawdziwym MySQL (baza testowa, patrz MysqlTestDatabase).
+ * Uruchamiane tylko z RUN_INTEGRATION_TESTS=1.
+ */
+abstract class IntegrationTestCase extends TestCase
+{
+    protected PDO $db;
+
+    protected function setUp(): void
+    {
+        if (!MysqlTestDatabase::isEnabled()) {
+            $this->markTestSkipped('Set RUN_INTEGRATION_TESTS=1 to run MySQL integration tests.');
+        }
+
+        Session::ensureStarted();
+        $_SESSION = [];
+
+        $this->db = MysqlTestDatabase::connection();
+        MysqlTestDatabase::reset($this->db);
+    }
+
+    protected function createActor(string $role = Rbac::OPERATOR, string $email = ''): Actor
+    {
+        static $sequence = 0;
+        ++$sequence;
+        $email = $email !== '' ? $email : strtolower($role) . $sequence . '@example.com';
+
+        $stmt = $this->db->prepare(
+            'INSERT INTO users (first_name, last_name, role, email) VALUES (:first, :last, :role, :email)'
+        );
+        $stmt->execute(['first' => ucfirst(strtolower($role)), 'last' => 'Tester' . $sequence, 'role' => $role, 'email' => $email]);
+
+        return new Actor((int) $this->db->lastInsertId(), $role, ucfirst(strtolower($role)), 'Tester' . $sequence, $email);
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     */
+    protected function insertPayer(array $overrides = [], ?int $createdBy = null): int
+    {
+        static $sequence = 0;
+        ++$sequence;
+        $row = array_merge([
+            'company_name'       => 'Płatnik testowy ' . $sequence,
+            'contact_person'     => 'Osoba Kontaktowa',
+            'tax_id'             => null,
+            'created_by_user_id' => $createdBy,
+        ], $overrides);
+
+        $stmt = $this->db->prepare(
+            'INSERT INTO payers (company_name, contact_person, tax_id, created_by_user_id)
+             VALUES (:company_name, :contact_person, :tax_id, :created_by_user_id)'
+        );
+        $stmt->execute($row);
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     */
+    protected function insertBeneficiary(?int $payerId, array $overrides = [], ?int $createdBy = null): int
+    {
+        $row = array_merge([
+            'first_name'         => 'Jan',
+            'last_name'          => 'Testowy',
+            'email'              => 'jan.testowy@example.com',
+            'payer_id'           => $payerId,
+            'created_by_user_id' => $createdBy,
+        ], $overrides);
+
+        $stmt = $this->db->prepare(
+            'INSERT INTO beneficiaries (first_name, last_name, email, payer_id, created_by_user_id)
+             VALUES (:first_name, :last_name, :email, :payer_id, :created_by_user_id)'
+        );
+        $stmt->execute($row);
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     */
+    protected function insertCertificate(int $ownerId, int $payerId, array $overrides = []): int
+    {
+        static $sequence = 0;
+        ++$sequence;
+        $row = array_merge([
+            'name'             => 'Certyfikat testowy ' . $sequence,
+            'scope'            => 'corporate',
+            'certificate_type' => 'QUALIFIED_SIGNATURE',
+            'serial_number'    => null,
+            'issuer'           => null,
+            'expiry_date'      => date('Y-m-d', strtotime('+60 days')),
+            'user_id'          => $ownerId,
+            'beneficiary_id'   => null,
+            'payer_id'         => $payerId,
+            'status'           => 'active',
+            'archived_at'      => null,
+        ], $overrides);
+
+        $stmt = $this->db->prepare(
+            'INSERT INTO certificates (name, scope, certificate_type, serial_number, issuer, expiry_date, user_id,
+                beneficiary_id, payer_id, status, archived_at)
+             VALUES (:name, :scope, :certificate_type, :serial_number, :issuer, :expiry_date, :user_id,
+                :beneficiary_id, :payer_id, :status, :archived_at)'
+        );
+        $stmt->execute($row);
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    protected function countEvents(string $entityType, int $entityId, string $eventType): int
+    {
+        $stmt = $this->db->prepare(
+            'SELECT COUNT(*) FROM events WHERE entity_type = :type AND entity_id = :id AND event_type = :event'
+        );
+        $stmt->execute(['type' => $entityType, 'id' => $entityId, 'event' => $eventType]);
+
+        return (int) $stmt->fetchColumn();
+    }
+}

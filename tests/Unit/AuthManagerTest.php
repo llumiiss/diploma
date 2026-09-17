@@ -88,9 +88,10 @@ final class AuthManagerTest extends TestCase
         $this->assertFalse($auth->isAuthenticated());
     }
 
-    public function testRegisterRollsBackUserWhenMailFails(): void
+    public function testMailFailureIsReportedAndLeavesNoPendingLogin(): void
     {
         $db = SqliteTestDatabase::create();
+        SqliteTestDatabase::seedUser($db, 'known@example.com');
         $failingMail = new class implements \App\OtpMailer {
             public function sendOtpCode(string $toEmail, string $code): bool
             {
@@ -99,11 +100,39 @@ final class AuthManagerTest extends TestCase
         };
         $auth = new AuthManager($db, new UserManager($db), $failingMail);
 
-        $result = $auth->register('Jan', 'Kowalski', 'new@example.com');
+        $result = $auth->requestOtp('known@example.com');
 
         $this->assertFalse($result['ok']);
-        $users = new UserManager($db);
-        $this->assertFalse($users->findByEmail('new@example.com'));
+        $this->assertSame('auth.error.mail_failed', $result['error']);
+        $this->assertNull($auth->getPendingEmail());
+    }
+
+    public function testDeactivatedAccountLooksLikeUnknownEmail(): void
+    {
+        $db = SqliteTestDatabase::create();
+        $userId = SqliteTestDatabase::seedUser($db, 'inactive@example.com');
+        $db->exec("UPDATE users SET deactivated_at = '2026-09-17 10:00:00' WHERE id = {$userId}");
+        $auth = new AuthManager($db, new UserManager($db), $this->mail);
+
+        $result = $auth->requestOtp('inactive@example.com');
+
+        $this->assertTrue($result['ok']);
+        $this->assertFalse($result['sent']);
+        $this->assertSame([], $this->mail->sent);
+    }
+
+    public function testDeactivationEndsAnExistingSession(): void
+    {
+        $db = SqliteTestDatabase::create();
+        $userId = SqliteTestDatabase::seedUser($db, 'session@example.com');
+        $auth = new AuthManager($db, new UserManager($db), $this->mail);
+        $auth->login($userId);
+        $this->assertNotFalse($auth->currentUser());
+
+        $db->exec("UPDATE users SET deactivated_at = '2026-09-17 10:00:00' WHERE id = {$userId}");
+
+        $this->assertFalse($auth->currentUser());
+        $this->assertFalse($auth->isAuthenticated());
     }
 
     public function testVerifyOtpWorksWhenSessionPendingWasLost(): void

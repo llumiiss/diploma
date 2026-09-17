@@ -41,13 +41,15 @@ php scripts\seed-demo-data.php
 
 Fills every panel: certificates in all priorities, beneficiaries, payers, an archive with a renewal chain, ToDo tasks in every status, invitations with an attachment, event history and the personal module. Re-create with `--force`; remove with `php scripts\cleanup-demo-data.php`.
 
-### Roles
+### Accounts and roles
+
+Public registration is disabled — an ADMIN creates staff accounts in **Management → Accounts & roles**. To make the first administrator (e.g. right after installation):
 
 ```powershell
 php scripts\set-role.php you@example.com ADMIN
 ```
 
-Hierarchy: ADMIN > MANAGER > OPERATOR. An OPERATOR sees only the records they own.
+Hierarchy: ADMIN > MANAGER > OPERATOR. An OPERATOR works on the certificates they own or have a renewal task for, and on the people and payers linked to them or entered by them; MANAGER and ADMIN see the whole organisation; archiving needs MANAGER; accounts need ADMIN.
 
 ### Mail (OTP codes)
 
@@ -66,6 +68,8 @@ composer test
 $env:RUN_INTEGRATION_TESTS=1; composer test   # + MySQL integration tests
 composer stan
 ```
+
+Integration tests create a throwaway database `assistent_subscriptions_test` (from `database/schema.sql` + migrations) on every run and never touch the application database. The MySQL user from `config/database.php` needs permission to create and drop that database.
 
 ## URLs
 
@@ -87,11 +91,16 @@ Windows Task Scheduler: program = full path to `php.exe`, argument = full path t
 
 ```
 assistent_subscription/
-├── index.php, login.php, register.php, logout.php
+├── index.php, login.php, register.php (redirect), logout.php
 ├── dashboard.php, dashboard-personal.php
-├── api/                     # JSON endpoints (CSRF + auth)
-├── classes/                 # AuthManager, Rbac, CertificateManager, CertificateHelper, …
+├── api/                     # JSON endpoints — one line each, logic in classes/Api
+├── assets/js/               # corporate dashboard UI (Vue 3 components, no build step)
+├── classes/                 # AuthManager, Rbac, CertificateHelper, …
+│   ├── Service/             # business rules: validation, permissions, data scope, event history
+│   ├── Http/                # ApiKernel (CSRF, auth, JSON errors), Request, Response
+│   ├── Api/                 # endpoint controllers
 │   └── Migrations/          # idempotent schema migrations
+├── includes/                # dashboard shells, shared head, language switcher
 ├── cron/send_reminders.php
 ├── database/schema.sql      # fresh install (same structure as a migrated database)
 ├── scripts/                 # migrate, seed-demo-data, cleanup-demo-data, set-role, test-mail
@@ -106,8 +115,10 @@ assistent_subscription/
 
 ## Features (current)
 
-- Passwordless e-mail OTP login, CSRF protection, role-based data visibility
-- Corporate and personal dashboards: KPIs, priorities, payments, ToDo view, search and filters
-- Data model for certificates, beneficiaries, payers, tasks, templates, attachments, invitations and history (screens follow in later stages)
-- Payment reminder cron (personal module)
+- Passwordless e-mail OTP login, CSRF protection; accounts created, deactivated and reassigned by an ADMIN
+- Role-based permissions enforced by the API (ADMIN > MANAGER > OPERATOR) with a least-privilege data scope for operators
+- Records of certificates, certificate users (beneficiaries) and payers: add, edit, archive and restore with validation (calendar dates, Polish NIP checksum, unique serial per issuer)
+- Details panels with relations, renewal chain and event history; archive screen
+- Corporate dashboard: KPIs, priority renewals, payments, ToDo view, search and filters
+- Personal dashboard (frozen extra module) and its payment reminder cron
 - i18n: PL (default), EN, ES, DE, UK

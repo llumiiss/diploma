@@ -1,11 +1,11 @@
 # CLAUDE.md — CertiSub Assistant (assistent_subscription)
 
-Guidance for AI agents working in this repo. **Start with `docs/MAPA_PROJEKTU.md`** — it carries the official thesis description (the authoritative scope), the requirement matrix, the bug list, the phased plan, the decisions D1–D7 and the changelog. `docs/INSTRUKCJA_OBSLUGI.md` is the user manual and demo script. `docs/AGENT_HANDOFF.md` is an older brief whose roadmap is superseded by the map. This file is the quick operational contract.
+Guidance for AI agents working in this repo. **Start with `docs/MAPA_PROJEKTU.md`** — it carries the official thesis description (the authoritative scope), the requirement matrix, the bug list, the phased plan, the decisions D1–D8 and the changelog. `docs/INSTRUKCJA_OBSLUGI.md` is the user manual and demo script. `docs/AGENT_HANDOFF.md` is an older brief whose roadmap is superseded by the map. This file is the quick operational contract.
 
 ## What this is
-University thesis project (author: Maksym Litosh, Uniwersytet Śląski). A PHP 8 / MySQL LAMP web app ("CertiSub Assistant") for managing **certificates** (qualified signatures and seals, SSL, code signing, domains, SaaS) together with **certificate users (beneficiaries)** and **payers**: renewal ToDo tasks, e-mail invitations with templates and attachments, reminders, archiving, event history and reports. Two dashboard scopes share one UI: **corporate** (`dashboard.php`, the thesis domain) and **personal** (`dashboard-personal.php`, an extra module frozen by decision D1 — keep it working, do not extend it). Primary human language: Polish.
+University thesis project (author: Maksym Litosh, Uniwersytet Śląski). A PHP 8 / MySQL LAMP web app ("CertiSub Assistant") for managing **certificates** (qualified signatures and seals, SSL, code signing, domains, SaaS) together with **certificate users (beneficiaries)** and **payers**: renewal ToDo tasks, e-mail invitations with templates and attachments, reminders, archiving, event history and reports. Two dashboards: **corporate** (`dashboard.php`, the thesis domain, new UI since Etap 2) and **personal** (`dashboard-personal.php` → `includes/personal_dashboard_app.php`, an extra module frozen by decision D1 — keep it working, do not extend it). Primary human language: Polish.
 
-Status (2026-09-16): Etap 0 (security fixes) and Etap 1 (data model) are done. There is no UI or API yet for creating or editing certificates, beneficiaries, payers, tasks, templates or invitations — that starts in Etap 2 (map §7).
+Status (2026-09-17): Etap 0 (security), Etap 1 (data model) and Etap 2 (records CRUD, archive, RBAC, accounts managed by ADMIN) are done. Next: Etap 3 — renewal process (scanner → ToDo tasks, templates + attachments, invitations and reminders, task statistics). See map §7.
 
 ## Environment (Windows + Laragon — tools are NOT on the default PATH)
 - PHP 8.3.30: `C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe`
@@ -18,35 +18,41 @@ Status (2026-09-16): Etap 0 (security fixes) and Etap 1 (data model) are done. T
 
 ## Commands
 ```
-composer test                                    # PHPUnit 11 — 28 tests; the 2 integration tests skip without the flag below
-$env:RUN_INTEGRATION_TESTS=1; composer test      # + MySQL integration tests (they run pending migrations on the real DB)
+composer test                                    # PHPUnit 11 — 70 tests; the 26 integration tests skip without the flag below
+$env:RUN_INTEGRATION_TESTS=1; composer test      # + integration tests on a throwaway DB assistent_subscriptions_test (recreated each run)
 composer stan                                    # PHPStan level 5 (see phpstan.neon)
 composer cs                                      # PHP-CS-Fixer dry-run (diff only)
 php scripts/migrate.php                          # idempotent DB migrations (needs MySQL up)
 php scripts/seed-demo-data.php --force           # demo data for every panel (replaces previous demo data)
 php scripts/cleanup-demo-data.php                # wipes ALL business data + @example.com accounts
-php scripts/set-role.php --list                  # list accounts and their roles
-php scripts/set-role.php you@example.com ADMIN   # grant a role (ADMIN > MANAGER > OPERATOR)
+php scripts/set-role.php --list                  # list accounts and their roles (emergency tool; ADMIN normally uses the Accounts screen)
 php scripts/test-mail.php you@example.com        # mail smoke test
 ```
-**Never run `php scripts/migrate.php --fresh` against the user's database** — it drops every table. Test fresh installs in a throwaway database instead.
+**Never run `php scripts/migrate.php --fresh` against the user's database** — it drops every table. Take a `mysqldump` of `assistent_subscriptions` before applying a new schema migration.
 
-Quality baseline (2026-09-16, after Etap 1): 28/28 tests pass with integration enabled; PHPStan reports 1 pre-existing benign note (`cron/send_reminders.php:120`). `composer cs` flags most files mainly because @PSR12 wants LF endings and the repo is CRLF — do not run `cs-fix` without a separate line-ending normalization commit.
+Quality baseline (2026-09-17, after Etap 2): 70/70 tests pass with integration enabled; PHPStan reports 1 pre-existing benign note (`cron/send_reminders.php:120`). `composer cs` flags most files mainly because @PSR12 wants LF endings and the repo is CRLF — do not run `cs-fix` without a separate line-ending normalization commit.
 
-## Data model (Etap 1 — details in `docs/MAPA_PROJEKTU.md` §2.2)
-- `certificates` (formerly `subscriptions`; type column `certificate_type`), `beneficiaries`, `payers`, `users` (staff accounts, owners of records via `certificates.user_id`), `renewal_tasks` (todo / in_progress / done / abandoned, at most one open task per certificate), `email_templates` + `attachments` + `email_template_attachments`, `invitations` + `invitation_attachments`, `events` (timeline — no foreign keys on purpose), `manager_subskrypcji` (frozen personal module), `login_otps`.
-- Archive, don't delete: `archived_at` on certificates, beneficiaries and payers. Every "current" read query must filter `archived_at IS NULL`.
-- Schema changes go through `App\MigrationRunner` as idempotent migrations (pattern: `classes/Migrations/CertificatesModelMigration.php` with `SchemaInspector` checks) **and** into `database/schema.sql`, which must stay structurally identical to a migrated database. `schema.sql` may contain semicolons only at statement ends — the `--fresh` importer splits on them.
+## Architecture (Etap 2)
+- **Services** `classes/Service/*Service.php` hold business rules: validation (`Validator`), permission checks (`Actor::authorize()` → `Rbac::can()`), data scope (`Visibility`, decision D8), history (`EventLogger` → `events`), transactions (`Transaction::run`). They take a `PDO` and an `Actor`, never read the session — so they are testable and reusable from CLI/import.
+- **HTTP**: `classes/Http/ApiKernel.php` (method → CSRF for writes → session → handler → JSON with HTTP status mapped from `ServiceException`: 400/403/404/409/422, 500 without details). Controllers in `classes/Api/*Controller.php`; each `api/*.php` is a one-liner `ApiKernel::run(new XController())`. No `exit` in library code.
+- **Corporate UI**: `includes/dashboard_app.php` checks the session and injects `window.CERTISUB_BOOT` (i18n, CSRF token, user, permission list, endpoints). Vue 3 without a build step: `assets/js/core.js` (API client, formatting, store, toasts, modal stack), `assets/js/components.js`, views in `assets/js/views/`, mounted by `assets/js/app.js`. Views are addressed by hash (`dashboard.php#/payers`). The permission list only hides buttons — the API enforces access.
+- **Tests**: unit tests in `tests/Unit` (SQLite or no DB); integration tests extend `Tests\Support\IntegrationTestCase` and use `MysqlTestDatabase` (fresh `assistent_subscriptions_test` from `schema.sql` + migrations, business tables cleared before each test).
+
+## Data model (details in `docs/MAPA_PROJEKTU.md` §2.2)
+- `certificates` (formerly `subscriptions`; type column `certificate_type`), `beneficiaries`, `payers`, `users` (staff accounts, owners of records via `certificates.user_id`; `deactivated_at`), `renewal_tasks` (todo / in_progress / done / abandoned, at most one open task per certificate), `email_templates` + `attachments` + `email_template_attachments`, `invitations` + `invitation_attachments`, `events` (timeline — no foreign keys on purpose), `manager_subskrypcji` (frozen personal module), `login_otps`.
+- `payers.created_by_user_id` / `beneficiaries.created_by_user_id` record who entered the row (OPERATOR scope, D8).
+- Archive, don't delete: `archived_at` on certificates, beneficiaries and payers. Every "current" read query must filter `archived_at IS NULL`; archived records are read-only.
+- Schema changes go through `App\MigrationRunner` as idempotent migrations (pattern: `classes/Migrations/*Migration.php` with `SchemaInspector` checks) **and** into `database/schema.sql`, which must stay structurally identical to a migrated database (compare `information_schema` of the app DB and the test DB). `schema.sql` may contain semicolons only at statement ends — the `--fresh` importer splits on them.
 - Stored files live in `storage/attachments/` (blocked over HTTP, contents gitignored).
 
 ## Code conventions (match existing code)
-- PHP: `declare(strict_types=1);`, `final` classes, namespace `App\`, PDO prepared statements.
-- API endpoints (`api/*.php`): JSON in/out, require auth, require CSRF header `X-CSRF-TOKEN`, validate all input, and check the role with `App\Rbac` before returning or writing organisation-wide data.
-- Authorization: `App\Rbac` defines the hierarchy ADMIN > MANAGER > OPERATOR. Read queries that can return other people's records take an `?int $ownerId` and filter on it; OPERATOR never sees the org-wide directories of people and payers. Hiding things only in Vue is not access control.
-- CLI-only scripts (`scripts/*.php`, `cron/*.php`) begin with a `PHP_SAPI !== 'cli'` guard *before* `require bootstrap.php`. The project folder is the web docroot, so the root `.htaccess` blocks internal directories — extend it whenever you add a directory that must not be served.
-- Dashboard UI is Vue 3 + Tailwind (CDN) inside `includes/dashboard_app.php`; one file serves both scopes, switched by `$scope`. The view still calls rows "subscriptions" — certificate labels arrive with the Etap 2 UI.
-- i18n (decision D4): Polish is the default locale; add new user-facing keys to `lang/pl.php` and `lang/en.php` only (es/de/uk fall back to English). Never hardcode Polish/English in markup.
-- Never commit `config/mail.local.php` or other secrets (already gitignored). `vendor/` is gitignored.
+- PHP: `declare(strict_types=1);`, `final` classes, namespace `App\` (sub-namespaces `App\Service`, `App\Http`, `App\Api`, `App\Migrations`), PDO prepared statements. Native prepares are on — a named parameter may appear only once per statement (`Visibility` generates unique names).
+- New endpoint = service method + controller action + permission in `Rbac::PERMISSIONS` + i18n keys + tests. Writes are POST with `{action, id?, data?}` and header `X-CSRF-TOKEN`.
+- Authorization: `App\Rbac` defines ADMIN > MANAGER > OPERATOR and the action permission matrix. OPERATOR sees own/assigned certificates and the people/payers linked to them or entered by them (D8); MANAGER+ sees the whole organisation. Hiding things only in Vue is not access control.
+- Every business write logs an event (`EventLogger`) with context ids (`certificate_id`, `beneficiary_id`, `payer_id`) so the timelines work.
+- CLI-only scripts (`scripts/*.php`, `cron/*.php`) begin with a `PHP_SAPI !== 'cli'` guard *before* `require bootstrap.php`. The project folder is the web docroot, so the root `.htaccess` blocks internal directories — extend it whenever you add a directory that must not be served (`assets/` is public on purpose).
+- i18n (decision D4): Polish is the default locale; add new user-facing keys to `lang/pl.php` and `lang/en.php` only (es/de/uk fall back to English). Never hardcode Polish/English in markup or JS — use `t('key')`. Event labels are `event.<entity>.<type>`, field labels `field.<column>`.
+- Never commit `config/mail.local.php` or other secrets (already gitignored). `vendor/` is gitignored. `.claude/settings.json` is deliberately untracked.
 - **Focused changes only** — do not expand scope beyond the current request. Add/extend PHPUnit tests when you touch auth, CRUD or domain logic.
 - Do **not** work on the written thesis chapters unless the user explicitly asks.
 
@@ -56,4 +62,4 @@ Quality baseline (2026-09-16, after Etap 1): 28/28 tests pass with integration e
 - 21st MCP is available for UI component generation.
 
 ## Git
-Local repo, no remote, main branch `master`. Commit only when the user asks, with clear focused messages; keep the test suite green before committing.
+Main branch `master`; remote `origin` = github.com/llumiiss/diploma — **never push unless the user asks**. Work per stage on a branch `etap-N-…`, one Polish commit "Etap N: …", then fast-forward `master`. Commit only when the user asks, with clear focused messages; keep the test suite green before committing.

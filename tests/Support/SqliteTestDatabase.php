@@ -20,7 +20,8 @@ final class SqliteTestDatabase
                 first_name TEXT NOT NULL,
                 last_name TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT "OPERATOR",
-                email TEXT
+                email TEXT,
+                deactivated_at TEXT NULL
             )'
         );
 

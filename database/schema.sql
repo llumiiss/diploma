@@ -1,9 +1,9 @@
 -- ============================================================
 -- CertiSub Assistant — schemat bazy danych (świeża instalacja)
 --
--- Model danych Etapu 1, opis w docs/MAPA_PROJEKTU.md (sekcja 2.2).
--- Kształt tabel jest taki sam jak po migracji classes/Migrations/CertificatesModelMigration.php,
--- dlatego istniejące instalacje aktualizuje się poleceniem: php scripts/migrate.php
+-- Model danych Etapów 1–2, opis w docs/MAPA_PROJEKTU.md (sekcja 2.2).
+-- Kształt tabel jest taki sam jak po migracjach z classes/Migrations/ (sprawdzane porównaniem
+-- information_schema), dlatego istniejące instalacje aktualizuje się poleceniem: php scripts/migrate.php
 --
 -- Świeża instalacja: php scripts/migrate.php --fresh
 -- Polecenie importuje ten plik i uruchamia migracje, które dodają domyślne szablony wiadomości.
@@ -34,33 +34,41 @@ DROP TABLE IF EXISTS payers;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS schema_migrations;
 
--- Konta systemowe (personel) z hierarchią ról ADMIN > MANAGER > OPERATOR
+-- Konta systemowe (personel) z hierarchią ról ADMIN > MANAGER > OPERATOR.
+-- Konta zakłada ADMIN (decyzja D3). deactivated_at blokuje logowanie bez usuwania historii.
 CREATE TABLE users (
-    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    first_name  VARCHAR(100) NOT NULL,
-    last_name   VARCHAR(100) NOT NULL,
-    role        ENUM('ADMIN', 'MANAGER', 'OPERATOR') NOT NULL DEFAULT 'OPERATOR',
-    email       VARCHAR(255) NULL,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    first_name      VARCHAR(100) NOT NULL,
+    last_name       VARCHAR(100) NOT NULL,
+    role            ENUM('ADMIN', 'MANAGER', 'OPERATOR') NOT NULL DEFAULT 'OPERATOR',
+    email           VARCHAR(255) NULL,
+    deactivated_at  DATETIME NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Płatnicy — podmioty opłacające usługi certyfikacyjne
+-- Płatnicy — podmioty opłacające usługi certyfikacyjne.
+-- created_by_user_id: kto wprowadził rekord (zakres danych operatora — decyzja D8).
 CREATE TABLE payers (
-    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    company_name    VARCHAR(255) NOT NULL,
-    contact_person  VARCHAR(200) NOT NULL,
-    tax_id          VARCHAR(20) NULL,
-    email           VARCHAR(255) NULL,
-    phone           VARCHAR(50) NULL,
-    address_line    VARCHAR(255) NULL,
-    postal_code     VARCHAR(16) NULL,
-    city            VARCHAR(120) NULL,
-    archived_at     DATETIME NULL,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    company_name        VARCHAR(255) NOT NULL,
+    contact_person      VARCHAR(200) NOT NULL,
+    tax_id              VARCHAR(20) NULL,
+    email               VARCHAR(255) NULL,
+    phone               VARCHAR(50) NULL,
+    address_line        VARCHAR(255) NULL,
+    postal_code         VARCHAR(16) NULL,
+    city                VARCHAR(120) NULL,
+    created_by_user_id  INT UNSIGNED NULL,
+    archived_at         DATETIME NULL,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_payers_tax_id (tax_id),
-    KEY idx_payers_archived (archived_at)
+    KEY idx_payers_archived (archived_at),
+    KEY idx_payers_created_by (created_by_user_id),
+    CONSTRAINT fk_payers_created_by
+        FOREIGN KEY (created_by_user_id) REFERENCES users(id)
+        ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Jednorazowe kody logowania (OTP)
@@ -98,23 +106,28 @@ CREATE TABLE manager_subskrypcji (
 
 -- Użytkownicy certyfikatów (beneficjenci) — dane osobowe, powiązanie z płatnikiem
 CREATE TABLE beneficiaries (
-    id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    first_name   VARCHAR(100) NOT NULL,
-    last_name    VARCHAR(100) NOT NULL,
-    email        VARCHAR(255) NULL,
-    phone        VARCHAR(50) NULL,
-    payer_id     INT UNSIGNED NULL,
-    notes        TEXT NULL,
-    archived_at  DATETIME NULL,
-    created_at   TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at   TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    first_name          VARCHAR(100) NOT NULL,
+    last_name           VARCHAR(100) NOT NULL,
+    email               VARCHAR(255) NULL,
+    phone               VARCHAR(50) NULL,
+    payer_id            INT UNSIGNED NULL,
+    notes               TEXT NULL,
+    created_by_user_id  INT UNSIGNED NULL,
+    archived_at         DATETIME NULL,
+    created_at          TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY idx_beneficiaries_name (last_name, first_name),
     KEY idx_beneficiaries_email (email),
     KEY idx_beneficiaries_payer (payer_id),
     KEY idx_beneficiaries_archived (archived_at),
+    KEY idx_beneficiaries_created_by (created_by_user_id),
     CONSTRAINT fk_beneficiaries_payer
         FOREIGN KEY (payer_id) REFERENCES payers(id)
-        ON DELETE RESTRICT ON UPDATE CASCADE
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_beneficiaries_created_by
+        FOREIGN KEY (created_by_user_id) REFERENCES users(id)
+        ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Certyfikaty i usługi (dawniej subscriptions — decyzje D5, D7).

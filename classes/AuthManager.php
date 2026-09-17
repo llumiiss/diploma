@@ -40,6 +40,9 @@ final class AuthManager
     }
 
     /**
+     * Zalogowane konto — albo false, gdy sesji nie ma, konto usunięto lub administrator je wyłączył.
+     * Wyłączenie działa natychmiast: przy następnym żądaniu sesja jest kończona.
+     *
      * @return array<string, mixed>|false
      */
     public function currentUser(): array|false
@@ -48,7 +51,14 @@ final class AuthManager
             return false;
         }
 
-        return $this->users->findById((int) $_SESSION[self::SESSION_USER_KEY]);
+        $user = $this->users->findById((int) $_SESSION[self::SESSION_USER_KEY]);
+        if ($user === false || !UserManager::isActive($user)) {
+            $this->logout();
+
+            return false;
+        }
+
+        return $user;
     }
 
     /**
@@ -61,8 +71,9 @@ final class AuthManager
             return ['ok' => false, 'error' => 'auth.error.invalid_email'];
         }
 
+        // Nieznane i wyłączone konto wyglądają tak samo — odpowiedź nie zdradza, które adresy istnieją.
         $user = $this->users->findByEmail($email);
-        if ($user === false) {
+        if ($user === false || !UserManager::isActive($user)) {
             $this->simulateOtpDeliveryDelay();
 
             return ['ok' => true, 'sent' => false];
@@ -127,6 +138,11 @@ final class AuthManager
             return ['ok' => false, 'error' => 'auth.error.invalid_code'];
         }
 
+        $user = $this->users->findById((int) $otp['user_id']);
+        if ($user === false || !UserManager::isActive($user)) {
+            return ['ok' => false, 'error' => 'auth.error.account_inactive'];
+        }
+
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $mark = $this->db->prepare('UPDATE login_otps SET used_at = :used_at WHERE id = :id');
         $mark->execute(['used_at' => $now, 'id' => $otp['id']]);
@@ -137,40 +153,6 @@ final class AuthManager
         unset($_SESSION[self::SESSION_PENDING_EMAIL], $_SESSION[self::SESSION_PENDING_REDIRECT]);
 
         return ['ok' => true, 'redirect' => $this->sanitizeRedirect($redirect)];
-    }
-
-    /**
-     * @return array{ok: bool, error?: string}
-     */
-    public function register(string $firstName, string $lastName, string $email, string $redirect = 'dashboard.php'): array
-    {
-        $email = $this->normalizeEmail($email);
-        $firstName = trim($firstName);
-        $lastName = trim($lastName);
-
-        if ($email === '') {
-            return ['ok' => false, 'error' => 'auth.error.invalid_email'];
-        }
-
-        if ($firstName === '' || $lastName === '') {
-            return ['ok' => false, 'error' => 'auth.error.name_required'];
-        }
-
-        if ($this->users->emailExists($email)) {
-            return ['ok' => false, 'error' => 'auth.error.email_taken'];
-        }
-
-        $userId = $this->users->create($firstName, $lastName, $email);
-        if ($userId === false) {
-            return ['ok' => false, 'error' => 'auth.error.generic'];
-        }
-
-        $result = $this->sendOtpForUser($userId, $email, $redirect);
-        if (!$result['ok']) {
-            $this->users->deleteById($userId);
-        }
-
-        return $result;
     }
 
     /**
@@ -282,7 +264,7 @@ final class AuthManager
 
     public function requireAuth(string $redirectTarget): void
     {
-        if ($this->isAuthenticated()) {
+        if ($this->currentUser() !== false) {
             return;
         }
 

@@ -68,7 +68,7 @@ $at = static function (int $offset, string $time = '09:00:00') use ($day): strin
 
 /** Płatnicy: [nazwa, osoba kontaktowa, NIP, e-mail, telefon, adres, kod pocztowy, miasto] */
 $demoPayers = [
-    'novatech' => ['NovaTech Sp. z o.o.', 'Katarzyna Zielińska', '1234567890', 'faktury@novatech.example.com', '+48 32 111 22 33', 'ul. Przemysłowa 12', '40-020', 'Katowice'],
+    'novatech' => ['NovaTech Sp. z o.o.', 'Katarzyna Zielińska', '6342851974', 'faktury@novatech.example.com', '+48 32 111 22 33', 'ul. Przemysłowa 12', '40-020', 'Katowice'],
     'wisla'    => ['Grupa Wisła S.A.', 'Marek Dąbrowski', '9876543210', 'ksiegowosc@grupawisla.example.com', '+48 33 444 55 66', 'ul. Nadrzeczna 5', '43-460', 'Wisła'],
     'fundacja' => ['Fundacja Cyfrowy Śląsk', 'Anna Nowacka', '5551112223', 'biuro@cyfrowyslask.example.org', '+48 32 777 88 99', 'ul. Bankowa 14', '40-007', 'Katowice'],
     'dom'      => ['Budżet domowy', 'Konto prywatne', null, null, null, null, null, null],
@@ -78,6 +78,11 @@ $demoPayers = [
 $demoStaff = [
     'ewa'    => ['Ewa', 'Pawlak', 'ewa.pawlak@example.com', Rbac::MANAGER],
     'tomasz' => ['Tomasz', 'Wróbel', 'tomasz.wrobel@example.com', Rbac::OPERATOR],
+];
+
+/** Konta wyłączone przez administratora (Etap 2, D3): [imię, nazwisko, e-mail, rola, wyłączone dni temu] */
+$demoInactiveStaff = [
+    'adam' => ['Adam', 'Nowicki', 'adam.nowicki@example.com', Rbac::OPERATOR, 45],
 ];
 
 /** Użytkownicy certyfikatów (beneficjenci): [imię, nazwisko, e-mail, telefon, płatnik] */
@@ -308,6 +313,7 @@ if ($force) {
     $stmt = $db->prepare('DELETE FROM manager_subskrypcji WHERE user_id = ? AND nazwa_uslugi IN (' . $placeholders($managerNames) . ')');
     $stmt->execute(array_merge([$ownerId], $managerNames));
 
+    $db->exec("DELETE FROM events WHERE entity_type = 'user' AND entity_id IN (SELECT id FROM users WHERE email LIKE '%@example.com')");
     $db->exec("DELETE FROM users WHERE email LIKE '%@example.com'");
     $db->prepare('DELETE FROM payers WHERE company_name IN (' . $placeholders($payerNames) . ')')->execute($payerNames);
 
@@ -379,6 +385,22 @@ $insertUser = $db->prepare('INSERT INTO users (first_name, last_name, role, emai
 foreach ($demoStaff as $key => $staff) {
     $insertUser->execute(['first' => $staff[0], 'last' => $staff[1], 'role' => $staff[3], 'email' => $staff[2]]);
     $staffIds[$key] = (int) $db->lastInsertId();
+    $logEvent('user', $staffIds[$key], 'account_created', $at(-1000), $ownerId, [], [
+        'name' => $staff[0] . ' ' . $staff[1], 'email' => $staff[2], 'role' => $staff[3],
+    ]);
+}
+
+$deactivateUser = $db->prepare('UPDATE users SET deactivated_at = :at WHERE id = :id');
+foreach ($demoInactiveStaff as $staff) {
+    $insertUser->execute(['first' => $staff[0], 'last' => $staff[1], 'role' => $staff[3], 'email' => $staff[2]]);
+    $inactiveId = (int) $db->lastInsertId();
+    $deactivateUser->execute(['at' => $at(-$staff[4], '17:00:00'), 'id' => $inactiveId]);
+    $logEvent('user', $inactiveId, 'account_created', $at(-1000), $ownerId, [], [
+        'name' => $staff[0] . ' ' . $staff[1], 'email' => $staff[2], 'role' => $staff[3],
+    ]);
+    $logEvent('user', $inactiveId, 'account_deactivated', $at(-$staff[4], '17:00:00'), $ownerId, [], [
+        'name' => $staff[0] . ' ' . $staff[1], 'certificates' => 0, 'open_tasks' => 0,
+    ]);
 }
 
 // ── Użytkownicy certyfikatów ──────────────────────────────────────────────────
@@ -685,7 +707,7 @@ $grouped = static function (string $sql) use ($db): string {
 
 echo "\nDane demonstracyjne gotowe.\n";
 printf("  Płatnicy:                         %d\n", count($payerIds));
-printf("  Konta personelu demo:             %d (@example.com)\n", count($demoStaff));
+printf("  Konta personelu demo:             %d aktywne + %d wyłączone (@example.com)\n", count($demoStaff), count($demoInactiveStaff));
 printf("  Użytkownicy certyfikatów:         %d\n", count($beneficiaryIds));
 printf(
     "  Certyfikaty firmowe:              %d aktywnych + %d w archiwum\n",
