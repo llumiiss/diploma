@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\MigrationRunner;
+use App\Migrations\CertificatesModelMigration;
 use PDO;
 
 /**
@@ -18,10 +19,11 @@ final class MysqlTestDatabase
 {
     public const NAME = 'assistent_subscriptions_test';
 
-    /** Tabele czyszczone przed każdym testem; szablony wiadomości zostają (wstawia je migracja). */
+    /** Tabele czyszczone przed każdym testem; domyślne szablony wiadomości są potem wstawiane od nowa. */
     private const BUSINESS_TABLES = [
-        'events', 'invitation_attachments', 'invitations', 'email_template_attachments', 'attachments',
-        'renewal_tasks', 'certificates', 'beneficiaries', 'login_otps', 'manager_subskrypcji', 'payers', 'users',
+        'settings', 'events', 'invitation_attachments', 'invitations', 'email_template_attachments', 'attachments',
+        'email_templates', 'renewal_tasks', 'certificates', 'beneficiaries', 'login_otps', 'manager_subskrypcji',
+        'payers', 'users',
     ];
 
     private static ?PDO $connection = null;
@@ -73,6 +75,8 @@ final class MysqlTestDatabase
             $db->exec('DELETE FROM `' . $table . '`');
         }
         $db->exec('SET FOREIGN_KEY_CHECKS = 1');
+
+        CertificatesModelMigration::insertDefaultTemplates($db);
     }
 
     private static function importSchema(PDO $db): void

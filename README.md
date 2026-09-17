@@ -77,15 +77,18 @@ Integration tests create a throwaway database `assistent_subscriptions_test` (fr
 - Corporate dashboard: http://localhost/assistent_subscription/dashboard.php
 - Personal dashboard: http://localhost/assistent_subscription/dashboard-personal.php
 
-## Cron (payment reminders)
+## Cron
 
-Run daily at 08:00 (CLI only):
+Run daily (CLI only):
 
 ```powershell
-php cron\send_reminders.php
+php cron\renewals.php         # renewal scanner (opens ToDo tasks) + due invitation reminders
+php cron\send_reminders.php   # payment reminders of the personal module
 ```
 
-Windows Task Scheduler: program = full path to `php.exe`, argument = full path to `send_reminders.php`.
+Windows Task Scheduler: program = full path to `php.exe`, argument = full path to the script. Results go to `logs/renewals.log` and `logs/reminders.log`.
+
+Without an SMTP server set `'driver' => 'log'` in `config/mail.local.php` — messages are written to `logs/mail.log` (demo/intranet only).
 
 ## Project structure
 
@@ -101,7 +104,7 @@ assistent_subscription/
 │   ├── Api/                 # endpoint controllers
 │   └── Migrations/          # idempotent schema migrations
 ├── includes/                # dashboard shells, shared head, language switcher
-├── cron/send_reminders.php
+├── cron/                    # renewals.php (scanner + invitation reminders), send_reminders.php (personal module)
 ├── database/schema.sql      # fresh install (same structure as a migrated database)
 ├── scripts/                 # migrate, seed-demo-data, cleanup-demo-data, set-role, test-mail
 ├── storage/attachments/     # stored files (not served over HTTP)
@@ -111,7 +114,7 @@ assistent_subscription/
 
 ## Data model
 
-`certificates`, `beneficiaries`, `payers`, `users`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events` (+ join tables), `login_otps`, `manager_subskrypcji`. Details: `docs/MAPA_PROJEKTU.md` §2.2.
+`certificates`, `beneficiaries`, `payers`, `users`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events` (+ join tables), `settings`, `login_otps`, `manager_subskrypcji`. Details: `docs/MAPA_PROJEKTU.md` §2.2.
 
 ## Features (current)
 
@@ -119,6 +122,7 @@ assistent_subscription/
 - Role-based permissions enforced by the API (ADMIN > MANAGER > OPERATOR) with a least-privilege data scope for operators
 - Records of certificates, certificate users (beneficiaries) and payers: add, edit, archive and restore with validation (calendar dates, Polish NIP checksum, unique serial per issuer)
 - Details panels with relations, renewal chain and event history; archive screen
+- Renewal process: daily scanner opening prioritised ToDo tasks, task statuses and assignment, certificate renewal (new record, old one archived), e-mail invitations from PL/EN templates with attachments, invitation register with manual and automatic reminders, admin settings for thresholds, task statistics by status
 - Corporate dashboard: KPIs, priority renewals, payments, ToDo view, search and filters
 - Personal dashboard (frozen extra module) and its payment reminder cron
 - i18n: PL (default), EN, ES, DE, UK

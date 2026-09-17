@@ -1,6 +1,6 @@
 # CertiSub Assistant — instrukcja obsługi i scenariusz demonstracji
 
-> Stan na 2026-09-17, po Etapie 2 (ewidencja, archiwizacja, konta i role). Opisuje aplikację na danych z `scripts/seed-demo-data.php`.
+> Stan na 2026-09-17, po Etapie 3 (proces odnowień: zadania ToDo, zaproszenia, szablony, przypomnienia). Opisuje aplikację na danych z `scripts/seed-demo-data.php`.
 > Dokument służy dwóm celom: pokazaniu wszystkich paneli i funkcji oraz jako zalążek rozdziału „dokumentacja użytkownika” w pracy (§9 w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md)).
 
 ---
@@ -41,9 +41,9 @@ Hierarchia ról: **ADMIN > MANAGER > OPERATOR**.
 
 | Rola | Co może |
 |---|---|
-| ADMIN | wszystko, co MANAGER, oraz konta i role (zakładanie, zmiana roli, wyłączanie, przekazywanie rekordów) |
-| MANAGER | dane całej organizacji, archiwizacja i przywracanie, ekran **Archiwum**, wybór opiekuna certyfikatu |
-| OPERATOR | ewidencja w swoim zakresie: certyfikaty, których jest opiekunem (albo ma do nich przydzielone zadanie), oraz osoby i płatnicy, których sam wprowadził lub którzy są z tymi certyfikatami powiązani; nie archiwizuje i nie widzi archiwum |
+| ADMIN | wszystko, co MANAGER, oraz konta i role (zakładanie, zmiana roli, wyłączanie, przekazywanie rekordów), **szablony i załączniki**, **ustawienia** procesu odnowień |
+| MANAGER | dane całej organizacji, archiwizacja i przywracanie, ekran **Archiwum**, wybór opiekuna certyfikatu, **przydział zadań**, ponowne otwieranie zadań, **uruchamianie skanera**, statystyki wg osób |
+| OPERATOR | ewidencja w swoim zakresie: certyfikaty, których jest opiekunem (albo ma do nich przydzielone zadanie), oraz osoby i płatnicy, których sam wprowadził lub którzy są z tymi certyfikatami powiązani; **zadania ToDo, zaproszenia i przypomnienia, odnawianie certyfikatów** w tym zakresie; nie archiwizuje i nie widzi archiwum |
 
 Kontrolę dostępu wykonuje serwer (API) — ukryte przyciski w przeglądarce to tylko wygoda. Szczegóły reguły zakresu danych: decyzja **D8** w mapie projektu.
 
@@ -109,14 +109,58 @@ Na danych demo (jako ADMIN):
 
 Kolory wierszy: czerwony = wygasłe lub krytyczne, żółty = ostrzeżenie.
 
-### Lista ToDo
+Pod kartami jest panel **„Statystyki realizacji zadań”**: słupki statusów (do zrobienia / w toku / zrobione / porzucone) z udziałem procentowym, otwarte zadania wg priorytetu, liczba zadań po terminie, moje otwarte, skuteczność (zrobione ÷ zamknięte) i średni czas realizacji. MANAGER i ADMIN widzą też rozkład zadań wg osób.
 
-Certyfikaty wymagające działania: wygasłe, w progu odnowienia (≤ 30 dni), z zaległą płatnością albo oczekujące. W Etapie 3 zastąpią ją zadania odnowień ze statusami i przydziałem.
+### Lista ToDo (zadania odnowień)
+
+Zadania odnowień zakłada **skaner**: każdy bieżący certyfikat, który wszedł w margines odnowienia, dostaje zadanie przypisane opiekunowi. Margines to „wymagany czas odnowienia” certyfikatu, a gdy go nie ma — domyślny próg z **Ustawień** (30 dni). Skaner uruchamia codziennie cron (§7), a MANAGER i ADMIN mogą go uruchomić przyciskiem **Uruchom skaner** — na danych demo założy 1 zadanie (Microsoft 365 Business).
+
+| Element | Działanie |
+|---|---|
+| Liczniki | otwarte, po terminie, moje otwarte, bez przydziału, zamknięte w ostatnich 30 dniach |
+| Priorytet | **Wygasłe** (po dacie), **Krytyczne** (≤ próg krytyczny, 7 dni), **Do odnowienia** (w marginesie); skaner podnosi priorytet, gdy data się zbliża |
+| Filtry | status (domyślnie otwarte), osoba (moje, bez przydziału, konkretna osoba), priorytet, wyszukiwanie |
+| Statusy | **Rozpocznij** (do zrobienia → w toku; certyfikat dostaje status „odnowienie w toku”), **Zakończ** (z notatką), **Porzuć** (wymaga powodu), **Cofnij do „do zrobienia”**; zamknięte zadanie otwiera ponownie tylko MANAGER |
+| Przydział | MANAGER i ADMIN wybierają osobę w panelu zadania (tylko aktywne konta); OPERATOR widzi certyfikaty, do których dostał zadanie |
+| Odnów certyfikat | nowa data wygaśnięcia (musi być późniejsza), numer seryjny, płatność → powstaje nowy certyfikat z tymi samymi powiązaniami, stary trafia do archiwum, zadanie jest zrobione, a w historii obu certyfikatów widać łańcuch odnowień |
+
+Panel zadania pokazuje też zaproszenia wysłane w ramach zadania i historię zdarzeń (otwarcie, zmiany statusu i priorytetu, przydział, wysyłki).
+
+### Zaproszenia
+
+**Wyślij zaproszenie** jest w liście ToDo, w panelu zadania i w szczegółach certyfikatu (sekcja „Odnowienie”). Okno wysyłki:
+
+1. **Odbiorca** — użytkownik certyfikatu albo płatnik; odbiorca bez adresu e-mail jest wyszarzony.
+2. **Szablon** — zaproszenie PL lub EN (lista aktywnych szablonów).
+3. **Załączniki** — domyślnie te przypisane do szablonu; można dodać inne z biblioteki.
+4. **Podgląd** — temat i treść wypełnione danymi certyfikatu (imię, typ, numer seryjny, data ważności, liczba dni, płatnik).
+
+Wysyłka dopisuje wpis do rejestru, a zadanie certyfikatu przechodzi do statusu „w toku” (gdy certyfikat nie ma zadania, powstaje ono automatycznie). Nieudana wysyłka (np. błąd SMTP) zostaje w rejestrze z treścią błędu.
+
+Ekran **Zaproszenia** to rejestr: data, certyfikat, odbiorca, status, liczba przypomnień i termin następnego. Akcje: **Przypomnij** (od razu, szablonem przypomnienia w języku zaproszenia), **Ponów** (nieudana wysyłka), **Odpowiedziano** (wstrzymuje przypomnienia), **Zamknij**. Filtr „tylko z zaległym przypomnieniem” pokazuje wysyłki czekające na cron. Na danych demo są 4 zaproszenia: wysłane z 2 przypomnieniami, z odpowiedzią, nieudane (błąd SMTP 421) i zamknięte.
+
+Automatyczne przypomnienia wysyła cron (§7) co **7 dni** do limitu **3** — obie wartości zmienia ADMIN w Ustawieniach. Zakończenie lub porzucenie zadania zamyka jego zaproszenia i kończy przypomnienia.
+
+### Szablony i załączniki (ADMIN)
+
+- **Szablony** — nazwa, kod (`renewal_invitation` = zaproszenie, `renewal_reminder` = przypomnienie), język, temat, treść HTML i tekstowa, aktywność, przypisane załączniki. Przyciski z polami (`{imie}`, `{numer_seryjny}`, `{data_waznosci}`…) dopisują pole do treści, a **Podgląd** wypełnia szablon danymi przykładowego certyfikatu. Kod i język muszą być unikalne.
+- **Załączniki** — biblioteka plików (PDF, DOC/DOCX, ODT, XLSX, TXT, CSV, PNG, JPG, ZIP do 10 MB). Aplikacja sprawdza rozszerzenie i faktyczną zawartość pliku, zapisuje go pod losową nazwą w `storage/attachments` (niedostępne z przeglądarki) i udostępnia do pobrania tylko zalogowanym. Plik używany w szablonie lub wysłany w zaproszeniu nie może zostać usunięty.
+
+### Ustawienia (ADMIN)
+
+| Ustawienie | Domyślnie | Wpływ |
+|---|---|---|
+| Domyślny margines odnowienia | 30 dni | kiedy skaner zakłada zadanie dla certyfikatu bez własnego wymaganego czasu odnowienia; próg „do odnowienia” na pulpicie |
+| Próg krytyczny | 7 dni | priorytet „krytyczne” |
+| Odstęp między przypomnieniami | 7 dni | kiedy cron wysyła kolejne przypomnienie |
+| Limit przypomnień na zaproszenie | 3 | 0 wyłącza automatyczne przypomnienia |
+
+Każda zmiana ustawień trafia do historii zdarzeń.
 
 ### Certyfikaty
 
 - **Lista** z wyszukiwarką (nazwa, numer seryjny, wystawca, osoba, płatnik, opiekun) i filtrami: typ, status, płatność, priorytet.
-- **Szczegóły** (kliknij wiersz): typ, status, numer seryjny, wystawca, ważność z liczbą dni, wymagany czas odnowienia, opiekun, koszt, płatność, notatki; odnośniki do osoby i płatnika; łańcuch odnowień (poprzedni certyfikat / zastąpiony przez); **historia zdarzeń** — kto i kiedy dodał, zmienił (z listą zmienionych pól „z → na”), zarchiwizował.
+- **Szczegóły** (kliknij wiersz): typ, status, numer seryjny, wystawca, ważność z liczbą dni, wymagany czas odnowienia, opiekun, koszt, płatność, notatki; odnośniki do osoby i płatnika; łańcuch odnowień (poprzedni certyfikat / zastąpiony przez); sekcja **Odnowienie** (otwarte zadanie, **Utwórz zadanie**, **Wyślij zaproszenie**, lista zaproszeń); **historia zdarzeń** — kto i kiedy dodał, zmienił (z listą zmienionych pól „z → na”), zarchiwizował, wysłał zaproszenie.
 - **Dodaj / Edytuj** — formularz w sekcjach: dane certyfikatu, ważność i odnowienie, powiązania, koszt i płatność. Walidacja pokazuje błędy przy polach, np.:
   - data „ważny od” późniejsza niż wygaśnięcie,
   - numer seryjny zajęty u tego samego wystawcy,
@@ -192,17 +236,34 @@ Dodatkowy dowód, że to serwer pilnuje uprawnień: jako OPERATOR wywołanie `ap
 
 ---
 
-## 7. Przypomnienia e-mail (cron)
+## 7. Zadania automatyczne (cron)
+
+### Proces odnowień certyfikatów
+
+```bash
+php cron/renewals.php
+```
+
+Uruchamiaj raz dziennie (np. o 7:00 — Harmonogram zadań Windows albo crontab). Skrypt:
+
+1. uruchamia **skaner odnowień** — zakłada zadania dla certyfikatów w marginesie odnowienia i podnosi priorytety zadań, których data się zbliża,
+2. wysyła **zaległe przypomnienia** o zaproszeniach (wg odstępu i limitu z Ustawień).
+
+Zaraz po `seed-demo-data.php --force` skaner znajdzie 6 certyfikatów w marginesie i założy 1 nowe zadanie; przypomnień do wysłania nie będzie (najbliższe wypada za 2 dni). Wynik trafia do `logs/renewals.log` i do historii zdarzeń. Drugie uruchomienie tego samego dnia niczego nie zdubluje.
+
+### Menedżer osobisty (moduł dodatkowy)
 
 ```bash
 php cron/send_reminders.php
 ```
 
-Skrypt szuka płatności zaplanowanych **dokładnie za 3 dni** i wysyła wiadomość na adres właściciela. Zaraz po uruchomieniu seeda znajdzie **1 pozycję** (Netflix Standard) i wyśle maila do skrzynki Mailtrap. Efekt zobaczysz też w `logs/reminders.log` (linie `Cron start`, `OK →`, `Cron done`).
+Szuka płatności z menedżera osobistego zaplanowanych **dokładnie za 3 dni** i wysyła wiadomość właścicielowi (po seedzie: 1 pozycja, Netflix Standard). Wynik w `logs/reminders.log`. Moduł jest zamrożony (D1) — skrypt zostaje w dotychczasowej postaci.
 
-Uruchamianie z przeglądarki jest zablokowane (403) — skrypt działa tylko z wiersza poleceń.
+Oba skrypty działają tylko z wiersza poleceń — z przeglądarki zwracają 403.
 
-Ograniczenia na dziś: przypomnienia dotyczą wyłącznie menedżera osobistego, a zaproszenia do odnowienia certyfikatów z szablonami i załącznikami to Etap 3.
+### Poczta bez serwera SMTP
+
+W `config/mail.local.php` można ustawić `'driver' => 'log'`: wiadomości (także z nazwami załączników) trafiają wtedy do `logs/mail.log` zamiast do odbiorców. To wygodne na pokaz bez internetu albo w sieci wewnętrznej — ale nie w produkcji, bo do pliku trafiają też kody logowania.
 
 ---
 
@@ -220,7 +281,8 @@ W **HeidiSQL** (Laragon → Database → baza `assistent_subscriptions`) — mat
 | `email_templates` | 4 szablony: zaproszenie i przypomnienie, PL i EN, z polami `{imie}`, `{numer_seryjny}`, `{data_waznosci}`… |
 | `attachments` | 1 załącznik (instrukcja odnowienia) — plik w `storage/attachments`, niedostępny z przeglądarki |
 | `invitations` | 4 zaproszenia: wysłane z 2 przypomnieniami, z odpowiedzią, nieudane (z treścią błędu), zamknięte |
-| `events` | 54 zdarzenia historii; każda zmiana wykonana w panelu dopisuje kolejne (z polem `payload.changes`) |
+| `events` | ok. 55 zdarzeń historii; każda zmiana wykonana w panelu, skaner i wysyłki dopisują kolejne (np. `payload.changes` ze zmienionymi polami) |
+| `settings` | tylko zmienione ustawienia procesu odnowień (pusta = wartości domyślne) |
 
 Gotowe zapytania do pokazania:
 
@@ -268,30 +330,35 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 | `php scripts/cleanup-demo-data.php` | usuwa **wszystkie** dane biznesowe oraz konta `@example.com`; zostawia prawdziwe konta i szablony |
 | `php scripts/set-role.php --list` / `<e-mail> <rola>` | lista kont / nadanie roli (awaryjnie — zwykle robi to ADMIN w panelu) |
 | `php scripts/test-mail.php adres@example.com` | test konfiguracji poczty |
-| `php cron/send_reminders.php` | przypomnienia o płatnościach |
-| `composer test` | 70 testów; 26 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
+| `php cron/renewals.php` | skaner odnowień i zaległe przypomnienia o zaproszeniach (codziennie) |
+| `php cron/send_reminders.php` | przypomnienia o płatnościach menedżera osobistego |
+| `composer test` | 91 testów; 43 integracyjne wymagają `RUN_INTEGRATION_TESTS=1` i tworzą osobną bazę `assistent_subscriptions_test` |
 | `composer stan` | analiza statyczna (PHPStan) |
 
 ---
 
-## 10. Scenariusz demonstracji (ok. 15 minut)
+## 10. Scenariusz demonstracji (ok. 20 minut)
 
 1. Laragon → Start All, `php scripts/migrate.php`, `php scripts/seed-demo-data.php --force`.
 2. Strona główna → `/register.php` przekierowuje do logowania: konta zakłada administrator.
 3. Logowanie: e-mail → kod z Mailtrapa → panel firmowy.
-4. Pulpit: cztery karty KPI, kafelki statusów, priorytetowe odnowienia i płatności.
-5. Certyfikaty → kliknięcie wygasłego certyfikatu Jana Kowalskiego → panel szczegółów: powiązania, historia zdarzeń.
-6. **Dodaj certyfikat**: wybierz osobę (płatnik podpowiada się sam), wpisz „ważny od” późniejszy niż wygaśnięcie → błąd przy polu; popraw → zapis → nowy wiersz na liście i zdarzenie „Dodano certyfikat” w historii.
-7. **Edytuj** ten certyfikat (np. datę wygaśnięcia) → w historii pojawia się zmiana „z → na”.
-8. Płatnicy → **Dodaj płatnika** z NIP-em `987-654-32-10` → komunikat o istniejącym płatniku Grupa Wisła z odnośnikiem.
-9. Płatnicy → **Archiwizuj** NovaTech → blokada: płatnik ma aktywne certyfikaty i osoby.
-10. Certyfikaty → **Archiwizuj** certyfikat dodany w kroku 6 → Archiwum → **Przywróć**.
-11. Konta i role → **Dodaj konto** (np. nowy OPERATOR), pokaż wyłączone konto Adama Nowickiego i **Przekaż rekordy** Tomasza Wróbla do Ewy Pawlak (albo tylko pokaż okno).
-12. Demonstracja ról (§6): `set-role.php … OPERATOR` → 2 certyfikaty, brak archiwum i kont → powrót do ADMIN.
-13. Przełącznik języka (PL → EN) — cały interfejs i komunikaty walidacji się tłumaczą.
-14. Przełącznik na panel prywatny (moduł dodatkowy) → modal „Dodaj subskrypcję do menedżera”.
-15. HeidiSQL: tabele modelu, zapytanie „ostatnie zmiany wykonane w panelu” (§8), nieudana próba drugiego otwartego zadania.
-16. Bezpieczeństwo: `/.git/config`, `/storage/attachments/`, `/classes/Rbac.php` → **403**; `/api/accounts.php` bez logowania → **401**.
+4. Pulpit: cztery karty KPI, kafelki statusów, **statystyki realizacji zadań** (statusy, skuteczność, rozkład wg osób), priorytetowe odnowienia i płatności.
+5. **Lista ToDo** → **Uruchom skaner** → komunikat „nowe zadania: 1” i nowe zadanie Microsoft 365 na liście.
+6. Otwórz to zadanie → **Rozpocznij** → w szczegółach certyfikatu status „odnowienie w toku”.
+7. **Wyślij zaproszenie** → odbiorca: płatnik Grupa Wisła, szablon PL, załącznik z instrukcją → podgląd wiadomości z wypełnionymi polami → **Wyślij** (w trybie `sandbox` wiadomość trafia do Mailtrapa; bez internetu ustaw sterownik `log`, §7).
+8. **Zaproszenia** → nowa wysyłka z terminem przypomnienia; nieudana wysyłka SSL Wildcard z błędem SMTP → **Ponów**; zaproszenie Jana Kowalskiego z 2 przypomnieniami → **Odpowiedziano**.
+9. Wróć do zadania certyfikatu Jana Kowalskiego → **Odnów certyfikat** (nowa data za 2 lata) → nowy certyfikat w ewidencji, stary w archiwum, w historii łańcuch odnowień.
+10. **Szablony i załączniki** (ADMIN) → edycja zaproszenia PL → **Podgląd**; zakładka Załączniki — plik w użyciu nie daje się usunąć.
+11. **Ustawienia** (ADMIN) → progi i przypomnienia; terminal: `php cron/renewals.php` → wynik w `logs/renewals.log`.
+12. Certyfikaty → **Dodaj certyfikat**: wybierz osobę (płatnik podpowiada się sam), wpisz „ważny od” późniejszy niż wygaśnięcie → błąd przy polu; popraw → zapis → nowy wiersz na liście i zdarzenie „Dodano certyfikat” w historii.
+13. **Edytuj** ten certyfikat (np. datę wygaśnięcia) → w historii pojawia się zmiana „z → na”.
+14. Płatnicy → **Dodaj płatnika** z NIP-em `987-654-32-10` → komunikat o istniejącym płatniku Grupa Wisła z odnośnikiem; **Archiwizuj** NovaTech → blokada (aktywne certyfikaty i osoby).
+15. Certyfikaty → **Archiwizuj** certyfikat dodany w kroku 12 → Archiwum → **Przywróć**.
+16. Konta i role → **Dodaj konto** (np. nowy OPERATOR), wyłączone konto Adama Nowickiego, okno **Przekaż rekordy**.
+17. Demonstracja ról (§6): `set-role.php … OPERATOR` → 2 certyfikaty, brak archiwum, szablonów, kont i ustawień → powrót do ADMIN.
+18. Przełącznik języka (PL → EN) — interfejs, komunikaty walidacji i opisy zdarzeń się tłumaczą.
+19. HeidiSQL: tabele modelu, zapytanie „ostatnie zmiany wykonane w panelu” (§8), nieudana próba drugiego otwartego zadania.
+20. Bezpieczeństwo: `/.git/config`, `/storage/attachments/`, `/classes/Rbac.php` → **403**; `/api/accounts.php` bez logowania → **401**.
 
 ---
 
@@ -299,8 +366,7 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 
 Pełna macierz jest w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) §3. Najważniejsze braki widoczne podczas demonstracji:
 
-- **proces odnowień** — skaner tworzący zadania, ekran zadań ToDo ze statusami i przydziałem, szablony i załączniki, wysyłka zaproszeń i przypomnień, statystyki zadań (Etap 3); lista ToDo to na razie filtr certyfikatów,
-- **raporty perspektyw** — karty osoby i płatnika z historią, wyszukiwarka globalna, dziennik zdarzeń administratora (Etap 4); dziś historia jest w szczegółach certyfikatu,
+- **raporty perspektyw** — karty osoby i płatnika z historią, wyszukiwarka globalna, dziennik zdarzeń administratora (Etap 4); dziś historia jest w szczegółach certyfikatu, zadania i zaproszenia,
 - **import i eksport** CSV/XML/EML (Etap 5),
 - lokalne zasoby frontendu zamiast CDN, limit wysyłek kodów OTP w bazie (Etap 6),
 - skeleton loadery i cache wskaźników (Etap 7).
@@ -327,3 +393,8 @@ Pełna macierz jest w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) §3. Najważniejsze b
 | Polskie znaki jako „?” w konsoli `mysql` | kodowanie terminala Windows, dane są poprawne → pokazuj zapytania w HeidiSQL albo uruchom klienta z `--default-character-set=utf8mb4` |
 | Liczniki nie zgadzają się z listą | objaw różnicy stref czasowych PHP i MySQL — naprawione w `bootstrap.php` (`Europe/Warsaw`); jeśli wróci, sprawdź strefę serwera |
 | Testy integracyjne się pomijają | brak flagi → `$env:RUN_INTEGRATION_TESTS=1; composer test` (wymaga działającego MySQL) |
+| Zaproszenie ma status „Nieudane” | błąd serwera pocztowego (treść w rejestrze) → sprawdź `config/mail.local.php` i połączenie, potem **Ponów**; na pokaz bez internetu ustaw `'driver' => 'log'` |
+| „Wybrany odbiorca nie ma adresu e-mail” | uzupełnij e-mail osoby lub płatnika albo wybierz drugiego odbiorcę |
+| Skaner nie zakłada zadania dla certyfikatu | certyfikat jest poza marginesem odnowienia, w archiwum, ma już otwarte zadanie albo zadanie dla tej daty wygaśnięcia zostało zamknięte → sprawdź „wymagany czas odnowienia” i Ustawienia |
+| Nie przychodzą automatyczne przypomnienia | cron `cron/renewals.php` nie jest uruchamiany, limit przypomnień wynosi 0, zaproszenie ma odpowiedź lub zadanie jest zamknięte |
+| Nie mogę dodać załącznika | niedozwolony typ, zawartość niepasująca do rozszerzenia albo plik większy niż 10 MB (komunikat podaje przyczynę) |

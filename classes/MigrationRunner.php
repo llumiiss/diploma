@@ -6,6 +6,7 @@ namespace App;
 
 use App\Migrations\AccountsAndOwnershipMigration;
 use App\Migrations\CertificatesModelMigration;
+use App\Migrations\RenewalProcessMigration;
 use App\Migrations\SchemaInspector;
 use PDO;
 use PDOException;
@@ -150,6 +151,10 @@ final class MigrationRunner
             // Etap 2: wyłączanie kont (D3) i autor rekordów osób i płatników (D8).
             'accounts_and_ownership' => static function (PDO $db): void {
                 AccountsAndOwnershipMigration::up($db);
+            },
+            // Etap 3: ustawienia procesu odnowień (progi, przypomnienia).
+            'renewal_process' => static function (PDO $db): void {
+                RenewalProcessMigration::up($db);
             },
         ];
     }

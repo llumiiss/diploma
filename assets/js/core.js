@@ -309,8 +309,23 @@
         certificates: { items: [], loaded: false, loading: false, error: '' },
         beneficiaries: { items: [], loaded: false, loading: false, error: '' },
         payers: { items: [], loaded: false, loading: false, error: '' },
+        tasks: { items: [], loaded: false, loading: false, error: '' },
+        invitations: { items: [], loaded: false, loading: false, error: '' },
+        taskStats: null,
         certificateOptions: null,
     });
+
+    function withQuery(url, params) {
+        const query = new URLSearchParams();
+        Object.keys(params).forEach((name) => {
+            const value = params[name];
+            if (value !== null && value !== undefined && value !== '' && value !== false) {
+                query.append(name, value === true ? '1' : value);
+            }
+        });
+        const queryString = query.toString();
+        return queryString ? url + (url.indexOf('?') === -1 ? '?' : '&') + queryString : url;
+    }
 
     const endpoints = boot.endpoints || {};
 
@@ -334,9 +349,22 @@
     }
 
     const data = {
+        taskFilters: { status: 'open', assignee: '' },
+        invitationFilters: { status: 'active', due: false },
         certificates: (force) => loadList('certificates', endpoints.certificates, 'certificates', force),
         beneficiaries: (force) => loadList('beneficiaries', endpoints.beneficiaries, 'beneficiaries', force),
         payers: (force) => loadList('payers', endpoints.payers, 'payers', force),
+        tasks: (force) => loadList('tasks', withQuery(endpoints.tasks, data.taskFilters), 'tasks', force),
+        invitations: (force) => loadList('invitations', withQuery(endpoints.invitations, data.invitationFilters), 'invitations', force),
+        async taskStats() {
+            try {
+                const result = await api.get(endpoints.tasks, { view: 'stats' });
+                store.taskStats = result.stats;
+            } catch (error) {
+                notifyError(error);
+            }
+            return store.taskStats;
+        },
         async summary() {
             try {
                 const result = await api.get(endpoints.dashboard);
@@ -362,6 +390,10 @@
             names.forEach((name) => {
                 if (name === 'summary') {
                     tasks.push(data.summary());
+                } else if (name === 'taskStats') {
+                    if (store.taskStats) {
+                        tasks.push(data.taskStats());
+                    }
                 } else if (name === 'options') {
                     store.certificateOptions = null;
                 } else if (store[name] && store[name].loaded) {
@@ -396,6 +428,7 @@
         store,
         data,
         endpoints,
+        withQuery,
         components: {},
     };
 })(window);

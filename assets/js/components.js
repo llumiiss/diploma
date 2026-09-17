@@ -227,8 +227,23 @@
                         lines.push(t('field.' + field) + ': ' + this.value(field, change.from) + ' → ' + this.value(field, change.to));
                     });
                 }
-                if (payload.from_name && payload.to_name) {
+                if (event.event_type === 'task_priority_changed') {
+                    lines.push(labels.priority(payload.from) + ' → ' + labels.priority(payload.to));
+                } else if (event.entity_type === 'renewal_task' && payload.from && payload.status) {
+                    lines.push(t('task.status.' + payload.from) + ' → ' + t('task.status.' + payload.status));
+                } else if (event.event_type === 'task_opened' && payload.priority) {
+                    lines.push(labels.priority(payload.priority));
+                }
+                if (event.event_type === 'task_assigned') {
+                    lines.push((payload.from_name || t('task.unassigned')) + ' → ' + (payload.to_name || t('task.unassigned')));
+                } else if (payload.from_name && payload.to_name) {
                     lines.push(payload.from_name + ' → ' + payload.to_name);
+                }
+                if (payload.recipient_email) {
+                    lines.push(payload.recipient_email);
+                }
+                if (payload.new_certificate_id) {
+                    lines.push(t('event.certificate.renewed_detail', { id: payload.new_certificate_id }));
                 }
                 if (payload.error) {
                     lines.push(payload.error);

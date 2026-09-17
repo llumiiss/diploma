@@ -36,7 +36,7 @@ final class MailConfig
     {
         $driver = strtolower((string) (self::all()['driver'] ?? 'sandbox'));
 
-        return in_array($driver, ['sandbox', 'smtp'], true) ? $driver : 'sandbox';
+        return in_array($driver, ['sandbox', 'smtp', 'log'], true) ? $driver : 'sandbox';
     }
 
     public static function isSandbox(): bool

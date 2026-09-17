@@ -78,6 +78,15 @@ final class Translator
         return self::init()->translate($key, $replace);
     }
 
+    /**
+     * Tłumaczenia w konkretnym języku niezależnie od języka interfejsu — np. treść wiadomości
+     * wysyłanej według szablonu angielskiego przez osobę pracującą w panelu po polsku.
+     */
+    public static function forLocale(string $locale): self
+    {
+        return new self(in_array($locale, self::SUPPORTED, true) ? $locale : self::DEFAULT_LOCALE);
+    }
+
     public function translate(string $key, array $replace = []): string
     {
         $text = $this->lines[$key] ?? $key;

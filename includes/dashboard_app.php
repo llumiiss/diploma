@@ -54,6 +54,11 @@ $boot = [
         'payers'         => 'api/payers.php',
         'accounts'       => 'api/accounts.php',
         'dashboard'      => 'api/dashboard.php',
+        'tasks'          => 'api/tasks.php',
+        'invitations'    => 'api/invitations.php',
+        'templates'      => 'api/templates.php',
+        'attachments'    => 'api/attachments.php',
+        'settings'       => 'api/settings.php',
         'delete_account' => 'api/delete_account.php',
     ],
     'links'       => [
@@ -76,6 +81,9 @@ $scripts = [
     'assets/js/views/payers.js',
     'assets/js/views/archive.js',
     'assets/js/views/accounts.js',
+    'assets/js/views/tasks.js',
+    'assets/js/views/invitations.js',
+    'assets/js/views/templates.js',
     'assets/js/app.js',
 ];
 

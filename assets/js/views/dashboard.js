@@ -4,6 +4,103 @@
 (function (CertiSub) {
     'use strict';
 
+    const { t } = CertiSub;
+
+    /**
+     * Statystyki realizacji zadań wg statusów (F18) — słupki bez biblioteki wykresów.
+     */
+    CertiSub.components.TaskStatsPanel = {
+        props: {
+            stats: { type: Object, required: true },
+        },
+        computed: {
+            total() {
+                const s = this.stats.by_status;
+                return s.todo + s.in_progress + s.done + s.abandoned;
+            },
+            bars() {
+                const colors = { todo: 'bg-slate-400', in_progress: 'bg-blue-500', done: 'bg-emerald-500', abandoned: 'bg-slate-300' };
+                return ['todo', 'in_progress', 'done', 'abandoned'].map((status) => ({
+                    status,
+                    label: t('task.status.' + status),
+                    count: this.stats.by_status[status],
+                    percent: this.total > 0 ? Math.round(this.stats.by_status[status] / this.total * 100) : 0,
+                    color: colors[status],
+                }));
+            },
+            priorities() {
+                return ['expired', 'critical', 'warning'].map((priority) => ({ priority, count: this.stats.open_by_priority[priority] || 0 }));
+            },
+        },
+        methods: {
+            openTasks() {
+                window.location.hash = '#/todo';
+            },
+        },
+        template: `
+            <div class="card p-5">
+                <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">📈 {{ t('task.stats_title') }}</h3>
+                        <p class="text-xs text-slate-400 mt-1">{{ t('task.stats_description', { total: total }) }}</p>
+                    </div>
+                    <button type="button" class="btn-ghost" @click="openTasks">{{ t('task.open_list') }} →</button>
+                </div>
+                <div class="grid lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 space-y-3">
+                        <div v-for="bar in bars" :key="bar.status">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="font-medium text-slate-700">{{ bar.label }}</span>
+                                <span class="text-slate-500">{{ bar.count }} · {{ bar.percent }}%</span>
+                            </div>
+                            <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden" role="img" :aria-label="bar.label + ': ' + bar.count">
+                                <div :class="['h-full rounded-full', bar.color]" :style="{ width: bar.percent + '%' }"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <dl class="grid grid-cols-2 gap-3 text-sm content-start">
+                        <div class="bg-red-50 rounded-lg px-3 py-2">
+                            <dt class="text-xs text-red-500">{{ t('task.stat.overdue') }}</dt>
+                            <dd class="text-xl font-bold text-red-700">{{ stats.overdue }}</dd>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg px-3 py-2">
+                            <dt class="text-xs text-slate-500">{{ t('task.stat.mine') }}</dt>
+                            <dd class="text-xl font-bold text-slate-800">{{ stats.mine_open }}</dd>
+                        </div>
+                        <div class="bg-emerald-50 rounded-lg px-3 py-2">
+                            <dt class="text-xs text-emerald-600">{{ t('task.stat.completion_rate') }}</dt>
+                            <dd class="text-xl font-bold text-emerald-700">{{ stats.completion_rate === null ? '—' : stats.completion_rate + '%' }}</dd>
+                        </div>
+                        <div class="bg-blue-50 rounded-lg px-3 py-2">
+                            <dt class="text-xs text-blue-600">{{ t('task.stat.avg_days') }}</dt>
+                            <dd class="text-xl font-bold text-blue-700">{{ stats.average_days_to_done === null ? '—' : stats.average_days_to_done }}</dd>
+                        </div>
+                        <div v-for="item in priorities" :key="item.priority" class="col-span-2 flex justify-between text-xs">
+                            <span :class="['badge', badge.priority(item.priority)]">{{ labels.priority(item.priority) }}</span>
+                            <span class="text-slate-600">{{ t('task.open_count', { count: item.count }) }}</span>
+                        </div>
+                    </dl>
+                </div>
+                <div v-if="stats.by_assignee.length" class="mt-5 overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="text-slate-500 border-b border-slate-100">
+                                <th class="text-left py-1.5 pr-3">{{ t('task.assignee') }}</th>
+                                <th v-for="bar in bars" :key="'h' + bar.status" class="text-right py-1.5 px-2">{{ bar.label }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="row in stats.by_assignee" :key="row.user_id || 'none'" class="border-b border-slate-50">
+                                <td class="py-1.5 pr-3">{{ row.name || t('task.unassigned') }}</td>
+                                <td v-for="bar in bars" :key="row.user_id + bar.status" class="text-right py-1.5 px-2">{{ row.counts[bar.status] }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `,
+    };
+
     CertiSub.components.DashboardView = {
         data() {
             return { store: CertiSub.store };
@@ -36,6 +133,9 @@
         mounted() {
             CertiSub.data.summary();
             CertiSub.data.certificates();
+            if (CertiSub.can('tasks.view')) {
+                CertiSub.data.taskStats();
+            }
         },
         methods: {
             open(item) {
@@ -92,6 +192,8 @@
                         <p class="text-xs text-red-600 font-medium">{{ t('status.expired') }}</p>
                     </div>
                 </div>
+
+                <TaskStatsPanel v-if="store.taskStats" :stats="store.taskStats" class="mb-8" />
 
                 <div class="grid xl:grid-cols-2 gap-6">
                     <div>
