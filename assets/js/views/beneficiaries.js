@@ -51,6 +51,9 @@
             open(item) {
                 CertiSub.openDrawer('beneficiary', item.id);
             },
+            openCard(item) {
+                CertiSub.navigate('beneficiaries', item.id);
+            },
             add() {
                 CertiSub.openModal('BeneficiaryForm', {});
             },
@@ -102,6 +105,7 @@
                                     <span v-else class="text-slate-400">—</span>
                                 </td>
                                 <td class="td text-right whitespace-nowrap" @click.stop>
+                                    <button v-if="can('reports.view')" type="button" class="btn-ghost" :title="t('report.card')" @click="openCard(item)">📈 {{ t('report.card_short') }}</button>
                                     <button v-if="can('beneficiaries.update')" type="button" class="btn-ghost" @click="edit(item)">{{ t('common.edit') }}</button>
                                     <button v-if="can('beneficiaries.archive')" type="button" class="btn-ghost text-red-600" @click="archive(item)">{{ t('common.archive') }}</button>
                                 </td>
@@ -182,11 +186,15 @@
             openPayer() {
                 CertiSub.openDrawer('payer', this.beneficiary.payer_id);
             },
+            openCard() {
+                CertiSub.navigate('beneficiaries', this.id);
+            },
         },
         template: `
             <DrawerShell :title="beneficiary ? format.person(beneficiary.first_name, beneficiary.last_name) : ''"
                          :subtitle="t('beneficiary.singular')" :loading="loading" :error="error" @close="close">
                 <template #actions>
+                    <button v-if="beneficiary && can('reports.view')" type="button" class="btn-secondary" @click="openCard">📈 {{ t('report.card') }}</button>
                     <template v-if="beneficiary && !beneficiary.archived_at">
                         <button v-if="can('beneficiaries.update')" type="button" class="btn-secondary" @click="edit">✏️ {{ t('common.edit') }}</button>
                         <button v-if="can('certificates.create')" type="button" class="btn-secondary" @click="addCertificate">+ {{ t('certificate.add') }}</button>

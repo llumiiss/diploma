@@ -123,6 +123,8 @@ assistent_subscription/
 - Records of certificates, certificate users (beneficiaries) and payers: add, edit, archive and restore with validation (calendar dates, Polish NIP checksum, unique serial per issuer)
 - Details panels with relations, renewal chain and event history; archive screen
 - Renewal process: daily scanner opening prioritised ToDo tasks, task statuses and assignment, certificate renewal (new record, old one archived), e-mail invitations from PL/EN templates with attachments, invitation register with manual and automatic reminders, admin settings for thresholds, task statistics by status
+- Reports (perspectives from the thesis description): certificate user card and payer card with renewal dates, delivery path (tasks), invitations and a filterable timeline; expiry schedule by month; printable
+- Global search (Ctrl+K) across certificates, certificate users and payers including relations and match reasons; admin event log with filters and paging
 - Corporate dashboard: KPIs, priority renewals, payments, ToDo view, search and filters
 - Personal dashboard (frozen extra module) and its payment reminder cron
 - i18n: PL (default), EN, ES, DE, UK

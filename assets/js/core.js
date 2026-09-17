@@ -129,6 +129,24 @@
             }
             return date.toLocaleDateString(intlLocale) + ' ' + date.toLocaleTimeString(intlLocale, { hour: '2-digit', minute: '2-digit' });
         },
+        /** Miesiąc z wartości RRRR-MM: style 'long' — „październik 2026”, 'short' — „paź 26”. */
+        month(value, style) {
+            const parts = String(value || '').split('-');
+            if (parts.length < 2) {
+                return String(value || '');
+            }
+            const date = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+            return style === 'short'
+                ? date.toLocaleDateString(intlLocale, { month: 'short', year: '2-digit' })
+                : date.toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
+        },
+        time(value) {
+            if (!value) {
+                return '';
+            }
+            const date = new Date(String(value).replace(' ', 'T'));
+            return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString(intlLocale, { hour: '2-digit', minute: '2-digit' });
+        },
         days(days) {
             if (days === null || days === undefined) {
                 return '—';
@@ -274,8 +292,27 @@
 
     // ── Stan widoków: szuflada szczegółów i stos okien ────────────────────────
 
-    const ui = reactive({ view: 'dashboard', drawer: null, modals: [] });
+    const ui = reactive({ view: 'dashboard', recordId: null, drawer: null, modals: [], searchQuery: '', searchNonce: 0 });
     let modalSequence = 0;
+
+    /**
+     * Przejście do widoku; z identyfikatorem otwiera kartę rekordu (np. #/payers/12 — karta płatnika).
+     */
+    function navigate(view, id) {
+        const hash = '#/' + view + (id ? '/' + id : '');
+        if (global.location.hash !== hash) {
+            global.location.hash = hash;
+        }
+        closeDrawer();
+    }
+
+    function debounce(fn, wait) {
+        let timer = null;
+        return function (...args) {
+            global.clearTimeout(timer);
+            timer = global.setTimeout(() => fn.apply(this, args), wait);
+        };
+    }
 
     function openDrawer(type, id) {
         ui.drawer = { type, id: Number(id), key: type + ':' + id + ':' + Date.now() };
@@ -423,6 +460,8 @@
         ui,
         openDrawer,
         closeDrawer,
+        navigate,
+        debounce,
         openModal,
         closeModal,
         store,

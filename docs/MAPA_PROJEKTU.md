@@ -11,7 +11,7 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 ## 0. Najważniejsze wnioski
 
 1. **Kod realizuje inny produkt niż opis pracy.** Opis: system ewidencji certyfikatów (np. kwalifikowanych) z użytkownikami certyfikatów, płatnikami, listą zadań, zaproszeniami e-mail, importem/eksportem i raportami. Kod: tracker subskrypcji firmowych (SSL, SaaS, domeny) i prywatnych (Netflix, Spotify).
-2. **Pokrycie 19 wymagań funkcjonalnych po Etapie 3: 12 kompletnych, 5 częściowych, 2 brakujące** (po Etapie 2: 7 / 10 / 2; po Etapie 1: 0 / 14 / 5; na starcie 0 / 8 / 11; macierz w §3). Brakuje importu i eksportu (Etap 5); częściowe to raporty perspektyw, wyszukiwarka i oś czasu (Etap 4).
+2. **Pokrycie 19 wymagań funkcjonalnych po Etapie 4: 16 kompletnych, 1 częściowe, 2 brakujące** (po Etapie 3: 12 / 5 / 2; po Etapie 2: 7 / 10 / 2; po Etapie 1: 0 / 14 / 5; na starcie 0 / 8 / 11; macierz w §3). Brakuje eksportu i importu (Etap 5); perspektywa administratora czeka już tylko na import (F8).
 3. **Cykl życia odnowienia z §2.1 działa od początku do końca (Etapy 2–3):** ewidencja → skaner zakłada zadanie ToDo → zaproszenie e-mail z szablonu i załącznikami → przypomnienia → odnowienie (nowy certyfikat, stary do archiwum) albo porzucenie → statystyki zadań. Każdy krok zapisuje zdarzenie w historii.
 4. **`CLAUDE.md` jest spójny z kodem, ale nie z opisem pracy.** Roadmapa pomija m.in. import/eksport, szablony i załączniki, rejestr zaproszeń, archiwizację, zadania ze statusami i statystykami, historię na osi czasu oraz raporty perspektyw (§6).
 5. **Harmonogram jest przesunięty:** CRUD (lipiec), RBAC (sierpień), cron + UX (1–15.09) nie są w kodzie. Freeze 15.10.2026 jest nierealny przy pełnym zakresie (§7).
@@ -22,6 +22,7 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 10. **Etap 1 (model danych) wykonany 2026-09-16 (§11):** certyfikaty z typami wg D7, użytkownicy certyfikatów, rozszerzeni płatnicy, archiwizacja, zadania ToDo ze statusami, szablony, załączniki, zaproszenia i historia zdarzeń. Struktura po migracji jest identyczna ze świeżą instalacją.
 11. **Etap 2 (ewidencja, archiwizacja, RBAC) wykonany 2026-09-17 (§11):** warstwa usług i API z kontrolą ról, nowy panel firmowy (Vue bez kroku budowania, `assets/js`), archiwum, konta i role, rejestracja wyłączona (D3), zakres danych operatora (D8), testy integracyjne na osobnej bazie testowej.
 12. **Etap 3 (proces odnowień) wykonany 2026-09-17 (§11):** skaner i cron `cron/renewals.php`, lista ToDo ze statusami, przydziałem i odnowieniem certyfikatu, szablony i załączniki, wysyłka zaproszeń z rejestrem i przypomnieniami, ustawienia progów, statystyki zadań na pulpicie.
+13. **Etap 4 (raporty i przegląd) wykonany 2026-09-17 (§11):** karta użytkownika certyfikatu i karta płatnika (perspektywy z opisu pracy) z datami odnowienia, ścieżką realizacji, zaproszeniami i osią czasu; harmonogram wygaśnięć; wyszukiwarka globalna z powiązaniami; dziennik zdarzeń administratora.
 
 ---
 
@@ -46,13 +47,13 @@ CertiSub Assistant (docelowo)
 │   ├── ✅ Szablony wiadomości + załączniki — ekran ADMIN-a z podglądem, biblioteka plików z kontrolą typu
 │   ├── ✅ Zaproszenia + przypomnienia — wysyłka z podglądem, rejestr, ponowienie, automatyczne przypomnienia wg ustawień
 │   └── ✅ Statystyki zadań — wg statusów, priorytetów i osób (pulpit)
-├── Przegląd i raporty
-│   ├── 🟡 Pulpit KPI (statusy, płatności, priorytety)
-│   ├── 🟡 Karta użytkownika certyfikatu — szczegóły z certyfikatami i datami; historia w Etapie 4
-│   ├── 🟡 Karta płatnika — szczegóły z osobami, certyfikatami i kosztami; historia w Etapie 4
-│   ├── 🟡 Panel administratora — konta i role (Etap 2); szablony, import, dziennik zdarzeń później
-│   ├── 🟡 Wyszukiwarka — filtry na listach każdej encji; wyszukiwarka globalna w Etapie 4
-│   └── 🟡 Oś czasu — każda zmiana zapisuje zdarzenie; historia w szczegółach certyfikatu (Etap 2)
+├── Przegląd i raporty  (✅ Etap 4)
+│   ├── ✅ Pulpit KPI (statusy, płatności, priorytety) i statystyki zadań (Etap 3)
+│   ├── ✅ Karta użytkownika certyfikatu — daty odnowienia, certyfikaty z archiwum, zadania, zaproszenia, oś czasu
+│   ├── ✅ Karta płatnika — powiązane osoby, harmonogram wygaśnięć, koszt roczny, zadania, zaproszenia, oś czasu
+│   ├── 🟡 Panel administratora — konta i role, szablony, ustawienia, dziennik zdarzeń; import w Etapie 5
+│   ├── ✅ Wyszukiwarka globalna — certyfikaty, osoby i płatnicy z powiązaniami i powodem dopasowania (Ctrl+K)
+│   └── ✅ Oś czasu — historia rekordu z filtrem rodzaju zdarzeń i podziałem na dni; harmonogram wygaśnięć
 ├── Wymiana danych
 │   ├── ❌ Eksport CSV / XML
 │   └── ❌ Import CSV / XML / EML
@@ -173,11 +174,11 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | F1 | Dane certyfikatu: nr seryjny, ważność, wygaśnięcie, wymagania odnowienia | ✅ | formularz i API (`classes/Service/CertificateService.php`): numer seryjny unikalny u wystawcy, daty sprawdzane kalendarzem i kolejnością, wymagany czas odnowienia (Etap 2) | — |
 | F2 | Użytkownicy certyfikatu (dane osobowe beneficjentów) | ✅ | ekran „Użytkownicy certyfikatów” z formularzem i szczegółami (`classes/Service/BeneficiaryService.php`, `assets/js/views/beneficiaries.js`) | — |
 | F3 | Płatnicy (dane płatnika) | ✅ | ekran „Płatnicy” z kontrolą NIP (suma kontrolna, unikalność) i kosztami (`classes/Service/PayerService.php`) | — |
-| F4 | Beneficjent powiązany z płatnikiem | ✅ | powiązania wybierane w formularzach, płatnik podpowiadany z danych osoby, szczegóły pokazują osoby i certyfikaty płatnika (Etap 2) | raporty perspektyw (Etap 4) |
+| F4 | Beneficjent powiązany z płatnikiem | ✅ | powiązania wybierane w formularzach, płatnik podpowiadany z danych osoby, szczegóły pokazują osoby i certyfikaty płatnika (Etap 2); karta płatnika pokazuje także osoby, których certyfikaty płatnik opłaca (Etap 4) | — |
 | F5 | Dodawanie, edycja, archiwizacja | ✅ | API `create/update/archive/restore` dla trzech encji, blokada archiwizacji rekordów z aktywnymi powiązaniami, ekran „Archiwum” (Etap 2) | — |
-| F6 | Perspektywa Użytkownika: daty odnowienia, szczegóły, historia | 🟡 | szczegóły osoby z certyfikatami i datami wygaśnięcia (Etap 2) | historia osoby na osi czasu, karta raportowa (Etap 4) |
-| F7 | Perspektywa Płatnika: certyfikaty, wygaśnięcia, historia, osoby | 🟡 | szczegóły płatnika z osobami, certyfikatami, datami i kosztem (Etap 2) | historia płatnika, karta raportowa (Etap 4) |
-| F8 | Perspektywa Administratora | 🟡 | „Konta i role” (Etap 2); „Szablony i załączniki” oraz „Ustawienia” procesu odnowień (Etap 3) | dziennik zdarzeń (Etap 4), import (Etap 5) |
+| F6 | Perspektywa Użytkownika: daty odnowienia, szczegóły, historia | ✅ | karta użytkownika certyfikatu `#/beneficiaries/N`: certyfikaty z datą „odnowienie od” i priorytetem, historia certyfikatów z łańcuchem odnowień, zadania, zaproszenia, oś czasu z filtrem; wydruk (`App\Service\ReportService::beneficiaryCard`, `assets/js/views/reports.js`, Etap 4) | eksport karty (Etap 5) |
+| F7 | Perspektywa Płatnika: certyfikaty, wygaśnięcia, historia, osoby | ✅ | karta płatnika `#/payers/N`: powiązane osoby, harmonogram wygaśnięć na 12 miesięcy, certyfikaty z kosztem rocznym, archiwum, zadania, zaproszenia, oś czasu; harmonogram dla całej organizacji w „Raportach” (`ReportService::payerCard`, `ReportService::schedule`, Etap 4) | eksport karty (Etap 5) |
+| F8 | Perspektywa Administratora | 🟡 | „Konta i role” (Etap 2); „Szablony i załączniki” oraz „Ustawienia” procesu odnowień (Etap 3); „Dziennik zdarzeń” z filtrami i stronicowaniem, wejście z „Raportów” (`TimelineService::journal`, `assets/js/views/events.js`, Etap 4) | import (Etap 5) |
 | F9 | Eksport CSV / XML | ❌ | — | eksport list i kart (`fputcsv`, `XMLWriter`) |
 | F10 | Import CSV / XML / EML | ❌ | — | import z podglądem; EML przez parser MIME w czystym PHP (np. `zbateson/mail-mime-parser`) |
 | F11 | Regularne skanowanie i margines odnowienia | ✅ | `App\Service\RenewalScanner` + `cron/renewals.php`: certyfikaty w marginesie (`renewal_lead_days` albo próg z ustawień) dostają zadanie, priorytet rośnie wraz ze zbliżaniem się daty; bez duplikatów przy ponownym uruchomieniu (Etap 3) | — |
@@ -185,8 +186,8 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | F13 | Zaproszenia e-mail z szablonem i załącznikami | ✅ | okno wysyłki z podglądem, szablony z polami `{imie}`, `{numer_seryjny}`… w PL i EN, załączniki z biblioteki (`App\Service\InvitationService`, `TemplateRenderer`, `Mailer` z `addAttachment`, Etap 3) | — |
 | F14 | Zarządzanie wysłanymi zaproszeniami (przypomnienia) | ✅ | rejestr „Zaproszenia”: statusy, ponowienie nieudanej wysyłki, ręczne i automatyczne przypomnienia wg odstępu i limitu z ustawień, oznaczenie odpowiedzi, zamknięcie; zamknięcie zadania kończy przypomnienia (Etap 3) | — |
 | F15 | Dostęp oparty o konta użytkowników | ✅ | OTP, sesje, CSRF, wylogowanie (Etap 0); konta zakłada ADMIN, `register.php` przekierowuje do logowania, wyłączone konto nie zaloguje się, a jego sesja kończy się przy następnym żądaniu (Etap 2) | limit wysyłek OTP w bazie zamiast sesji (§5 pkt 9, Etap 6) |
-| F16 | Wyszukiwanie usług, osób, płatników i powiązań | 🟡 | wyszukiwanie i filtry na listach certyfikatów, osób i płatników; API certyfikatów przyjmuje `q` (Etap 2) | wyszukiwarka globalna z powiązaniami (Etap 4) |
-| F17 | Ścieżka realizacji i powiązania na osi czasu | 🟡 | każda zmiana ewidencji i kont zapisuje zdarzenie ze zmienionymi polami (Etap 2); zdarzenia procesu odnowień: zadania, priorytety, przydział, zaproszenia, przypomnienia, odnowienie (Etap 3); historia w szczegółach certyfikatu, zadania i zaproszenia | oś czasu osoby i płatnika, dziennik zdarzeń (Etap 4) |
+| F16 | Wyszukiwanie usług, osób, płatników i powiązań | ✅ | wyszukiwarka globalna w górnym pasku (Ctrl+K) i widok pełnych wyników: dopasowanie po polach rekordu i przez powiązania (płatnik → jego certyfikaty i osoby, opiekun → certyfikaty), NIP i telefon bez separatorów, powód dopasowania przy każdym wyniku, zakres danych D8 (`App\Service\SearchService`, `assets/js/views/search.js`, Etap 4) | — |
+| F17 | Ścieżka realizacji i powiązania na osi czasu | ✅ | zdarzenia ewidencji, kont i procesu odnowień (Etapy 2–3); oś czasu osoby i płatnika z filtrem rodzaju zdarzeń, podziałem na dni i odnośnikami do certyfikatów, bez zdarzeń certyfikatów spoza zakresu operatora; ścieżka realizacji (wszystkie zadania) i łańcuch odnowień w kartach; dziennik zdarzeń administratora (Etap 4) | — |
 | F18 | Statystyki zadań wg statusów | ✅ | panel statystyk na pulpicie i liczniki na liście ToDo: statusy z udziałem procentowym, otwarte wg priorytetu, po terminie, skuteczność, średni czas realizacji, rozkład wg osób (`TaskService::stats`, Etap 3) | — |
 | F19 | Hierarchiczny plan kont z rolami | ✅ | macierz uprawnień `Rbac::can()` sprawdzana w każdej usłudze, zakres danych operatora (D8, `App\Service\Visibility`), ekran „Konta i role”, ochrona ostatniego administratora (Etap 2) | — |
 
@@ -199,7 +200,7 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | N3 | Instalacja publiczna lub intranetowa | 🟡 ⚠️ | katalog projektu = katalog publiczny serwera, brak reguł blokujących (§5 pkt 1–2); frontend z CDN — Tailwind Play CDN (`includes/head.php:9`), Vue z unpkg bez przypiętej wersji (`includes/dashboard_app.php:576`), Google Fonts (`includes/head.php:33-35`), więc w sieci bez internetu interfejs nie działa; `display_errors=On` w php.ini Laragona |
 | N4 | Studium wykonalności (punkt wyjścia: Java + Spring) | 🟡 | tylko jedno zdanie o Spring Boot (`docs/thesis_part1.md:74`) — potrzebne porównanie z kryteriami |
 | N5 | Ochrona danych osobowych | 🟡 | dobrze: PDO, CSRF, hash OTP, regeneracja sesji, zakres danych wg roli (D8), historia zmian w `events`, walidacja wejścia; do zrobienia: limit OTP w sesji (§5 pkt 9), punkt o RODO w pracy |
-| N6 | Testy | 🟡 | 91 testów: 48 jednostkowych (logowanie, role i uprawnienia, walidacja, jądro API, szablony, tłumaczenia, logika certyfikatów, poczta) + 43 integracyjne na osobnej bazie `assistent_subscriptions_test` (migracje, ewidencja, konta, skaner, zadania, zaproszenia z przypomnieniami, szablony, załączniki, ustawienia); brak scenariuszy E2E |
+| N6 | Testy | 🟡 | 114 testów: 53 jednostkowe (logowanie, role i uprawnienia, walidacja, jądro API, szablony, tłumaczenia, logika certyfikatów i kosztów, harmonogram, poczta) + 61 integracyjnych na osobnej bazie `assistent_subscriptions_test` (migracje, ewidencja, konta, skaner, zadania, zaproszenia z przypomnieniami, szablony, załączniki, ustawienia, raporty, wyszukiwarka, dziennik zdarzeń); brak scenariuszy E2E |
 
 ---
 
@@ -211,6 +212,7 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | CSRF dla formularzy i API | `classes/Csrf.php` | wszystkie nowe endpointy |
 | Jądro API (metoda → CSRF → auth → obsługa → błąd z kodem HTTP) i kontrolery | `classes/Http/ApiKernel.php`, `classes/Api/*Controller.php` (Etap 2) | każdy nowy endpoint to kontroler + jednolinijkowy plik w `api/` |
 | Usługi domenowe z kontrolą ról, walidacją i historią | `classes/Service/*Service.php`, `Validator`, `EventLogger`, `Visibility` (Etap 2) | zadania, zaproszenia, raporty, import i eksport korzystają z tych samych reguł |
+| Raporty, wyszukiwarka i dziennik zdarzeń | `ReportService` (karty, harmonogram), `SearchService`, `TimelineService::journal` (Etap 4) | eksport kart i list w Etapie 5 może korzystać z tych samych zapytań i zakresu danych |
 | Komponenty panelu (okna, panel szczegółów, pola formularzy, oś czasu, powiadomienia) | `assets/js/core.js`, `assets/js/components.js` (Etap 2) | nowe widoki w `assets/js/views/` |
 | Testy integracyjne na osobnej bazie | `tests/Support/MysqlTestDatabase.php`, `IntegrationTestCase.php` (Etap 2) | testy usług bez ryzyka dla bazy użytkownika |
 | Idempotentne migracje | `classes/MigrationRunner.php`, `classes/Migrations/` | każda zmiana schematu jako nowa migracja; `SchemaInspector` sprawdza stan przed każdym krokiem |
@@ -251,7 +253,7 @@ Numeracja ciągła — odwołania w innych miejscach: „§5 pkt N”.
 
 ### 5.3. Drobne i porządki
 
-12. Model danych: `annual_cost` przechowuje koszt miesięczny, gdy `billing_cycle = monthly` (`CertificateManager::getRenewalSummary`) — nadal do poprawy. Rozdzielenie kont i użytkowników certyfikatów zrobione w Etapie 1; `manager_subskrypcji` z polskimi nazwami kolumn zostaje jako zamrożony moduł dodatkowy (D1).
+12. Model danych: `annual_cost` przechowuje koszt miesięczny, gdy `billing_cycle = monthly` (`CertificateManager::getRenewalSummary`) — w kartach płatnika i harmonogramie (Etap 4) koszt jest przeliczany na rok przez `CertificateHelper::annualizedCost` (miesięczny × 12, wieloletni ÷ liczba lat ważności); kolumna i wskaźniki pulpitu nadal do poprawy. Rozdzielenie kont i użytkowników certyfikatów zrobione w Etapie 1; `manager_subskrypcji` z polskimi nazwami kolumn zostaje jako zamrożony moduł dodatkowy (D1).
 13. Oś czasu: „Następna płatność” bez daty — w panelu firmowym zastąpiona szczegółami certyfikatu z historią zdarzeń (Etap 2); została w zamrożonym panelu prywatnym. Strona główna pokazuje zmyślone liczby (`index.php:107-116`) — Etap 6.
 14. Domyślny język interfejsu to EN (`classes/Translator.php:58`), choć projekt i praca są po polsku.
 15. ✅ JSON w `<script>` bez `JSON_HEX_TAG` — panel firmowy przekazuje dane startowe jednym obiektem z flagami `JSON_HEX_*`, a odpowiedzi API też je stosują (Etap 2).
@@ -300,12 +302,12 @@ Stan na 16.09.2026. Pierwotnie: freeze 15.10.2026, część pisemna 16.10–31.1
 | 1. Model danych ✅ **wykonane 2026-09-16** | migracje: `subscriptions` → `certificates` z typami wg D7, beneficjenci, rozszerzenie płatników, `archived_at`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events`; język domyślny PL (D4); panel prywatny nietknięty (D1); dane demonstracyjne (szczegóły w §11) | — |
 | 2. Ewidencja + archiwizacja + RBAC ✅ **wykonane 2026-09-17** | API i formularze dla certyfikatów, beneficjentów, płatników; archiwum; role w API i UI; wyłączenie publicznej rejestracji i zakładanie kont przez ADMIN (D3); zakres danych operatora (D8); zapis zdarzeń; etykiety „certyfikaty” w panelu (szczegóły w §11) | — |
 | 3. Proces odnowień ✅ **wykonane 2026-09-17** | skaner → zadania ToDo (priorytety, statusy, przydział); szablony + załączniki; zaproszenia; rejestr i przypomnienia; statystyki zadań; ustawienia progów (szczegóły w §11) | — |
-| 4. Raporty i przegląd | karta beneficjenta, karta płatnika, oś czasu z `events`, wyszukiwarka globalna | 3–4 |
+| 4. Raporty i przegląd ✅ **wykonane 2026-09-17** | karta beneficjenta, karta płatnika, oś czasu z `events`, wyszukiwarka globalna, dziennik zdarzeń administratora, harmonogram wygaśnięć (szczegóły w §11) | — |
 | 5. Wymiana danych | eksport CSV/XML; import CSV/XML z podglądem; import EML | 3–4 |
 | 6. Jakość i domknięcie | testy nowych serwisów, scenariusze E2E, lokalne zasoby frontendu, aktualizacja README i `CLAUDE.md`, freeze | 3–4 |
 | 7. UX i wydajność (§2.5) | skeleton loadery w panelu; cache agregatów KPI z unieważnianiem przy zapisie i kluczem roli; nagłówki cache dla lokalnych zasobów z Etapu 6 | 2–3 |
 
-**Pozostało ok. 11–15 dni roboczych** (Etapy 4–7, po odjęciu wykonanych Etapów 0–3), więc realny freeze mieści się w październiku 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
+**Pozostało ok. 8–11 dni roboczych** (Etapy 5–7, po odjęciu wykonanych Etapów 0–4), więc realny freeze mieści się w październiku 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
 
 Kolejność etapów = kolejność ważności. Gdy zabraknie czasu, najpierw upraszczać etap 5 (np. import EML ograniczony do jednego formatu wiadomości).
 
@@ -316,7 +318,7 @@ Kolejność etapów = kolejność ważności. Gdy zabraknie czasu, najpierw upra
 | ID | Decyzja | Wybór | Co z tego wynika |
 |---|---|---|---|
 | D1 | Panel prywatny (`dashboard-personal.php`, `manager_subskrypcji`, typy STREAMING, MUSIC…) | **b) zamrożony jako dodatek** — nie rozwijamy | kod zostaje bez zmian; kolumna `scope` zostaje; nowe funkcje (zadania, zaproszenia, import/eksport, raporty, archiwum) budujemy wyłącznie dla części certyfikatowej; w pracy opisać jako moduł dodatkowy i kierunek rozwoju |
-| D2 | Perspektywy Użytkownik / Płatnik | **a) raporty w panelu dla personelu** | karta beneficjenta i karta płatnika jako widoki (Etap 4); osobne logowanie dla beneficjentów i płatników → rozdział „kierunki rozwoju” |
+| D2 | Perspektywy Użytkownik / Płatnik | **a) raporty w panelu dla personelu** | ✅ Etap 4: karta użytkownika certyfikatu i karta płatnika jako widoki (`#/beneficiaries/N`, `#/payers/N`) z wydrukiem; osobne logowanie dla beneficjentów i płatników → rozdział „kierunki rozwoju” |
 | D3 | Rejestracja | **a) wyłączona, konta zakłada ADMIN** | `register.php` przestaje być publiczny; ADMIN tworzy konto (imię, nazwisko, e-mail, rola), użytkownik loguje się kodem OTP; potrzebny ekran „Konta” w panelu administracyjnym (Etap 2) |
 | D4 | i18n dla nowych funkcji | **b) PL + EN** | nowe klucze tylko w `lang/pl.php` i `lang/en.php` (ES/DE/UK dziedziczą EN dzięki fallbackowi w `Translator`); ✅ język domyślny PL (`Translator::DEFAULT_LOCALE`, Etap 1) |
 | D5 | Nazwa głównej encji | **a) `subscriptions` → `certificates`** | ✅ Etap 1: tabela, kolumna `certificate_type`, klasy `CertificateManager` i `CertificateHelper`. Zmianę kluczy i18n przeniesiono do Etapu 2 — etykiety panelu zmienią się razem z nowym UI |
@@ -347,7 +349,7 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 
 ## 10. Stan środowiska (zweryfikowany 2026-09-16)
 
-- **Testy:** 91 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 48 zaliczonych + 43 pominięte). Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
+- **Testy:** 114 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 53 zaliczone + 61 pominiętych). Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
 - **PHPStan (poziom 5):** 1 znana uwaga (`cron/send_reminders.php:120`); analizowane są także pliki wejściowe z katalogu głównego.
 - **PHP-CS-Fixer:** większość plików zgłaszana z powodu CRLF (§5 pkt 19) — `cs-fix` świadomie nieuruchomiony.
 - **Baza `assistent_subscriptions`:** 15 tabel, migracje `login_otp`, `manager_subskrypcji`, `certificates_model`, `accounts_and_ownership`, `renewal_process`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 138 kolumn, 72 pozycje indeksów, 21 kluczy obcych).
@@ -356,7 +358,8 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 - **Panel firmowy (sprawdzony w przeglądarce):** ADMIN — 10 certyfikatów, 3 płatników, archiwum (2 certyfikaty), konta; OPERATOR (Tomasz Wróbel) — 4 certyfikaty, 2 osoby, 2 płatników, a API zwraca 403 dla archiwum, kont, archiwizacji i zapisu bez tokenu CSRF. Oba panele renderują się bez ostrzeżeń PHP.
 - **Strefa czasowa:** PHP i MySQL liczą w `Europe/Warsaw` (§5.4); cron znajduje zaplanowaną płatność.
 - **HTTP:** `/`, `/login.php`, `assets/js/*` → 200; `/register.php` → 302 na `login.php?registration_closed=1`; panele → 302 do logowania; `api/*.php` bez sesji → 401; katalogi wewnętrzne (w tym `storage/`, `classes/`, `config/`, `tests/`), `.git/` → 403.
-- **Git:** Etap 0 = `f9ec9df`, Etap 1 = `cef8e72`, Etap 2 = `6ba9729`, Etap 3 — gałąź `etap-3-proces-odnowien` scalona na `master`; remote `origin` = github.com/llumiiss/diploma (nic nie jest wypychane automatycznie).
+- **Raporty i wyszukiwarka (sprawdzone w przeglądarce):** ADMIN — karta Jana Kowalskiego (oś czasu 7 zdarzeń z filtrem), karta NovaTech (2 osoby, 4 bieżące certyfikaty, harmonogram, koszt roczny 1819 PLN), harmonogram organizacji (10 certyfikatów), wyszukiwanie „nova” (5 certyfikatów, 2 osoby, 1 płatnik), dziennik 57 zdarzeń; OPERATOR (Tomasz Wróbel) — karta NovaTech w swoim zakresie (1 osoba, 2 certyfikaty), 403 dla dziennika zdarzeń. Odpowiedzi API kart i wyszukiwarki poniżej 50 ms.
+- **Git:** Etap 0 = `f9ec9df`, Etap 1 = `cef8e72`, Etap 2 = `6ba9729`, Etap 3 = `1578adf`, Etap 4 — gałąź `etap-4-raporty` scalona na `master`; remote `origin` = github.com/llumiiss/diploma (nic nie jest wypychane automatycznie).
 
 ---
 
@@ -454,6 +457,28 @@ Commit: `6ba9729`, gałąź `etap-2-ewidencja-rbac`, scalona na `master` 2026-09
 Weryfikacja: kopia bazy przed migracją; migracja i drugi przebieg bez zmian; porównanie `information_schema` z świeżą instalacją (138 kolumn, 72 pozycje indeksów, 21 kluczy obcych); 91/91 testów z integracją; PHPStan: 1 znana uwaga; `node --check` wszystkich plików JS; w przeglądarce jako ADMIN: lista ToDo z licznikami, „Uruchom skaner” (1 nowe zadanie), panel zadania z akcjami i historią, okno wysyłki z podglądem wiadomości i załącznikiem (bez faktycznej wysyłki), rejestr zaproszeń z błędem SMTP i przypomnieniami, szablony z podglądem, ustawienia, statystyki na pulpicie, brak błędów w konsoli; `cron/renewals.php` na danych demo.
 
 **Świadomie nie zrobione:** karty raportowe z historią osoby i płatnika, wyszukiwarka globalna, dziennik zdarzeń administratora (Etap 4); import i eksport (Etap 5); limit OTP w bazie, lokalne zasoby frontendu, strona główna bez zmyślonych liczb (Etap 6); skeleton loadery i cache (Etap 7). Stary `cron/send_reminders.php` menedżera osobistego zostaje bez zmian (D1).
+
+Commit: `1578adf`, gałąź `etap-3-proces-odnowien`, scalona na `master` 2026-09-17 (fast-forward).
+
+### Etap 4 — raporty i przegląd (2026-09-17)
+
+| Obszar | Co zrobiono | Pliki |
+|---|---|---|
+| Karta użytkownika certyfikatu (F6) | widok `#/beneficiaries/N`: dane osoby, wskaźniki (bieżące certyfikaty, najbliższe wygaśnięcie, wymagające uwagi, otwarte zadania, wysłane zaproszenia, ostatni kontakt), certyfikaty z datą „odnowienie od” (wygaśnięcie minus wymagany czas odnowienia albo domyślny margines), priorytetem, otwartym zadaniem i kontaktem, historia certyfikatów z łańcuchem odnowień (od MANAGER), ścieżka realizacji — wszystkie zadania, zaproszenia, oś czasu; wydruk | `classes/Service/ReportService.php`, `assets/js/views/reports.js` |
+| Karta płatnika (F7) | widok `#/payers/N`: dane płatnika, wskaźniki z kosztem rocznym, powiązane osoby (przypisane do płatnika i te, których certyfikaty opłaca), harmonogram wygaśnięć na 12 miesięcy z wykresem, certyfikaty z kosztem, archiwum, zadania, zaproszenia, oś czasu; wydruk | j.w. |
+| Raporty | widok „Raporty”: wejście do perspektyw Użytkownika, Płatnika i Administratora; harmonogram wygaśnięć dla zakresu konta (3–24 miesiące, filtr płatnika i typu, zaległe osobno, koszt roczny) | `ReportService::schedule`, `assets/js/views/reports.js` |
+| Wyszukiwarka globalna (F16) | pole w górnym pasku (Ctrl+K lub „/”) z podpowiedziami i obsługą klawiatury; widok pełnych wyników; dopasowanie po polach rekordu i przez powiązania (osoba, płatnik, certyfikat, opiekun), NIP i telefon bez separatorów, znaki `%` i `_` traktowane dosłownie; powód dopasowania przy wyniku; dopasowania bezpośrednie wyżej; archiwum tylko od MANAGER | `classes/Service/SearchService.php`, `assets/js/views/search.js` |
+| Dziennik zdarzeń (F8, F17) | widok ADMIN-a: wszystkie zdarzenia od najnowszych, filtry (obszar, zdarzenie z liczbą wystąpień, autor lub „System”, zakres dat włącznie, tekst w nazwach rekordów i treści zdarzenia), stronicowanie 25/50/100, odnośniki do certyfikatów, kart osób i płatników, zadań i zaproszeń | `TimelineService::journal`, `assets/js/views/events.js` |
+| Oś czasu (F17) | wspólny opis zdarzeń dla osi czasu i dziennika; filtr rodzaju zdarzeń (ewidencja, zadania, zaproszenia, system) i podział na dni; w historii osoby i płatnika operator nie widzi zdarzeń certyfikatów spoza swojego zakresu (D8) | `TimelineService::forContext`, `assets/js/components.js` |
+| Koszty (§5 pkt 12) | koszt w przeliczeniu na rok: miesięczny × 12, wieloletni ÷ liczba lat ważności | `CertificateHelper::annualizedCost`, `CertificateHelper::priorityFor` |
+| API | `api/reports.php` (karty, harmonogram), `api/search.php`, `api/events.php` — tylko GET | `classes/Api/ReportsController.php`, `SearchController.php`, `EventsController.php` |
+| Panel | nawigacja „Raporty” i „Dziennik zdarzeń”; karta dostępna z listy („Karta”) i z panelu szczegółów osoby i płatnika; adres karty w `#` z identyfikatorem; nowy widok zaczyna się od góry strony; styl wydruku bez nawigacji; brakujące odcienie palety `brand-300/400` | `assets/js/app.js`, `assets/js/core.js`, `includes/dashboard_app.php`, `includes/head.php` |
+| Język (D4) | ok. 190 nowych kluczy PL i EN | `lang/pl.php`, `lang/en.php` |
+| Testy | +23: `ReportServiceTest`, `SearchServiceTest`, `EventJournalTest`, `ReportScheduleTest`, priorytet i koszt roczny w `CertificateHelperTest`; poprawione `tearDown` dwóch testów z Etapu 3, które bez `RUN_INTEGRATION_TESTS` kończyły się błędem zamiast pominięciem | `tests/*` |
+
+Weryfikacja: 114/114 testów z integracją (bez flagi: 53 zaliczone, 61 pominiętych); PHPStan: 1 znana uwaga; `node --check` wszystkich plików JS; kontrola kluczy tłumaczeń; w przeglądarce jako ADMIN i OPERATOR (§10): karty, harmonogram z wykresem, wyszukiwarka z klawiaturą i widok wyników, dziennik z filtrami, brak błędów w konsoli, brak poziomego przewijania przy szerokości 375 px; API operatora: 403 dla dziennika, 405 dla POST na wyszukiwarkę.
+
+**Świadomie nie zrobione:** eksport kart i list do CSV/XML oraz import (Etap 5); skeleton loadery w pozostałych widokach i cache agregatów (Etap 7). Bez zmian w schemacie bazy — raporty korzystają z istniejących tabel i indeksów `events`.
 
 ---
 

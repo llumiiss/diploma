@@ -278,7 +278,7 @@ final class BeneficiaryService
     /**
      * @return array<string, mixed>
      */
-    private function findVisible(Actor $actor, int $id, bool $includeArchived): array
+    public function findVisible(Actor $actor, int $id, bool $includeArchived): array
     {
         [$visibility, $params] = Visibility::beneficiaries($actor, 'b');
         $stmt = $this->db->prepare(
