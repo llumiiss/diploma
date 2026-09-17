@@ -72,10 +72,11 @@
                         <slot name="actions"></slot>
                     </div>
                     <div class="flex-1 overflow-y-auto px-6 py-5">
-                        <div v-if="loading" class="space-y-3">
-                            <div class="h-4 bg-slate-100 rounded w-2/3"></div>
-                            <div class="h-4 bg-slate-100 rounded w-1/2"></div>
-                            <div class="h-4 bg-slate-100 rounded w-3/4"></div>
+                        <div v-if="loading" class="space-y-3" role="status" :aria-label="t('common.loading')">
+                            <div class="skeleton h-4 w-2/3"></div>
+                            <div class="skeleton h-4 w-1/2"></div>
+                            <div class="skeleton h-4 w-3/4"></div>
+                            <div class="skeleton h-24 w-full mt-6"></div>
                         </div>
                         <div v-else-if="error" class="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{{ error }}</div>
                         <slot v-else></slot>
@@ -104,6 +105,40 @@
         `,
     };
 
+    /**
+     * Wiersze szkieletu tabeli — pokazują układ, zanim przyjdą dane (§2.5).
+     */
+    CertiSub.components.SkeletonRows = {
+        props: {
+            rows: { type: Number, default: 5 },
+            cols: { type: Number, required: true },
+        },
+        template: `
+            <tr v-for="row in rows" :key="row" class="border-b border-slate-100" aria-hidden="true">
+                <td v-for="col in cols" :key="col" class="td">
+                    <div :class="['skeleton h-4', col === 1 ? 'w-3/4' : 'w-1/2']"></div>
+                </td>
+            </tr>
+        `,
+    };
+
+    /**
+     * Szkielet pól formularza — okna edycji dociągają dane słowników przed pokazaniem pól.
+     */
+    CertiSub.components.FormSkeleton = {
+        props: {
+            rows: { type: Number, default: 4 },
+        },
+        template: `
+            <div class="grid md:grid-cols-2 gap-4" role="status" :aria-label="t('common.loading')">
+                <div v-for="row in rows" :key="row" class="space-y-2">
+                    <div class="skeleton h-3 w-1/3"></div>
+                    <div class="skeleton h-9 w-full rounded-lg"></div>
+                </div>
+            </div>
+        `,
+    };
+
     CertiSub.components.TableState = {
         props: {
             loading: { type: Boolean, default: false },
@@ -111,10 +146,12 @@
             empty: { type: Boolean, default: false },
             colspan: { type: Number, required: true },
             emptyText: { type: String, default: '' },
+            skeletonRows: { type: Number, default: 5 },
         },
         template: `
-            <tr v-if="loading">
-                <td :colspan="colspan" class="px-4 py-10 text-center text-slate-400">{{ t('common.loading') }}</td>
+            <SkeletonRows v-if="loading" :rows="skeletonRows" :cols="colspan" />
+            <tr v-if="loading" class="sr-only">
+                <td :colspan="colspan" role="status">{{ t('common.loading') }}</td>
             </tr>
             <tr v-else-if="error">
                 <td :colspan="colspan" class="px-4 py-6 text-center text-red-600">{{ error }}</td>

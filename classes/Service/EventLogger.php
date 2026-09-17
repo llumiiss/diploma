@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Cache;
 use PDO;
 
 /**
@@ -33,6 +34,9 @@ final class EventLogger
             'INSERT INTO events (entity_type, entity_id, event_type, user_id, certificate_id, beneficiary_id, payer_id, payload, occurred_at)
              VALUES (:entity_type, :entity_id, :event_type, :user_id, :certificate_id, :beneficiary_id, :payer_id, :payload, :occurred_at)'
         );
+        // Każdy zapis danych unieważnia agregaty pulpitu i statystyki (§2.5).
+        Cache::invalidate();
+
         $stmt->execute([
             'entity_type'    => $entityType,
             'entity_id'      => $entityId,

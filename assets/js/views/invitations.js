@@ -360,7 +360,7 @@
         template: `
             <ModalShell :title="t('invitation.compose_title')" :subtitle="options ? options.certificate.name + ' · ' + format.date(options.certificate.expiry_date) : ''"
                         size="xl" :busy="sending" @close="$emit('close')">
-                <div v-if="loading" class="py-10 text-center text-slate-400">{{ t('common.loading') }}</div>
+                <FormSkeleton v-if="loading" />
                 <div v-else-if="options" class="grid lg:grid-cols-5 gap-6">
                     <div class="lg:col-span-2 space-y-4">
                         <div v-if="message" class="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{{ message }}</div>

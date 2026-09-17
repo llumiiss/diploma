@@ -151,7 +151,15 @@
                     <button v-if="can('certificates.create')" type="button" class="btn-primary" @click="addCertificate">+ {{ t('certificate.add') }}</button>
                 </PageHeader>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+                <div v-if="!summary" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6" role="status" :aria-label="t('common.loading')">
+                    <div v-for="tile in 4" :key="tile" class="card p-5">
+                        <div class="skeleton h-3 w-2/3"></div>
+                        <div class="skeleton h-8 w-1/3 mt-3"></div>
+                        <div class="skeleton h-3 w-1/2 mt-3"></div>
+                    </div>
+                </div>
+
+                <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
                     <div class="card p-5">
                         <p class="text-xs font-semibold text-slate-400 uppercase">{{ t('dashboard.kpi.certificates') }}</p>
                         <p class="text-3xl font-bold text-brand-700 mt-1">{{ summary ? totalCertificates : '…' }}</p>
@@ -174,7 +182,11 @@
                     </div>
                 </div>
 
-                <div v-if="summary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+                <div v-if="!summary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8" aria-hidden="true">
+                    <div v-for="tile in 4" :key="tile" class="skeleton h-16 rounded-lg"></div>
+                </div>
+
+                <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
                     <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-center">
                         <p class="text-2xl font-bold text-amber-700">{{ summary.stats.pending }}</p>
                         <p class="text-xs text-amber-600 font-medium">{{ t('status.pending') }}</p>
@@ -193,7 +205,11 @@
                     </div>
                 </div>
 
-                <TaskStatsPanel v-if="store.taskStats" :stats="store.taskStats" class="mb-8" />
+                <div v-if="!store.taskStats && can('tasks.view')" class="card p-5 mb-8" aria-hidden="true">
+                    <div class="skeleton h-4 w-1/4"></div>
+                    <div class="skeleton h-32 w-full mt-4 rounded-lg"></div>
+                </div>
+                <TaskStatsPanel v-else-if="store.taskStats" :stats="store.taskStats" class="mb-8" />
 
                 <div class="grid xl:grid-cols-2 gap-6">
                     <div>

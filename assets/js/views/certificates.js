@@ -528,7 +528,7 @@
         template: `
             <ModalShell :title="isEdit ? t('certificate.edit_title') : t('certificate.add_title')"
                         :subtitle="t('common.required_hint')" size="xl" :busy="saving" @close="$emit('close')">
-                <div v-if="loading" class="py-10 text-center text-slate-400">{{ t('common.loading') }}</div>
+                <FormSkeleton v-if="loading" />
                 <form v-else id="certificate-form" class="space-y-6" novalidate @submit.prevent="submit">
                     <div v-if="message" class="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{{ message }}</div>
 

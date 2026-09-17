@@ -263,7 +263,7 @@
         template: `
             <ModalShell :title="isEdit ? t('template.edit_title') : t('template.add_title')" :subtitle="t('template.form_description')"
                         size="xl" :busy="saving" @close="$emit('close')">
-                <div v-if="loading" class="py-10 text-center text-slate-400">{{ t('common.loading') }}</div>
+                <FormSkeleton v-if="loading" />
                 <form v-else id="template-form" class="grid lg:grid-cols-3 gap-6" novalidate @submit.prevent="submit">
                     <div class="lg:col-span-2 space-y-4">
                         <div v-if="message" class="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{{ message }}</div>
@@ -386,7 +386,7 @@
         template: `
             <section class="max-w-3xl">
                 <PageHeader :title="t('settings.title')" :description="t('settings.description')" />
-                <div v-if="loading" class="card p-6 text-slate-400">{{ t('common.loading') }}</div>
+                <div v-if="loading" class="card p-6"><FormSkeleton :rows="2" /></div>
                 <form v-else class="card p-6 space-y-5" novalidate @submit.prevent="save">
                     <div v-if="message" class="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{{ message }}</div>
                     <FormField v-for="key in keys" :key="key" :label="label(key)" :error="errors[key]" :hint="hint(key)">

@@ -142,7 +142,30 @@ $assetUrl = static function (string $path): string {
     </div>
 </header>
 
-<div id="app" v-cloak class="flex-1 flex flex-col min-h-0"></div>
+<!-- Szkielet widoczny do momentu zamontowania Vue; komponent nadpisuje zawartość (§2.5). -->
+<div id="app" class="flex-1 flex flex-col min-h-0">
+    <div class="flex flex-1 min-h-0" role="status" aria-label="<?= htmlspecialchars(__('common.loading')) ?>">
+        <aside class="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col shrink-0 p-4 gap-2">
+            <div class="skeleton h-3 w-24 mb-2"></div>
+            <div class="skeleton h-9 w-full rounded-lg" style="opacity: .9"></div>
+            <div class="skeleton h-9 w-full rounded-lg" style="opacity: .8"></div>
+            <div class="skeleton h-9 w-full rounded-lg" style="opacity: .7"></div>
+            <div class="skeleton h-9 w-full rounded-lg" style="opacity: .6"></div>
+            <div class="skeleton h-9 w-full rounded-lg" style="opacity: .5"></div>
+        </aside>
+        <main class="flex-1 p-4 sm:p-6 min-w-0">
+            <div class="skeleton h-10 w-full max-w-2xl mb-5 rounded-lg"></div>
+            <div class="skeleton h-8 w-64 mb-6"></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+                <div class="card p-5"><div class="skeleton h-3 w-2/3"></div><div class="skeleton h-8 w-1/3 mt-3"></div></div>
+                <div class="card p-5"><div class="skeleton h-3 w-2/3"></div><div class="skeleton h-8 w-1/3 mt-3"></div></div>
+                <div class="card p-5"><div class="skeleton h-3 w-2/3"></div><div class="skeleton h-8 w-1/3 mt-3"></div></div>
+                <div class="card p-5"><div class="skeleton h-3 w-2/3"></div><div class="skeleton h-8 w-1/3 mt-3"></div></div>
+            </div>
+            <div class="card p-5"><div class="skeleton h-4 w-1/3"></div><div class="skeleton h-40 w-full mt-4"></div></div>
+        </main>
+    </div>
+</div>
 
 <noscript>
     <p class="m-6 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm"><?= htmlspecialchars(__('common.noscript')) ?></p>
