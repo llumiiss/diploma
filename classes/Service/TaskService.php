@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Cache;
 use App\Settings;
 use DateTimeImmutable;
 use PDO;
@@ -143,6 +144,20 @@ final class TaskService
     public function stats(Actor $actor): array
     {
         $actor->authorize('tasks.view');
+
+        // Jak na pulpicie: klucz z rolą i kontem, bo zakres zadań zależy od przydziałów (D8).
+        return Cache::remember(
+            'task-stats:' . $actor->role . ':' . $actor->id,
+            Cache::DEFAULT_TTL,
+            fn (): array => $this->computeStats($actor)
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function computeStats(Actor $actor): array
+    {
         [$visibility, $params] = Visibility::certificates($actor, 'c');
         $from = "FROM renewal_tasks t INNER JOIN certificates c ON c.id = t.certificate_id
                  WHERE c.scope = 'corporate' AND {$visibility}";

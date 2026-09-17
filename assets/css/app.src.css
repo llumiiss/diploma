@@ -93,6 +93,27 @@
     .badge { @apply inline-block px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap; }
 }
 
+@layer components {
+    /* Szkielet treści (§2.5): zamiast pustego ekranu i skoków układu po dociągnięciu danych. */
+    .skeleton { @apply relative overflow-hidden rounded bg-slate-200; }
+    .skeleton::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+        transform: translateX(-100%);
+        animation: certisub-shimmer 1.4s infinite;
+    }
+}
+
+@keyframes certisub-shimmer {
+    100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton::after { animation: none; }
+}
+
 @layer utilities {
     .nav-item.active { @apply bg-brand-600 text-white; }
     .row-critical { @apply bg-red-50; }

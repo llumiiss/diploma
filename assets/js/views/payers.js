@@ -311,7 +311,7 @@
         template: `
             <ModalShell :title="isEdit ? t('payer.edit_title') : t('payer.add_title')" :subtitle="t('common.required_hint')"
                         size="lg" :busy="saving" @close="$emit('close')">
-                <div v-if="loading" class="py-10 text-center text-slate-400">{{ t('common.loading') }}</div>
+                <FormSkeleton v-if="loading" />
                 <form v-else id="payer-form" class="grid md:grid-cols-2 gap-4" novalidate @submit.prevent="submit">
                     <div v-if="message" class="md:col-span-2 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
                         {{ message }}

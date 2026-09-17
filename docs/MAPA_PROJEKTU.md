@@ -17,13 +17,14 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 5. **Harmonogram jest przesunięty:** CRUD (lipiec), RBAC (sierpień), cron + UX (1–15.09) nie są w kodzie. Freeze 15.10.2026 jest nierealny przy pełnym zakresie (§7).
 6. **Błędy krytyczne z §5.1 zostały naprawione w Etapie 0 (2026-09-16)** — dziennik zmian w §11. Były to: skrypt z `scripts/` kasujący dane bez logowania, publiczny dostęp do `.git/` i logów, niedziałające wylogowanie, brak kontroli dostępu do danych oraz kasowanie rekordów biznesowych przy usuwaniu konta.
 7. **Mocne strony do ponownego użycia (§4):** logowanie OTP z testami, CSRF, migracje, mailer, layout panelu, narzędzia jakości.
-8. **Dodatkowe wymagania autora (§2.5):** skeleton loadery i cache'owanie — zaplanowane jako Etap 7.
+8. **Dodatkowe wymagania autora (§2.5):** skeleton loadery i cache'owanie — wykonane w Etapie 7.
 9. **Decyzje D1–D5 i D7 podjęte 2026-09-16 (§8):** panel prywatny zamrożony, perspektywy jako raporty dla personelu, rejestracja tylko przez ADMIN, nowe teksty PL+EN z domyślnym PL, `subscriptions` → `certificates`, ogólny model typów certyfikatów. Otwarty zostaje D6 (harmonogram).
 10. **Etap 1 (model danych) wykonany 2026-09-16 (§11):** certyfikaty z typami wg D7, użytkownicy certyfikatów, rozszerzeni płatnicy, archiwizacja, zadania ToDo ze statusami, szablony, załączniki, zaproszenia i historia zdarzeń. Struktura po migracji jest identyczna ze świeżą instalacją.
 11. **Etap 2 (ewidencja, archiwizacja, RBAC) wykonany 2026-09-17 (§11):** warstwa usług i API z kontrolą ról, nowy panel firmowy (Vue bez kroku budowania, `assets/js`), archiwum, konta i role, rejestracja wyłączona (D3), zakres danych operatora (D8), testy integracyjne na osobnej bazie testowej.
 12. **Etap 3 (proces odnowień) wykonany 2026-09-17 (§11):** skaner i cron `cron/renewals.php`, lista ToDo ze statusami, przydziałem i odnowieniem certyfikatu, szablony i załączniki, wysyłka zaproszeń z rejestrem i przypomnieniami, ustawienia progów, statystyki zadań na pulpicie.
 13. **Etap 4 (raporty i przegląd) wykonany 2026-09-17 (§11):** karta użytkownika certyfikatu i karta płatnika (perspektywy z opisu pracy) z datami odnowienia, ścieżką realizacji, zaproszeniami i osią czasu; harmonogram wygaśnięć; wyszukiwarka globalna z powiązaniami; dziennik zdarzeń administratora.
-14. **Etap 6 (jakość i domknięcie) wykonany 2026-09-17 (§11):** frontend bez CDN (Tailwind budowany lokalnie, Vue i krój Inter w repozytorium), limit wysyłek kodów OTP liczony w bazie, strona główna bez zmyślonych liczb, koszt roczny liczony wg okresu rozliczeniowego, scenariusz E2E przez API.
+14. **Etap 7 (UX i wydajność) wykonany 2026-09-17 (§11):** szkielety treści zamiast pustych ekranów (przed zamontowaniem Vue, w tabelach, kafelkach pulpitu, panelach i formularzach), cache agregatów pulpitu i statystyk zadań z kluczem roli i właściciela oraz unieważnianiem przy każdym zapisie, nagłówki pamięci podręcznej dla zasobów z wersją w adresie. **Plan z §7 jest wykonany w całości.**
+15. **Etap 6 (jakość i domknięcie) wykonany 2026-09-17 (§11):** frontend bez CDN (Tailwind budowany lokalnie, Vue i krój Inter w repozytorium), limit wysyłek kodów OTP liczony w bazie, strona główna bez zmyślonych liczb, koszt roczny liczony wg okresu rozliczeniowego, scenariusz E2E przez API.
 15. **Etap 5 (wymiana danych) wykonany 2026-09-17 (§11):** eksport list, kart i dziennika do CSV i XML, import płatników, osób i certyfikatów z CSV/XML z podglądem każdego wiersza przed zapisem oraz import wiadomości e-mail (EML) — własny parser MIME, rozpoznanie nadawcy, certyfikatów i załączników.
 
 ---
@@ -151,17 +152,17 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 
 ### 2.5. Wymagania dodatkowe autora (poza opisem pracy)
 
-**Skeleton loadery** — placeholdery zamiast pustego ekranu i skoków układu:
+**Skeleton loadery** — ✅ wykonane w Etapie 7:
 
-- Dziś panel jest renderowany serwerowo, a `[v-cloak] { display: none; }` (`includes/head.php:37`) ukrywa cały interfejs do momentu zamontowania Vue — widać pusty ekran. Pierwszy krok jest możliwy od razu: skeleton obecny w HTML, ukrywany po montażu Vue (odwrotność `v-cloak`).
-- Kolejne kroki po Etapie 2, gdy listy będą ładowane przez `fetch`: skeleton wierszy tabel (certyfikaty, zadania, zaproszenia), skeleton kart KPI, skeleton kart beneficjenta i płatnika.
-- Realizacja bez bibliotek: wspólny zestaw klas CSS + animacja shimmer, wyłączana przy `prefers-reduced-motion`. Skeleton musi odwzorowywać docelowy układ (liczba kolumn, wysokość wiersza), żeby po załadowaniu treść nie przeskakiwała.
+- szkielet układu (menu, pasek wyszukiwania, kafelki, tabela) jest w HTML strony i znika dopiero po zamontowaniu Vue — nie ma pustego ekranu ani `[v-cloak]`;
+- wiersze tabel (`TableState` → `SkeletonRows`) mają tyle kolumn co docelowa tabela, więc treść nie przeskakuje; kafelki KPI, panel statystyk, panele szczegółów, karty raportowe i pola formularzy (`FormSkeleton`) mają własne szkielety;
+- realizacja bez bibliotek: klasa `.skeleton` z animacją shimmer w `assets/css/app.src.css`, wyłączaną przy `prefers-reduced-motion`; szkielety są oznaczone `aria-hidden`/`role="status"`, więc czytnik ekranu czyta „Ładowanie…”, a nie puste pola.
 
 **Cache'owanie** — trzy warstwy w kolejności wdrożenia:
 
-1. **Agregaty KPI i statystyki** (`getStatusStats`, `getPaymentSummary`, `getRenewalSummary`, statystyki zadań) — klasa `Cache` z TTL (plik w `storage/cache` albo tabela), unieważnianie przy każdym zapisie certyfikatu lub zadania. Sens dopiero przy realnych danych — dziś w bazie jest 0 rekordów, więc to zadanie po Etapie 2–3.
-2. **Zasoby statyczne** — po przeniesieniu Tailwind i Vue z CDN lokalnie (N3): `Cache-Control: public, max-age=31536000, immutable` dla plików z wersją w nazwie, `ETag`/`Last-Modified` dla stron.
-3. **Drobny cache aplikacyjny** — słowniki i18n i konfiguracja (pliki PHP obsługuje już opcache), raporty per beneficjent i płatnik na czas sesji.
+1. ✅ **Agregaty KPI i statystyki** (`getStatusStats`, `getPaymentSummary`, `getRenewalSummary`, statystyki zadań) — `App\Cache`: pliki JSON w `storage/cache`, TTL 5 minut, klucz z rolą i właścicielem rekordów, unieważnianie przez wersję podbijaną w `EventLogger` przy każdym zapisie (Etap 7).
+2. ✅ **Zasoby statyczne** — `Cache-Control: public, max-age=31536000, immutable` dla plików z wersją w adresie (`?v=czas zmiany`) i `no-store` dla stron oraz API z danymi osobowymi (`.htaccess`, Etap 7).
+3. **Drobny cache aplikacyjny** — słowniki i18n i konfiguracja (pliki PHP obsługuje już opcache), raporty per beneficjent i płatnik na czas sesji — świadomie pominięte: raporty czyta jedna osoba naraz, a korzyść byłaby mniejsza niż ryzyko pokazania nieaktualnej historii.
 
 ⚠️ Zasada bezpieczeństwa: klucz cache'a musi zawierać rolę i właściciela rekordów. Wspólny cache agregatów bez tego klucza pokazałby OPERATOROWI dane całej organizacji, czyli cofnąłby naprawę z Etapu 0.
 
@@ -202,7 +203,7 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | N3 | Instalacja publiczna lub intranetowa | ✅ | katalogi wewnętrzne zablokowane w `.htaccess` (Etap 0); frontend bez CDN (Etap 6): Tailwind budowany do `assets/css/app.css` (`npm run css`), Vue 3.5.13 w `assets/vendor`, krój Inter w `assets/fonts` — aplikacja działa w sieci bez internetu; do produkcji zostaje `display_errors=Off` w php.ini serwera |
 | N4 | Studium wykonalności (punkt wyjścia: Java + Spring) | 🟡 | tylko jedno zdanie o Spring Boot (`docs/thesis_part1.md:74`) — potrzebne porównanie z kryteriami |
 | N5 | Ochrona danych osobowych | 🟡 | PDO, CSRF, hash OTP, regeneracja sesji, zakres danych wg roli (D8), historia zmian w `events`, walidacja wejścia; limit wysyłek kodów liczony w bazie per adres i per IP (Etap 6); eksport danych osobowych zapisuje zdarzenie (Etap 5); do zrobienia: punkt o RODO w części pisemnej |
-| N6 | Testy | ✅ | 149 testów: 70 jednostkowych (logowanie i limit kodów, role i uprawnienia, walidacja, jądro API, szablony, tłumaczenia, logika certyfikatów i kosztów, harmonogram, poczta, formaty CSV/XML, parser EML) + 79 integracyjnych na osobnej bazie `assistent_subscriptions_test` (migracje, ewidencja, konta, skaner, zadania, zaproszenia z przypomnieniami, szablony, załączniki, ustawienia, raporty, wyszukiwarka, dziennik zdarzeń, eksport, import CSV/XML i EML), w tym scenariusz E2E przez warstwę API: ewidencja → skaner → zaproszenie → odnowienie → karta → eksport → import → dziennik (`tests/Integration/EndToEndFlowTest.php`, Etap 6) |
+| N6 | Testy | ✅ | 156 testów: 75 jednostkowych (logowanie i limit kodów, role i uprawnienia, walidacja, jądro API, szablony, tłumaczenia, logika certyfikatów i kosztów, harmonogram, poczta, formaty CSV/XML, parser EML) + 79 integracyjnych na osobnej bazie `assistent_subscriptions_test` (migracje, ewidencja, konta, skaner, zadania, zaproszenia z przypomnieniami, szablony, załączniki, ustawienia, raporty, wyszukiwarka, dziennik zdarzeń, eksport, import CSV/XML i EML), w tym scenariusz E2E przez warstwę API: ewidencja → skaner → zaproszenie → odnowienie → karta → eksport → import → dziennik (`tests/Integration/EndToEndFlowTest.php`, Etap 6) oraz cache agregatów z kontrolą zakresu ról (Etap 7) |
 
 ---
 
@@ -308,9 +309,9 @@ Stan na 16.09.2026. Pierwotnie: freeze 15.10.2026, część pisemna 16.10–31.1
 | 4. Raporty i przegląd ✅ **wykonane 2026-09-17** | karta beneficjenta, karta płatnika, oś czasu z `events`, wyszukiwarka globalna, dziennik zdarzeń administratora, harmonogram wygaśnięć (szczegóły w §11) | — |
 | 5. Wymiana danych ✅ **wykonane 2026-09-17** | eksport CSV/XML (listy, karty, harmonogram, dziennik); import CSV/XML z podglądem i trybem aktualizacji; import EML z załącznikami (szczegóły w §11) | — |
 | 6. Jakość i domknięcie ✅ **wykonane 2026-09-17** | frontend bez CDN (Tailwind budowany lokalnie, Vue i Inter w repozytorium), limit kodów OTP w bazie, strona główna bez zmyślonych liczb, jednolity koszt roczny, scenariusz E2E przez API, porządki w repozytorium i dokumentacji (szczegóły w §11) | — |
-| 7. UX i wydajność (§2.5) | skeleton loadery w panelu; cache agregatów KPI z unieważnianiem przy zapisie i kluczem roli; nagłówki cache dla lokalnych zasobów z Etapu 6 | 2–3 |
+| 7. UX i wydajność (§2.5) ✅ **wykonane 2026-09-17** | szkielety treści w panelu; cache agregatów KPI z kluczem roli i unieważnianiem przy zapisie; nagłówki pamięci podręcznej dla zasobów (szczegóły w §11) | — |
 
-**Pozostało ok. 2–3 dni robocze** (Etap 7, po odjęciu wykonanych Etapów 0–6), więc realny freeze mieści się w październiku 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
+**Plan z tej tabeli jest wykonany w całości (Etapy 0–7).** Pozostaje część pisemna (§9) i ustalenie terminu obrony z promotorem (decyzja D6), więc realny freeze mieści się w październiku 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
 
 Kolejność etapów = kolejność ważności. Gdy zabraknie czasu, najpierw upraszczać etap 5 (np. import EML ograniczony do jednego formatu wiadomości).
 
@@ -352,11 +353,12 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 
 ## 10. Stan środowiska (zweryfikowany 2026-09-16)
 
-- **Testy:** 149 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 70 zaliczonych + 79 pominiętych), w tym scenariusz E2E przez warstwę API. Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
+- **Testy:** 156 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 75 zaliczonych + 81 pominiętych), w tym scenariusz E2E przez warstwę API i testy cache. Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
 - **PHPStan (poziom 5):** 1 znana uwaga (`cron/send_reminders.php:120`); analizowane są także pliki wejściowe z katalogu głównego.
 - **PHP-CS-Fixer:** `composer cs` bez uwag (0 ze 136 plików) po normalizacji końców linii i poprawkach stylu w Etapie 6 (§5 pkt 19).
 - **Baza `assistent_subscriptions`:** 15 tabel, migracje `login_otp`, `manager_subskrypcji`, `certificates_model`, `accounts_and_ownership`, `renewal_process`, `otp_rate_limit`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 139 kolumn, 76 pozycji indeksów, 21 kluczy obcych).
 - **Frontend bez internetu (Etap 6):** żadna strona nie odwołuje się do CDN — `assets/css/app.css` (Tailwind zbudowany lokalnie), `assets/vendor/vue.global.prod.js`, `assets/fonts/inter-*.woff2`; sprawdzone w przeglądarce (lista żądań tylko do `localhost`) i przez HTTP (kody 200, poprawne typy MIME).
+- **Pamięć podręczna (Etap 7):** `assets/**` → `Cache-Control: public, max-age=31536000, immutable`, strony i API → `no-store` (sprawdzone przez HTTP); agregaty pulpitu i statystyki zadań liczone raz na 5 minut na rolę i konto, unieważniane przy każdym zapisie.
 - **Cron odnowień:** `php cron/renewals.php` na danych demo — 6 certyfikatów w marginesie, 1 nowe zadanie (Microsoft 365), 0 przypomnień do wysłania; wynik w `logs/renewals.log`.
 - **Dane demo (`scripts/seed-demo-data.php`):** 4 płatników (NovaTech z poprawnym NIP-em), 5 użytkowników certyfikatów, 2 aktywne i 1 wyłączone konto personelu demo + 3 prawdziwe konta (1 ADMIN), 12 certyfikatów firmowych (10 aktywnych, 2 w archiwum, 1 łańcuch odnowień) i 5 prywatnych, 7 zadań (todo 3, in_progress 2, done 1, abandoned 1), 4 zaproszenia, 4 szablony, 1 załącznik, 54 zdarzenia, 4 pozycje menedżera osobistego.
 - **Panel firmowy (sprawdzony w przeglądarce):** ADMIN — 10 certyfikatów, 3 płatników, archiwum (2 certyfikaty), konta; OPERATOR (Tomasz Wróbel) — 4 certyfikaty, 2 osoby, 2 płatników, a API zwraca 403 dla archiwum, kont, archiwizacji i zapisu bez tokenu CSRF. Oba panele renderują się bez ostrzeżeń PHP.
@@ -521,6 +523,21 @@ Commit: `a26fb16`, gałąź `etap-5-wymiana-danych`, scalona na `master` 2026-09
 Weryfikacja: kopia bazy przed migracją (`mysqldump`), migracja `otp_rate_limit` i drugi przebieg bez zmian, porównanie `information_schema` ze świeżą instalacją (139 kolumn, 76 pozycji indeksów, 21 kluczy obcych); 149/149 testów z integracją; PHPStan: 1 znana uwaga; `node --check` wszystkich plików JS; kontrola kluczy tłumaczeń; w przeglądarce pulpit, panel prywatny i strona główna renderują się bez CDN (żądania wyłącznie do `localhost`, brak błędów w konsoli), a `assets/css/app.css`, `assets/vendor/vue.global.prod.js` i pliki `woff2` zwracają 200 z poprawnym typem MIME.
 
 Osobne commity po głównym: `.gitattributes` z końcami linii LF i jednorazowe przepisanie kopii roboczej, a potem `composer cs-fix` na 11 plikach — od tej pory `composer cs` kończy się bez uwag (§5 pkt 19).
+
+Commit: `7764780` (+ `e2e0b41`, `be46d96`, `8917542`), gałąź `etap-6-jakosc`, scalona na `master` 2026-09-17 (fast-forward).
+
+### Etap 7 — UX i wydajność (2026-09-17)
+
+| Obszar | Co zrobiono | Pliki |
+|---|---|---|
+| Szkielety treści (§2.5) | układ panelu (menu, wyszukiwarka, kafelki, tabela) jest w HTML strony i znika po zamontowaniu Vue — koniec z pustym ekranem i `[v-cloak]`; `TableState` pokazuje `SkeletonRows` z liczbą kolumn danej tabeli, więc treść nie przeskakuje; własne szkielety mają kafelki KPI i panel statystyk pulpitu, panele szczegółów, karty raportowe i pola formularzy (`FormSkeleton`); klasa `.skeleton` z animacją shimmer wyłączaną przy `prefers-reduced-motion`, szkielety oznaczone `role="status"`/`aria-hidden` | `assets/css/app.src.css`, `assets/js/components.js`, `assets/js/views/dashboard.js`, `assets/js/views/*.js`, `includes/dashboard_app.php` |
+| Cache agregatów (§2.5) | `App\Cache`: pliki JSON w `storage/cache`, TTL 5 minut; klucz zawiera rolę i właściciela rekordów, więc OPERATOR nigdy nie dostanie liczb całej organizacji (D8); każdy zapis danych podbija wersję w `EventLogger`, co unieważnia wszystkie wpisy — pulpit nie pokazuje liczb sprzed zmiany; brak katalogu albo brak praw do zapisu nie psuje aplikacji (wartości liczą się wtedy za każdym razem) | `classes/Cache.php`, `classes/Service/EventLogger.php`, `classes/Api/DashboardController.php`, `classes/Service/TaskService.php` |
+| Nagłówki pamięci podręcznej | `assets/**` (css, js, woff2, obrazy) → `Cache-Control: public, max-age=31536000, immutable` — adresy mają wersję (`?v=czas zmiany pliku`), więc zmiana pliku od razu omija cache; strony i API z danymi osobowymi → `no-store`; przy okazji blokada `package.json`, `package-lock.json`, `tailwind.config.js` i `node_modules/` przez HTTP | `.htaccess` |
+| Testy | +7: `CacheTest` (jednokrotne liczenie, rozdzielne klucze, unieważnianie, wygaśnięcie, brak katalogu) i `DashboardCacheTest` (liczby per rola z cache, unieważnienie po dodaniu certyfikatu i zadania) | `tests/Unit/CacheTest.php`, `tests/Integration/DashboardCacheTest.php` |
+
+Weryfikacja: 156/156 testów z integracją (bez flagi 75 zaliczonych, 81 pominiętych); PHPStan: 1 znana uwaga; `composer cs` bez uwag; `node --check` wszystkich plików JS; w przeglądarce szkielet tabeli i kafelków przy ładowaniu danych, brak błędów w konsoli; nagłówki `Cache-Control` sprawdzone przez HTTP dla arkusza, biblioteki, kroju pisma, stron i API.
+
+**Świadomie nie zrobione:** cache raportów per osoba i płatnik oraz słowników i18n (§2.5 pkt 3) — korzyść mniejsza niż ryzyko pokazania nieaktualnej historii; przeniesienie cache do tabeli w bazie (pliki wystarczą przy jednym serwerze, a przy wielu instancjach wskazany byłby wspólny magazyn — kierunek rozwoju w pracy).
 
 **Świadomie nie zrobione:** skeleton loadery i cache agregatów z nagłówkami dla zasobów statycznych (Etap 7); przemianowanie kolumny `annual_cost` na `period_cost` (zmiana schematu bez korzyści dla obrony); testy przeglądarkowe w Selenium/Playwright — scenariusz E2E idzie przez API, bo to ta sama ścieżka, którą wykonuje panel.
 

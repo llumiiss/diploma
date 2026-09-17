@@ -10,6 +10,7 @@ Engineering thesis project: a LAMP web application for managing certificates (qu
 - PHP 8.1+ (developed on 8.3)
 - MySQL 8 / MariaDB 10.5+
 - Node.js only to rebuild the stylesheet after UI changes (`npm run css`) — the built `assets/css/app.css` is committed, so the app runs without it
+- A writable `storage/` directory (attachments and the aggregate cache); without write access the app still works, it just recomputes the dashboard numbers on every request
 - Apache with `mod_rewrite` and `AllowOverride All` (e.g. Laragon) — the root `.htaccess` blocks internal directories
 - Composer (`composer install`)
 
@@ -109,7 +110,7 @@ assistent_subscription/
 ├── cron/                    # renewals.php (scanner + invitation reminders), send_reminders.php (personal module)
 ├── database/schema.sql      # fresh install (same structure as a migrated database)
 ├── scripts/                 # migrate, seed-demo-data, cleanup-demo-data, set-role, test-mail
-├── storage/attachments/     # stored files (not served over HTTP)
+├── storage/                 # attachments/ (uploaded files) and cache/ (dashboard aggregates) — not served over HTTP
 ├── docs/                    # project map, user manual, thesis drafts
 └── tests/                   # PHPUnit (unit + integration)
 ```
@@ -128,6 +129,7 @@ assistent_subscription/
 - Reports (perspectives from the thesis description): certificate user card and payer card with renewal dates, delivery path (tasks), invitations and a filterable timeline; expiry schedule by month; printable
 - Global search (Ctrl+K) across certificates, certificate users and payers including relations and match reasons; admin event log with filters and paging
 - No CDN: Tailwind CSS is built locally, Vue and the Inter font ship with the repository, so the app works on an intranet without internet access
+- Content skeletons instead of blank screens, cached dashboard aggregates (keyed by role and owner, invalidated on every write) and long-lived cache headers for versioned assets
 - Data exchange: CSV/XML export of lists, report cards, the expiry schedule and the event log; CSV/XML import of payers, certificate users and certificates with a row-by-row preview (the preview runs the real writes and rolls them back); EML import that matches a message to the registry (sender, certificates by serial number, payers by tax ID, open invitations) and imports its CSV/XML attachments
 - Corporate dashboard: KPIs, priority renewals, payments, ToDo view, search and filters
 - Personal dashboard (frozen extra module) and its payment reminder cron

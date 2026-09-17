@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Api;
 
+use App\Cache;
 use App\CertificateManager;
 use App\Database;
 use App\Http\Request;
@@ -45,12 +46,18 @@ final class DashboardController
 
         $actor->authorize('certificates.view');
         $ownerId = $actor->seesAllRecords() ? null : $actor->id;
-        $manager = new CertificateManager($this->db);
 
-        return ['summary' => [
-            'stats'           => $manager->getStatusStats('corporate', $ownerId),
-            'payment_summary' => $manager->getPaymentSummary('corporate', $ownerId),
-            'renewal_summary' => $manager->getRenewalSummary('corporate', $ownerId),
-        ]];
+        // Klucz zawiera rolę i właściciela rekordów — cache nie może pokazać cudzych liczb (D8).
+        $summary = Cache::remember('dashboard:' . $actor->role . ':' . ($ownerId ?? 'all'), Cache::DEFAULT_TTL, function () use ($ownerId): array {
+            $manager = new CertificateManager($this->db);
+
+            return [
+                'stats'           => $manager->getStatusStats('corporate', $ownerId),
+                'payment_summary' => $manager->getPaymentSummary('corporate', $ownerId),
+                'renewal_summary' => $manager->getRenewalSummary('corporate', $ownerId),
+            ];
+        });
+
+        return ['summary' => $summary];
     }
 }

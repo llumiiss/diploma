@@ -1,6 +1,6 @@
 # CertiSub Assistant — instrukcja obsługi i scenariusz demonstracji
 
-> Stan na 2026-09-17, po Etapie 6 (jakość i domknięcie: frontend bez CDN, limit kodów logowania w bazie, testy E2E). Opisuje aplikację na danych z `scripts/seed-demo-data.php`.
+> Stan na 2026-09-17, po Etapie 7 — wykonane są wszystkie etapy planu (§7 w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md)). Opisuje aplikację na danych z `scripts/seed-demo-data.php`.
 > Dokument służy dwóm celom: pokazaniu wszystkich paneli i funkcji oraz jako zalążek rozdziału „dokumentacja użytkownika” w pracy (§9 w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md)).
 
 ---
@@ -126,6 +126,8 @@ Na danych demo (jako ADMIN):
 | „Płatności wymagające działania” | płatności wkrótce i zaległe + suma | 5 pozycji, **11 579,00 PLN** |
 
 Kolory wierszy: czerwony = wygasłe lub krytyczne, żółty = ostrzeżenie.
+
+Zanim dane dojadą, panel pokazuje szare szkielety w miejscu kafelków i wierszy tabeli — układ nie przeskakuje po załadowaniu. Wskaźniki pulpitu i statystyki zadań są liczone raz na 5 minut (osobno dla każdej roli i konta) i odświeżają się natychmiast po każdej zmianie danych.
 
 Pod kartami jest panel **„Statystyki realizacji zadań”**: słupki statusów (do zrobienia / w toku / zrobione / porzucone) z udziałem procentowym, otwarte zadania wg priorytetu, liczba zadań po terminie, moje otwarte, skuteczność (zrobione ÷ zamknięte) i średni czas realizacji. MANAGER i ADMIN widzą też rozkład zadań wg osób.
 
@@ -411,7 +413,7 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 | `php scripts/test-mail.php adres@example.com` | test konfiguracji poczty |
 | `php cron/renewals.php` | skaner odnowień i zaległe przypomnienia o zaproszeniach (codziennie) |
 | `php cron/send_reminders.php` | przypomnienia o płatnościach menedżera osobistego |
-| `composer test` | 149 testów (w tym scenariusz E2E przez API); 79 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
+| `composer test` | 156 testów (w tym scenariusz E2E przez API); 81 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
 | `npm install && npm run css` | przebudowanie arkusza stylów `assets/css/app.css` po zmianie klas Tailwinda (potrzebne tylko przy zmianach w interfejsie) |
 | `composer stan` | analiza statyczna (PHPStan) |
 
@@ -452,7 +454,6 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 
 Pełna macierz jest w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) §3. Najważniejsze braki widoczne podczas demonstracji:
 
-- skeleton loadery i cache wskaźników (Etap 7),
 - testy w prawdziwej przeglądarce (Selenium/Playwright) — scenariusz E2E idzie przez API,
 - osobne logowanie dla użytkowników certyfikatów i płatników (kierunek rozwoju, decyzja D2).
 
@@ -494,3 +495,4 @@ Pełna macierz jest w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) §3. Najważniejsze b
 | Import EML: „To nie jest wiadomość e-mail w formacie EML” | zapisz wiadomość z programu pocztowego jako `.eml` (nie `.msg` ani zrzut ekranu) |
 | Strony wyglądają „gołe”, bez stylów | brakuje `assets/css/app.css` → `npm install && npm run css` (plik jest w repozytorium, więc zwykle wystarczy pobrać projekt ponownie) |
 | „Zbyt wiele próśb o kod” mimo nowego okna przeglądarki | limit liczy historię w bazie: 3 kody na adres e-mail i 10 na adres IP w 15 minutach — odczekaj albo użyj kodu z `logs/otp.log` |
+| Pulpit pokazuje stare liczby | wskaźniki są liczone raz na 5 minut; każdy zapis danych je odświeża, więc wystarczy odświeżyć stronę. Jeśli to nie pomaga, sprawdź prawa zapisu do katalogu `storage/cache` (bez niego aplikacja działa, tylko liczy wskaźniki za każdym razem) |

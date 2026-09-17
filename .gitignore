@@ -9,6 +9,8 @@
 
 /storage/attachments/*
 !/storage/attachments/.gitkeep
+/storage/cache/*
+!/storage/cache/.gitkeep
 graphify-out/
 /node_modules/
 .php-cs-fixer.cache
