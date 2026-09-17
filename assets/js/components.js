@@ -257,6 +257,15 @@
             if (type === 'renewed') {
                 return '🔁';
             }
+            if (type === 'email_received' || type === 'eml_imported') {
+                return '📨';
+            }
+            if (type === 'data_imported') {
+                return '📥';
+            }
+            if (type === 'data_exported') {
+                return '📤';
+            }
             if (event.entity_type === 'system') {
                 return '⚙️';
             }
@@ -289,6 +298,36 @@
                     created: payload.created || 0,
                     updated: payload.updated || 0,
                 }));
+            }
+            if (event.event_type === 'email_received') {
+                if (payload.from) {
+                    lines.push(t('event.detail.from', { from: payload.from_name ? payload.from_name + ' <' + payload.from + '>' : payload.from }));
+                }
+                if (payload.subject) {
+                    lines.push(t('event.detail.subject', { subject: payload.subject }));
+                }
+                if (payload.excerpt) {
+                    lines.push(payload.excerpt);
+                }
+            } else if (event.event_type === 'data_imported') {
+                lines.push(t('event.detail.imported', {
+                    file: payload.file_name || '—',
+                    created: payload.created || 0,
+                    updated: payload.updated || 0,
+                    skipped: payload.skipped || 0,
+                    errors: payload.errors || 0,
+                }));
+            } else if (event.event_type === 'data_exported') {
+                lines.push(t('event.detail.exported', {
+                    dataset: t('exchange.dataset.' + payload.dataset),
+                    format: String(payload.format || '').toUpperCase(),
+                    records: payload.records || 0,
+                }));
+            } else if (event.event_type === 'eml_imported') {
+                lines.push(t('event.detail.subject', { subject: payload.subject || '—' }));
+                if (payload.from) {
+                    lines.push(t('event.detail.from', { from: payload.from }));
+                }
             }
             if (payload.recipient_email) {
                 lines.push(payload.recipient_email);
@@ -408,6 +447,42 @@
                         </li>
                     </ol>
                 </div>
+            </div>
+        `,
+    };
+
+    /**
+     * Przyciski eksportu do CSV i XML (F9) — tylko dla ról z uprawnieniem export.run.
+     * CSV: etykiety i wartości w języku interfejsu (arkusz), XML: nazwy pól i kody (inne systemy).
+     */
+    CertiSub.components.ExportButtons = {
+        props: {
+            dataset: { type: String, required: true },
+            params: { type: Object, default: () => ({}) },
+        },
+        data() {
+            return { busy: '' };
+        },
+        methods: {
+            async run(fileFormat) {
+                this.busy = fileFormat;
+                try {
+                    const name = await CertiSub.download(CertiSub.endpoints.export, Object.assign({ dataset: this.dataset, format: fileFormat }, this.params));
+                    CertiSub.notify(t('exchange.export.done', { file: name }));
+                } catch (error) {
+                    CertiSub.notifyError(error);
+                } finally {
+                    this.busy = '';
+                }
+            },
+        },
+        template: `
+            <div v-if="can('export.run')" class="inline-flex items-stretch no-print" role="group" :aria-label="t('exchange.export.label')">
+                <span class="inline-flex items-center px-3 text-xs text-slate-500 border border-r-0 border-slate-300 rounded-l-lg bg-slate-50" aria-hidden="true">⬇ {{ t('exchange.export.short') }}</span>
+                <button type="button" class="px-3 py-2 text-sm font-medium text-slate-700 border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-60"
+                        :title="t('exchange.export.csv_hint')" :disabled="busy !== ''" @click="run('csv')">{{ busy === 'csv' ? '…' : 'CSV' }}</button>
+                <button type="button" class="px-3 py-2 text-sm font-medium text-slate-700 border border-l-0 border-slate-300 rounded-r-lg bg-white hover:bg-slate-50 disabled:opacity-60"
+                        :title="t('exchange.export.xml_hint')" :disabled="busy !== ''" @click="run('xml')">{{ busy === 'xml' ? '…' : 'XML' }}</button>
             </div>
         `,
     };

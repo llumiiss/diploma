@@ -20,6 +20,17 @@ final class TimelineService
 
     public const PER_PAGE = 50;
     public const MAX_PER_PAGE = 200;
+    public const EXPORT_LIMIT = 20000;
+
+    private const JOURNAL_FROM = "
+            FROM events e
+            LEFT JOIN users u ON u.id = e.user_id
+            LEFT JOIN certificates c ON c.id = e.certificate_id
+            LEFT JOIN beneficiaries b ON b.id = e.beneficiary_id
+            LEFT JOIN payers p ON p.id = e.payer_id
+            LEFT JOIN users eu ON e.entity_type = 'user' AND eu.id = e.entity_id
+            LEFT JOIN email_templates et ON e.entity_type = 'email_template' AND et.id = e.entity_id
+            LEFT JOIN attachments ea ON e.entity_type = 'attachment' AND ea.id = e.entity_id";
 
     private const CONTEXT_COLUMNS = [
         'certificate' => 'certificate_id',
@@ -88,17 +99,8 @@ final class TimelineService
 
         [$conditions, $params] = $this->journalConditions($filters);
         $where = $conditions === [] ? '' : ' WHERE ' . implode(' AND ', $conditions);
-        $from = "
-            FROM events e
-            LEFT JOIN users u ON u.id = e.user_id
-            LEFT JOIN certificates c ON c.id = e.certificate_id
-            LEFT JOIN beneficiaries b ON b.id = e.beneficiary_id
-            LEFT JOIN payers p ON p.id = e.payer_id
-            LEFT JOIN users eu ON e.entity_type = 'user' AND eu.id = e.entity_id
-            LEFT JOIN email_templates et ON e.entity_type = 'email_template' AND et.id = e.entity_id
-            LEFT JOIN attachments ea ON e.entity_type = 'attachment' AND ea.id = e.entity_id";
 
-        $count = $this->db->prepare('SELECT COUNT(*)' . $from . $where);
+        $count = $this->db->prepare('SELECT COUNT(*)' . self::JOURNAL_FROM . $where);
         $count->execute($params);
         $total = (int) $count->fetchColumn();
 
@@ -107,6 +109,38 @@ final class TimelineService
         $page = max(1, min($page, $pages));
         $offset = ($page - 1) * $perPage;
 
+        return [
+            'events'   => $this->journalFetch($where, $params, $perPage, $offset),
+            'total'    => $total,
+            'page'     => $page,
+            'per_page' => $perPage,
+            'pages'    => $pages,
+            'facets'   => $this->journalFacets(),
+        ];
+    }
+
+    /**
+     * Zdarzenia dziennika z tymi samymi filtrami, bez stronicowania — do eksportu (F9).
+     *
+     * @param array<string, mixed> $filters
+     * @return list<array<string, mixed>>
+     */
+    public function journalRows(Actor $actor, array $filters = [], int $limit = self::EXPORT_LIMIT): array
+    {
+        $actor->authorize('events.view_all');
+
+        [$conditions, $params] = $this->journalConditions($filters);
+        $where = $conditions === [] ? '' : ' WHERE ' . implode(' AND ', $conditions);
+
+        return $this->journalFetch($where, $params, max(1, min($limit, self::EXPORT_LIMIT)), 0);
+    }
+
+    /**
+     * @param array<string, int|string> $params
+     * @return list<array<string, mixed>>
+     */
+    private function journalFetch(string $where, array $params, int $limit, int $offset): array
+    {
         $stmt = $this->db->prepare(
             "SELECT e.id, e.entity_type, e.entity_id, e.event_type, e.user_id, e.certificate_id, e.beneficiary_id,
                     e.payer_id, e.payload, e.occurred_at, u.first_name AS user_first_name, u.last_name AS user_last_name,
@@ -119,27 +153,18 @@ final class TimelineService
                         WHEN 'attachment' THEN ea.original_name
                         ELSE NULL
                     END AS entity_label"
-            . $from . $where
-            . " ORDER BY e.occurred_at DESC, e.id DESC LIMIT {$perPage} OFFSET {$offset}"
+            . self::JOURNAL_FROM . $where
+            . " ORDER BY e.occurred_at DESC, e.id DESC LIMIT {$limit} OFFSET {$offset}"
         );
         $stmt->execute($params);
 
-        $events = array_map(static function (array $row): array {
+        return array_map(static function (array $row): array {
             $row = self::castRow($row);
             $row['beneficiary_name'] = trim(($row['beneficiary_first_name'] ?? '') . ' ' . ($row['beneficiary_last_name'] ?? ''));
             unset($row['beneficiary_first_name'], $row['beneficiary_last_name']);
 
             return $row;
         }, $stmt->fetchAll());
-
-        return [
-            'events'   => $events,
-            'total'    => $total,
-            'page'     => $page,
-            'per_page' => $perPage,
-            'pages'    => $pages,
-            'facets'   => $this->journalFacets(),
-        ];
     }
 
     /**

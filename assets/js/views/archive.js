@@ -63,7 +63,9 @@
         },
         template: `
             <section>
-                <PageHeader :title="t('archive.title')" :description="t('archive.description')" />
+                <PageHeader :title="t('archive.title')" :description="t('archive.description')">
+                    <ExportButtons :dataset="tab" :params="{ archived: 1 }" />
+                </PageHeader>
 
                 <div class="flex flex-wrap gap-2 mb-4" role="tablist">
                     <button v-for="item in tabs" :key="item.id" type="button" role="tab" :aria-selected="tab === item.id"

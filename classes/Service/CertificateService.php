@@ -593,7 +593,7 @@ final class CertificateService
                 u.first_name AS user_first_name, u.last_name AS user_last_name, u.role AS user_role, u.email AS user_email,
                 b.first_name AS beneficiary_first_name, b.last_name AS beneficiary_last_name, b.email AS beneficiary_email,
                 b.archived_at AS beneficiary_archived_at,
-                p.company_name, p.contact_person, p.email AS payer_email, p.archived_at AS payer_archived_at
+                p.company_name, p.contact_person, p.email AS payer_email, p.tax_id AS payer_tax_id, p.archived_at AS payer_archived_at
             FROM certificates c
             INNER JOIN users u ON u.id = c.user_id
             INNER JOIN payers p ON p.id = c.payer_id

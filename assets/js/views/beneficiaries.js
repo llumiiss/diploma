@@ -70,6 +70,7 @@
         template: `
             <section>
                 <PageHeader :title="t('beneficiary.plural')" :description="t('beneficiary.list_description')">
+                    <ExportButtons dataset="beneficiaries" />
                     <button v-if="can('beneficiaries.create')" type="button" class="btn-primary" @click="add">+ {{ t('beneficiary.add') }}</button>
                 </PageHeader>
 

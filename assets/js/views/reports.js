@@ -506,6 +506,7 @@
                             <option value="">{{ t('report.schedule.all_types') }}</option>
                             <option v-for="type in labels.types" :key="type" :value="type">{{ labels.type(type) }}</option>
                         </select>
+                        <ExportButtons dataset="schedule" :params="{ months: months, payer_id: payerFilter, certificate_type: typeFilter }" />
                         <button type="button" class="btn-secondary" @click="print">🖨️ {{ t('report.print') }}</button>
                     </template>
                     <p v-if="error" class="m-5 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm" role="alert">{{ error }}</p>
@@ -656,6 +657,7 @@
                         <button v-if="can('beneficiaries.update') && !person.archived_at" type="button" class="btn-secondary no-print" @click="edit">✏️ {{ t('common.edit') }}</button>
                         <button type="button" class="btn-secondary no-print" @click="details">{{ t('report.details') }}</button>
                         <button type="button" class="btn-secondary no-print" :disabled="loading" @click="load">↻ {{ t('report.refresh') }}</button>
+                        <ExportButtons dataset="beneficiary_card" :params="{ id: id }" />
                         <button type="button" class="btn-primary no-print" @click="print">🖨️ {{ t('report.print') }}</button>
                     </PageHeader>
                     <p class="text-xs text-slate-400 -mt-4 mb-4">{{ t('report.generated_at', { date: format.dateTime(report.generated_at) }) }}</p>
@@ -795,6 +797,7 @@
                         <button v-if="can('payers.update') && !payer.archived_at" type="button" class="btn-secondary no-print" @click="edit">✏️ {{ t('common.edit') }}</button>
                         <button type="button" class="btn-secondary no-print" @click="details">{{ t('report.details') }}</button>
                         <button type="button" class="btn-secondary no-print" :disabled="loading" @click="load">↻ {{ t('report.refresh') }}</button>
+                        <ExportButtons dataset="payer_card" :params="{ id: id }" />
                         <button type="button" class="btn-primary no-print" @click="print">🖨️ {{ t('report.print') }}</button>
                     </PageHeader>
                     <p class="text-xs text-slate-400 -mt-4 mb-4">{{ t('report.generated_at', { date: format.dateTime(report.generated_at) }) }}</p>

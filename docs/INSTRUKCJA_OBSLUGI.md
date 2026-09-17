@@ -1,6 +1,6 @@
 # CertiSub Assistant — instrukcja obsługi i scenariusz demonstracji
 
-> Stan na 2026-09-17, po Etapie 4 (raporty: karty użytkownika certyfikatu i płatnika, harmonogram wygaśnięć, wyszukiwarka globalna, dziennik zdarzeń). Opisuje aplikację na danych z `scripts/seed-demo-data.php`.
+> Stan na 2026-09-17, po Etapie 5 (wymiana danych: eksport CSV/XML, import CSV/XML z podglądem, import wiadomości EML). Opisuje aplikację na danych z `scripts/seed-demo-data.php`.
 > Dokument służy dwóm celom: pokazaniu wszystkich paneli i funkcji oraz jako zalążek rozdziału „dokumentacja użytkownika” w pracy (§9 w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md)).
 
 ---
@@ -41,8 +41,8 @@ Hierarchia ról: **ADMIN > MANAGER > OPERATOR**.
 
 | Rola | Co może |
 |---|---|
-| ADMIN | wszystko, co MANAGER, oraz konta i role (zakładanie, zmiana roli, wyłączanie, przekazywanie rekordów), **szablony i załączniki**, **ustawienia** procesu odnowień, **dziennik zdarzeń** całego systemu |
-| MANAGER | dane całej organizacji, archiwizacja i przywracanie, ekran **Archiwum** (także historia certyfikatów w kartach i rekordy z archiwum w wyszukiwarce), wybór opiekuna certyfikatu, **przydział zadań**, ponowne otwieranie zadań, **uruchamianie skanera**, statystyki wg osób |
+| ADMIN | wszystko, co MANAGER, oraz konta i role (zakładanie, zmiana roli, wyłączanie, przekazywanie rekordów), **szablony i załączniki**, **ustawienia** procesu odnowień, **dziennik zdarzeń** całego systemu, **import danych i wiadomości EML** |
+| MANAGER | dane całej organizacji, archiwizacja i przywracanie, ekran **Archiwum** (także historia certyfikatów w kartach i rekordy z archiwum w wyszukiwarce), wybór opiekuna certyfikatu, **przydział zadań**, ponowne otwieranie zadań, **uruchamianie skanera**, statystyki wg osób, **eksport danych** |
 | OPERATOR | ewidencja w swoim zakresie: certyfikaty, których jest opiekunem (albo ma do nich przydzielone zadanie), oraz osoby i płatnicy, których sam wprowadził lub którzy są z tymi certyfikatami powiązani; **zadania ToDo, zaproszenia i przypomnienia, odnawianie certyfikatów, raporty (karty osób i płatników, harmonogram) i wyszukiwarka** w tym zakresie; nie archiwizuje i nie widzi archiwum |
 
 Kontrolę dostępu wykonuje serwer (API) — ukryte przyciski w przeglądarce to tylko wygoda. Szczegóły reguły zakresu danych: decyzja **D8** w mapie projektu.
@@ -221,6 +221,35 @@ Karty i harmonogram mają przycisk **Drukuj** — wydruk (albo zapis do PDF w ok
 
 Trzy zakładki: certyfikaty, użytkownicy certyfikatów, płatnicy — z datą archiwizacji i przyciskiem **Przywróć**. Na danych demo są tu 2 certyfikaty (poprzedni SSL EV i porzucona domena). Certyfikatu nie da się przywrócić, jeśli jego płatnik lub osoba są w archiwum. Rekord z archiwum można obejrzeć, ale nie edytować.
 
+### Import i eksport (MANAGER: eksport, ADMIN: import)
+
+**Eksport.** Przyciski **Eksport CSV / XML** są przy listach (certyfikaty, użytkownicy certyfikatów, płatnicy, archiwum, lista ToDo, zaproszenia, dziennik zdarzeń), na kartach raportowych i przy harmonogramie, a wszystkie zbiory razem — w widoku **Import i eksport**.
+
+- **CSV** jest dla arkusza: UTF-8 ze znacznikiem BOM, średnik, nagłówki i wartości słownikowe w języku interfejsu — Excel otwiera plik bez kreatora importu. Tekst zaczynający się od `=`, `+`, `-` lub `@` dostaje apostrof, żeby arkusz nie wykonał go jako formuły.
+- **XML** jest dla innych systemów: nazwy pól i kody wartości; karty i harmonogram mają strukturę zagnieżdżoną (certyfikaty, zadania, zaproszenia, historia).
+- Eksport obejmuje **zakres danych konta** (operator nie pobierze cudzych rekordów) i zapisuje zdarzenie w dzienniku — widać, kto i kiedy wyniósł dane osobowe.
+- Dziennik zdarzeń eksportuje się z bieżącymi filtrami ekranu.
+
+**Import (ADMIN).** Kolejność: **płatnicy → użytkownicy certyfikatów → certyfikaty**, bo kolejne pliki wskazują wcześniejsze rekordy (NIP, e-mail). Krok po kroku:
+
+1. Wybierz rodzaj danych i tryb dla rekordów, które już są w ewidencji: **Pomiń** albo **Aktualizuj** (aktualizacja zmienia tylko kolumny obecne w pliku).
+2. Wskaż plik CSV albo XML (do 1000 wierszy). Obok jest tabela rozpoznawanych kolumn i **wzór pliku** do pobrania.
+3. **Sprawdź plik** — podgląd pokazuje dla każdego wiersza: *Nowy*, *Aktualizacja* (z listą zmienianych pól), *Bez zmian*, *Pominięty* albo *Błąd* z komunikatem przy polu. Rozpoznane kolumny są zaznaczone na zielono, nierozpoznane na szaro (są pomijane).
+4. **Importuj** zapisuje wiersze bez błędów; każdy nowy rekord trafia do historii tak samo jak wpisany ręcznie.
+
+Podgląd wykonuje dokładnie ten sam zapis co import i wycofuje go na końcu, więc pokazuje wynik, a nie prognozę — po samym podglądzie w bazie nic nie przybywa.
+
+Co plik może zawierać: nagłówki po polsku lub angielsku w dowolnej kolejności (także „NIP”, „Data wygaśnięcia”, „Nr seryjny”), daty `RRRR-MM-DD` albo `DD.MM.RRRR`, kwoty z przecinkiem i „zł”, wartości „tak/nie”, typy i statusy kodem (`QUALIFIED_SIGNATURE`) albo etykietą („Certyfikat kwalifikowany”). Pliki zapisane przez polskiego Excela w Windows-1250 i rozdzielone przecinkami też się wczytają.
+
+**Import wiadomości e-mail (EML).** Zapisz wiadomość z programu pocztowego jako plik `.eml` i wskaż ją w sekcji **Import wiadomości e-mail**. Aplikacja czyta nagłówki i treść (także kodowane i w załącznikach wieloczęściowych) i proponuje:
+
+- dopasowanie **nadawcy** do użytkownika certyfikatu albo płatnika — albo dodanie nowej osoby (imię, nazwisko, e-mail i telefon z treści),
+- **certyfikaty** rozpoznane po numerach seryjnych i **płatników** po NIP-ie z treści,
+- oznaczenie **zaproszeń** wysłanych na adres nadawcy jako „z odpowiedzią”,
+- **załączniki CSV/XML** — przycisk „Podgląd importu” wczytuje je do kreatora importu z rozpoznanym rodzajem danych.
+
+Zaznacz działania i kliknij **Zastosuj zaznaczone**: wiadomość trafi na oś czasu wskazanych rekordów jako „Zarejestrowano wiadomość e-mail” (z tematem, nadawcą i fragmentem treści), a zaproszenia zmienią status.
+
 ### Dziennik zdarzeń (ADMIN)
 
 Wszystkie zdarzenia systemu od najnowszych (na danych demo ok. 57): zmiany w ewidencji, zadania, wysyłki, konta, szablony, załączniki, ustawienia i przebiegi skanera. Filtry:
@@ -380,12 +409,12 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 | `php scripts/test-mail.php adres@example.com` | test konfiguracji poczty |
 | `php cron/renewals.php` | skaner odnowień i zaległe przypomnienia o zaproszeniach (codziennie) |
 | `php cron/send_reminders.php` | przypomnienia o płatnościach menedżera osobistego |
-| `composer test` | 114 testów; 61 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
+| `composer test` | 145 testów; 77 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
 | `composer stan` | analiza statyczna (PHPStan) |
 
 ---
 
-## 10. Scenariusz demonstracji (ok. 25 minut)
+## 10. Scenariusz demonstracji (ok. 30 minut)
 
 1. Laragon → Start All, `php scripts/migrate.php`, `php scripts/seed-demo-data.php --force`.
 2. Strona główna → `/register.php` przekierowuje do logowania: konta zakłada administrator.
@@ -406,11 +435,13 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 17. **Raporty** → perspektywa Użytkownika: karta Jana Kowalskiego — „odnowienie od”, ścieżka realizacji, zaproszenia, oś czasu z filtrem „Zadania” → **Drukuj**.
 18. Perspektywa Płatnika: karta NovaTech — powiązane osoby, harmonogram wygaśnięć z wykresem, koszt roczny; w „Raportach” harmonogram całej organizacji z filtrem płatnika.
 19. **Dziennik zdarzeń** (ADMIN) → filtr autora „System” (skaner), potem wyszukiwanie adresu e-mail odbiorcy zaproszenia.
-20. Konta i role → **Dodaj konto** (np. nowy OPERATOR), wyłączone konto Adama Nowickiego, okno **Przekaż rekordy**.
-21. Demonstracja ról (§6): `set-role.php … OPERATOR` → 2 certyfikaty, brak archiwum, dziennika, szablonów, kont i ustawień, karty i wyszukiwarka tylko w zakresie operatora → powrót do ADMIN.
-22. Przełącznik języka (PL → EN) — interfejs, komunikaty walidacji i opisy zdarzeń się tłumaczą.
-23. HeidiSQL: tabele modelu, zapytanie „ostatnie zmiany wykonane w panelu” (§8), nieudana próba drugiego otwartego zadania.
-24. Bezpieczeństwo: `/.git/config`, `/storage/attachments/`, `/classes/Rbac.php` → **403**; `/api/accounts.php` bez logowania → **401**.
+20. **Import i eksport** → pobierz płatników w CSV (otwórz w Excelu) i XML; potem wczytaj plik z trzema wierszami: istniejący płatnik (*Pominięty*), nowy poprawny (*Nowy*), błędny NIP (*Błąd*) → zaimportuj i pokaż nowego płatnika na liście.
+21. **Import wiadomości EML** → wiadomość od Jana Kowalskiego z numerem seryjnym i NIP-em w treści → rozpoznany nadawca, certyfikat, płatnik i otwarte zaproszenie; zastosuj: zaproszenie „z odpowiedzią” i wpis na osi czasu certyfikatu.
+22. Konta i role → **Dodaj konto** (np. nowy OPERATOR), wyłączone konto Adama Nowickiego, okno **Przekaż rekordy**.
+23. Demonstracja ról (§6): `set-role.php … OPERATOR` → 2 certyfikaty, brak archiwum, dziennika, szablonów, kont, ustawień i importu, karty i wyszukiwarka tylko w zakresie operatora → powrót do ADMIN.
+24. Przełącznik języka (PL → EN) — interfejs, komunikaty walidacji i opisy zdarzeń się tłumaczą.
+25. HeidiSQL: tabele modelu, zapytanie „ostatnie zmiany wykonane w panelu” (§8), nieudana próba drugiego otwartego zadania.
+26. Bezpieczeństwo: `/.git/config`, `/storage/attachments/`, `/classes/Rbac.php` → **403**; `/api/accounts.php` bez logowania → **401**.
 
 ---
 
@@ -418,7 +449,6 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 
 Pełna macierz jest w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) §3. Najważniejsze braki widoczne podczas demonstracji:
 
-- **import i eksport** CSV/XML/EML, w tym eksport kart raportowych i list (Etap 5); do tego czasu karty można wydrukować lub zapisać jako PDF,
 - lokalne zasoby frontendu zamiast CDN, limit wysyłek kodów OTP w bazie (Etap 6),
 - skeleton loadery i cache wskaźników (Etap 7).
 
@@ -453,3 +483,8 @@ Pełna macierz jest w [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) §3. Najważniejsze b
 | Karta pokazuje mniej certyfikatów niż u kolegi | OPERATOR widzi w kartach tylko swoje certyfikaty i ich zdarzenia; historia z archiwum jest od roli MANAGER |
 | „Nie znaleziono” po otwarciu karty z zakładki | adres `#/payers/N` wskazuje rekord spoza zakresu konta albo z archiwum → wróć do listy |
 | Wydruk karty ucina tabelę | szerokie tabele (certyfikaty z kosztem) — w oknie drukowania wybierz orientację poziomą |
+| Polskie znaki w pobranym CSV są połamane | otwórz plik podwójnym kliknięciem (ma znacznik BOM) albo zaimportuj w Excelu jako UTF-8; nie zmieniaj kodowania przy zapisie |
+| Import: „W pliku brakuje wymaganych kolumn” | nagłówki muszą zawierać kolumny oznaczone jako wymagane (np. nazwa, typ i data wygaśnięcia) — pobierz **wzór pliku** i skopiuj nagłówki |
+| Import: „Nie znaleziono płatnika” | najpierw zaimportuj płatników, a w pliku osób i certyfikatów podaj NIP albo dokładną nazwę płatnika |
+| Import: wszystkie wiersze „Pominięty” | rekordy już są w ewidencji — wybierz tryb **Aktualizuj**, aby nadpisać kolumny z pliku |
+| Import EML: „To nie jest wiadomość e-mail w formacie EML” | zapisz wiadomość z programu pocztowego jako `.eml` (nie `.msg` ani zrzut ekranu) |

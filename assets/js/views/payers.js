@@ -67,6 +67,7 @@
         template: `
             <section>
                 <PageHeader :title="t('payer.plural')" :description="t('payer.list_description')">
+                    <ExportButtons dataset="payers" />
                     <button v-if="can('payers.create')" type="button" class="btn-primary" @click="add">+ {{ t('payer.add') }}</button>
                 </PageHeader>
 
