@@ -6,7 +6,10 @@ namespace App;
 
 use DateTimeImmutable;
 
-final class SubscriptionHelper
+/**
+ * Logika prezentacji certyfikatów i usług: progi odnowień, priorytety, etykiety.
+ */
+final class CertificateHelper
 {
     /**
      * Reminder thresholds per scope (days until renewal/payment).
@@ -30,35 +33,36 @@ final class SubscriptionHelper
     }
 
     /**
-     * @param array<int, array<string, mixed>> $subscriptions
+     * @param array<int, array<string, mixed>> $certificates
      * @return array<int, array<string, mixed>>
      */
-    public static function enrich(array $subscriptions, ?DateTimeImmutable $today = null): array
+    public static function enrich(array $certificates, ?DateTimeImmutable $today = null): array
     {
         $today = $today ?? new DateTimeImmutable('today');
 
-        foreach ($subscriptions as &$item) {
+        foreach ($certificates as &$item) {
             $scope = (string) ($item['scope'] ?? 'corporate');
             $thresholds = self::getThresholds($scope);
 
-            $expiry = new DateTimeImmutable($item['expiry_date']);
+            $expiry = new DateTimeImmutable((string) $item['expiry_date']);
             $daysLeft = (int) $today->diff($expiry)->format('%r%a');
 
             $item['days_left'] = $daysLeft;
-            $item['owner_name'] = trim(($item['user_first_name'] ?? '') . ' ' . ($item['user_last_name'] ?? ''));
+            $item['owner_name'] = self::fullName($item['user_first_name'] ?? '', $item['user_last_name'] ?? '');
+            $item['beneficiary_name'] = self::fullName($item['beneficiary_first_name'] ?? '', $item['beneficiary_last_name'] ?? '');
             $item['annual_cost'] = (float) $item['annual_cost'];
             $item['thresholds'] = $thresholds;
             $item['priority'] = self::resolvePriority($daysLeft, $scope);
             $item['priority_label'] = self::priorityLabel($item['priority'], $scope);
             $item['reminder_message'] = self::reminderMessage($daysLeft, $scope);
-            $item['type_label'] = self::typeLabel($item['subscription_type']);
-            $item['status_label'] = self::statusLabel($item['status']);
+            $item['type_label'] = self::typeLabel((string) ($item['certificate_type'] ?? 'OTHER'));
+            $item['status_label'] = self::statusLabel((string) $item['status']);
             $item['display_payment_status'] = self::resolveDisplayPaymentStatus($item, $daysLeft, $scope);
             $item['payment_label'] = self::paymentLabel($item['display_payment_status']);
         }
         unset($item);
 
-        return $subscriptions;
+        return $certificates;
     }
 
     public static function resolvePriority(int $daysLeft, string $scope = 'corporate'): string
@@ -138,17 +142,19 @@ final class SubscriptionHelper
     public static function typeLabel(string $type): string
     {
         return match ($type) {
-            'SSL_CERTIFICATE' => \__('type.ssl'),
-            'SAAS'            => \__('type.saas'),
-            'DOMAIN'          => \__('type.domain'),
-            'CLOUD_SUPPORT'   => \__('type.cloud_support'),
-            'CODE_SIGNING'    => \__('type.code_signing'),
-            'STREAMING'       => \__('type.streaming'),
-            'MUSIC'           => \__('type.music'),
-            'GAMING'          => \__('type.gaming'),
-            'FITNESS'         => \__('type.fitness'),
-            'CLOUD_STORAGE'   => \__('type.cloud_storage'),
-            default           => \__('type.other'),
+            'QUALIFIED_SIGNATURE' => \__('type.qualified_signature'),
+            'QUALIFIED_SEAL'      => \__('type.qualified_seal'),
+            'SSL_CERTIFICATE'     => \__('type.ssl'),
+            'SAAS'                => \__('type.saas'),
+            'DOMAIN'              => \__('type.domain'),
+            'CLOUD_SUPPORT'       => \__('type.cloud_support'),
+            'CODE_SIGNING'        => \__('type.code_signing'),
+            'STREAMING'           => \__('type.streaming'),
+            'MUSIC'               => \__('type.music'),
+            'GAMING'              => \__('type.gaming'),
+            'FITNESS'             => \__('type.fitness'),
+            'CLOUD_STORAGE'       => \__('type.cloud_storage'),
+            default               => \__('type.other'),
         };
     }
 
@@ -177,5 +183,10 @@ final class SubscriptionHelper
     public static function formatCurrency(float $amount, string $currency = 'PLN'): string
     {
         return number_format($amount, 2, '.', ' ') . ' ' . $currency;
+    }
+
+    private static function fullName(mixed $firstName, mixed $lastName): string
+    {
+        return trim((string) $firstName . ' ' . (string) $lastName);
     }
 }

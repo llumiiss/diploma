@@ -7,6 +7,7 @@ namespace Tests\Integration;
 use App\Csrf;
 use App\Database;
 use App\MigrationRunner;
+use App\Migrations\SchemaInspector;
 use App\Session;
 use PDO;
 use PHPUnit\Framework\TestCase;
@@ -40,6 +41,32 @@ final class MigrationRunnerTest extends TestCase
              WHERE table_schema = DATABASE() AND table_name = 'login_otps' LIMIT 1"
         );
         $this->assertNotFalse($stmt->fetchColumn());
+    }
+
+    public function testCertificatesModelIsInPlace(): void
+    {
+        $runner = new MigrationRunner($this->db);
+        $runner->runPending();
+
+        $tables = [
+            'certificates', 'beneficiaries', 'renewal_tasks', 'email_templates', 'attachments',
+            'email_template_attachments', 'invitations', 'invitation_attachments', 'events',
+        ];
+        foreach ($tables as $table) {
+            $this->assertTrue(SchemaInspector::tableExists($this->db, $table), "Brak tabeli {$table}");
+        }
+
+        $this->assertFalse(SchemaInspector::tableExists($this->db, 'subscriptions'));
+        $this->assertTrue(SchemaInspector::columnExists($this->db, 'certificates', 'certificate_type'));
+        $this->assertFalse(SchemaInspector::columnExists($this->db, 'certificates', 'subscription_type'));
+        $this->assertTrue(SchemaInspector::columnExists($this->db, 'certificates', 'archived_at'));
+        $this->assertTrue(SchemaInspector::foreignKeyExists($this->db, 'certificates', 'fk_certificates_beneficiary'));
+        $this->assertFalse(SchemaInspector::foreignKeyExists($this->db, 'certificates', 'fk_subscriptions_user'));
+
+        $templates = (int) $this->db->query(
+            "SELECT COUNT(*) FROM email_templates WHERE code IN ('renewal_invitation', 'renewal_reminder')"
+        )->fetchColumn();
+        $this->assertGreaterThanOrEqual(4, $templates);
     }
 }
 

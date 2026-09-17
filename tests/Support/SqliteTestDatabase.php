@@ -38,7 +38,7 @@ final class SqliteTestDatabase
         );
 
         $db->exec(
-            'CREATE TABLE subscriptions (
+            'CREATE TABLE certificates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 payer_id INTEGER NOT NULL DEFAULT 1,
@@ -61,10 +61,10 @@ final class SqliteTestDatabase
         return (int) $db->lastInsertId();
     }
 
-    public static function seedSubscription(PDO $db, int $userId, string $name = 'SSL Wildcard'): int
+    public static function seedCertificate(PDO $db, int $userId, string $name = 'SSL Wildcard'): int
     {
         $stmt = $db->prepare(
-            'INSERT INTO subscriptions (user_id, payer_id, name, scope, expiry_date)
+            'INSERT INTO certificates (user_id, payer_id, name, scope, expiry_date)
              VALUES (:user_id, 1, :name, "corporate", "2030-01-01")'
         );
         $stmt->execute(['user_id' => $userId, 'name' => $name]);

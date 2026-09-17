@@ -9,12 +9,12 @@ if (!isset($scope) || !in_array($scope, ['corporate', 'personal'], true)) {
 require dirname(__DIR__) . '/bootstrap.php';
 
 use App\AuthManager;
+use App\CertificateHelper;
+use App\CertificateManager;
 use App\Csrf;
 use App\ManagerSubscriptionManager;
 use App\PayerManager;
 use App\Rbac;
-use App\SubscriptionHelper;
-use App\SubscriptionManager;
 use App\Translator;
 use App\UserManager;
 
@@ -25,9 +25,11 @@ $dashboardTarget = ($scope === 'personal' ? 'dashboard-personal.php' : 'dashboar
 $auth->requireAuth($dashboardTarget);
 
 $prefix = $scope === 'personal' ? 'personal' : 'corporate';
-$thresholds = SubscriptionHelper::getThresholds($scope);
+$thresholds = CertificateHelper::getThresholds($scope);
 
 $typeOptionsCorporate = [
+    ['value' => 'QUALIFIED_SIGNATURE', 'label' => __('type.qualified_signature')],
+    ['value' => 'QUALIFIED_SEAL', 'label' => __('type.qualified_seal')],
     ['value' => 'SSL_CERTIFICATE', 'label' => __('type.ssl')],
     ['value' => 'SAAS', 'label' => __('type.saas')],
     ['value' => 'DOMAIN', 'label' => __('type.domain')],
@@ -62,7 +64,7 @@ $config = [
     'thresholds'       => $thresholds,
 ];
 
-$subscriptionManager = new SubscriptionManager();
+$certificateManager = new CertificateManager();
 $userManager = new UserManager();
 $payerManager = new PayerManager();
 $managerSubscriptionManager = new ManagerSubscriptionManager();
@@ -80,10 +82,11 @@ $currentUser = $auth->currentUser() ?: [
 $seesAllRecords = Rbac::seesAllRecords((string) ($currentUser['role'] ?? Rbac::OPERATOR));
 $ownerId = $seesAllRecords ? null : (int) $currentUser['id'];
 
-$subscriptions = SubscriptionHelper::enrich($subscriptionManager->getAllSubscriptions($scope, $ownerId));
-$stats = $subscriptionManager->getStatusStats($scope, $ownerId);
-$paymentSummary = $subscriptionManager->getPaymentSummary($scope, $ownerId);
-$renewalSummary = $subscriptionManager->getRenewalSummary($scope, $ownerId);
+// Widok obu paneli nadal nazywa pozycje „subscriptions” — etykiety certyfikatów dojdą z nowym UI (Etap 2).
+$subscriptions = CertificateHelper::enrich($certificateManager->getAllCertificates($scope, $ownerId));
+$stats = $certificateManager->getStatusStats($scope, $ownerId);
+$paymentSummary = $certificateManager->getPaymentSummary($scope, $ownerId);
+$renewalSummary = $certificateManager->getRenewalSummary($scope, $ownerId);
 
 // Katalog osób i płatników to dane całej organizacji (e-maile, NIP-y) — nie dla OPERATORA.
 $users = $seesAllRecords ? $userManager->getAllUsers($scope) : [];
@@ -678,7 +681,7 @@ createApp({
                 );
             }
 
-            if (this.filterType) list = list.filter(s => s.subscription_type === this.filterType);
+            if (this.filterType) list = list.filter(s => s.certificate_type === this.filterType);
             if (this.filterPayment) list = list.filter(s => s.display_payment_status === this.filterPayment);
             if (this.filterPriority) list = list.filter(s => s.priority === this.filterPriority);
 

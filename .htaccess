@@ -13,7 +13,7 @@
 
     # Katalogi wewnętrzne (wzorce są względne do tego katalogu, więc działają
     # także wtedy, gdy aplikacja stoi w podkatalogu serwera).
-    RewriteRule ^(classes|config|cron|database|docs|includes|lang|logs|scripts|tests|vendor)(/|$) - [F,L]
+    RewriteRule ^(classes|config|cron|database|docs|includes|lang|logs|scripts|storage|tests|vendor)(/|$) - [F,L]
 
     # Pliki i katalogi ukryte: .git, .gitignore, .php-cs-fixer.dist.php, .phpunit.cache…
     RewriteRule (^|/)\. - [F,L]

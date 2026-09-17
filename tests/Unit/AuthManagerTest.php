@@ -151,7 +151,7 @@ final class AuthManagerTest extends TestCase
     {
         $db = SqliteTestDatabase::create();
         $userId = SqliteTestDatabase::seedUser($db, 'owner@example.com');
-        SqliteTestDatabase::seedSubscription($db, $userId);
+        SqliteTestDatabase::seedCertificate($db, $userId);
         $users = new UserManager($db);
         $auth = new AuthManager($db, $users, $this->mail);
         $auth->login($userId);

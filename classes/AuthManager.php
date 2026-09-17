@@ -266,7 +266,7 @@ final class AuthManager
             return ['ok' => false, 'error' => 'auth.error.generic'];
         }
 
-        if ($this->users->countOwnedSubscriptions($userId) > 0) {
+        if ($this->users->countOwnedCertificates($userId) > 0) {
             return ['ok' => false, 'error' => 'auth.error.delete_blocked'];
         }
 

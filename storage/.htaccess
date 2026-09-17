@@ -1,0 +1,3 @@
+# Pliki przechowywane przez aplikację (np. załączniki zaproszeń) — nigdy nie serwujemy ich wprost.
+# Pobieranie, jeśli będzie potrzebne, musi przejść przez skrypt PHP z kontrolą uprawnień.
+Require all denied
