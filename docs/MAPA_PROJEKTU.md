@@ -263,7 +263,7 @@ Numeracja ciągła — odwołania w innych miejscach: „§5 pkt N”.
 16. ✅ `composer-setup.php` (instalator Composera) usunięty z repozytorium w Etapie 6. Katalog `.claude/` nie jest śledzony, `node_modules/` dopisane do `.gitignore`.
 17. ✅ Nieaktualna dokumentacja: `docs/thesis_part1.md` i `docs/AGENT_HANDOFF.md` mają od Etapu 6 nagłówek „Dokument historyczny” z odesłaniem do mapy; README i `CLAUDE.md` są aktualizowane co etap.
 18. PHPStan: 1 znana uwaga (`cron/send_reminders.php:120`) — nie blokuje. Uwaga z `MigrationRunner.php:92` zniknęła w Etapie 1, bo metody sprawdzające schemat są poprawnie oznaczone jako nieczyste (`@phpstan-impure`).
-19. PHP-CS-Fixer zgłasza 27 z 32 plików „do poprawy”, bo `@PSR12` wymaga końców linii LF, a pliki w repozytorium mają CRLF (Windows). Dotyczy to także plików, których nikt nie zmieniał, więc `composer cs-fix` przepisałby cały projekt. Do zrobienia osobno: `.gitattributes` z `* text eol=lf` i jednorazowa normalizacja w dedykowanym commicie.
+19. ✅ PHP-CS-Fixer zgłaszał wszystkie pliki, bo `@PSR12` wymaga końców linii LF, a kopia robocza na Windowsie miała CRLF. Naprawione w Etapie 6 osobnymi commitami: `.gitattributes` z `* text=auto eol=lf` (pliki binarne oznaczone), ponowne pobranie plików do kopii roboczej i `composer cs-fix` na pozostałych 11 plikach (kolejność importów, apostrofy, przecinki). `composer cs` kończy się teraz bez uwag.
 21. ✅ Klasa `AddSubscriptionApiTest` nigdy się nie uruchamiała (PHPUnit wykrywa tylko klasę o nazwie pliku, a endpoint kończył się `exit`). Naprawione w Etapie 2: wspólne jądro `App\Http\ApiKernel` bez `exit` i kontrolery w `classes/Api/`; testy w `tests/Unit/ApiKernelTest.php`.
 
 ### 5.4. ✅ Wykryte i naprawione po Etapie 0 (2026-09-16)
@@ -354,7 +354,7 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 
 - **Testy:** 149 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 70 zaliczonych + 79 pominiętych), w tym scenariusz E2E przez warstwę API. Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
 - **PHPStan (poziom 5):** 1 znana uwaga (`cron/send_reminders.php:120`); analizowane są także pliki wejściowe z katalogu głównego.
-- **PHP-CS-Fixer:** większość plików zgłaszana z powodu CRLF (§5 pkt 19) — `cs-fix` świadomie nieuruchomiony.
+- **PHP-CS-Fixer:** `composer cs` bez uwag (0 ze 136 plików) po normalizacji końców linii i poprawkach stylu w Etapie 6 (§5 pkt 19).
 - **Baza `assistent_subscriptions`:** 15 tabel, migracje `login_otp`, `manager_subskrypcji`, `certificates_model`, `accounts_and_ownership`, `renewal_process`, `otp_rate_limit`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 139 kolumn, 76 pozycji indeksów, 21 kluczy obcych).
 - **Frontend bez internetu (Etap 6):** żadna strona nie odwołuje się do CDN — `assets/css/app.css` (Tailwind zbudowany lokalnie), `assets/vendor/vue.global.prod.js`, `assets/fonts/inter-*.woff2`; sprawdzone w przeglądarce (lista żądań tylko do `localhost`) i przez HTTP (kody 200, poprawne typy MIME).
 - **Cron odnowień:** `php cron/renewals.php` na danych demo — 6 certyfikatów w marginesie, 1 nowe zadanie (Microsoft 365), 0 przypomnień do wysłania; wynik w `logs/renewals.log`.
@@ -519,6 +519,8 @@ Commit: `a26fb16`, gałąź `etap-5-wymiana-danych`, scalona na `master` 2026-09
 | Testy | +4: limit kodów per e-mail i per IP (z nową sesją), scenariusz E2E i kontrola kodów odpowiedzi API | `tests/Unit/AuthManagerTest.php`, `tests/Integration/EndToEndFlowTest.php` |
 
 Weryfikacja: kopia bazy przed migracją (`mysqldump`), migracja `otp_rate_limit` i drugi przebieg bez zmian, porównanie `information_schema` ze świeżą instalacją (139 kolumn, 76 pozycji indeksów, 21 kluczy obcych); 149/149 testów z integracją; PHPStan: 1 znana uwaga; `node --check` wszystkich plików JS; kontrola kluczy tłumaczeń; w przeglądarce pulpit, panel prywatny i strona główna renderują się bez CDN (żądania wyłącznie do `localhost`, brak błędów w konsoli), a `assets/css/app.css`, `assets/vendor/vue.global.prod.js` i pliki `woff2` zwracają 200 z poprawnym typem MIME.
+
+Osobne commity po głównym: `.gitattributes` z końcami linii LF i jednorazowe przepisanie kopii roboczej, a potem `composer cs-fix` na 11 plikach — od tej pory `composer cs` kończy się bez uwag (§5 pkt 19).
 
 **Świadomie nie zrobione:** skeleton loadery i cache agregatów z nagłówkami dla zasobów statycznych (Etap 7); przemianowanie kolumny `annual_cost` na `period_cost` (zmiana schematu bez korzyści dla obrony); testy przeglądarkowe w Selenium/Playwright — scenariusz E2E idzie przez API, bo to ta sama ścieżka, którą wykonuje panel.
 

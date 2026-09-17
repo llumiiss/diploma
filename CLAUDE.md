@@ -34,7 +34,7 @@ npm install && npm run css                       # rebuild assets/css/app.css af
 Mail driver `log` (in `config/mail.local.php`) writes messages to `logs/mail.log` instead of sending — use it for demos; never let an agent send real invitations while testing (tests use `Tests\Support\RecordingInvitationMailer`).
 **Never run `php scripts/migrate.php --fresh` against the user's database** — it drops every table. Take a `mysqldump` of `assistent_subscriptions` before applying a new schema migration.
 
-Quality baseline (2026-09-17, after Etap 6): 149/149 tests pass with integration enabled; PHPStan reports 1 pre-existing benign note (`cron/send_reminders.php:120`). `composer cs` flags most files mainly because @PSR12 wants LF endings and the repo is CRLF — do not run `cs-fix` without a separate line-ending normalization commit.
+Quality baseline (2026-09-17, after Etap 6): 149/149 tests pass with integration enabled; PHPStan reports 1 pre-existing benign note (`cron/send_reminders.php:120`). `composer cs` is clean (0 of 136 files) — `.gitattributes` keeps the working tree on LF, so keep it that way and run `composer cs-fix` in its own commit when it reports something.
 
 ## Architecture (Etap 2)
 - **Services** `classes/Service/*Service.php` hold business rules: validation (`Validator`), permission checks (`Actor::authorize()` → `Rbac::can()`), data scope (`Visibility`, decision D8), history (`EventLogger` → `events`), transactions (`Transaction::run`). They take a `PDO` and an `Actor`, never read the session — so they are testable and reusable from CLI/import.
