@@ -150,7 +150,9 @@
         },
         template: `
             <section>
-                <PageHeader :title="t('eventlog.title')" :description="t('eventlog.description')" />
+                <PageHeader :title="t('eventlog.title')" :description="t('eventlog.description')">
+                    <ExportButtons dataset="events" :params="filters" />
+                </PageHeader>
 
                 <div class="card p-4 mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                     <div class="sm:col-span-2">

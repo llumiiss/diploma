@@ -80,7 +80,9 @@
         },
         template: `
             <section>
-                <PageHeader :title="t('invitation.title')" :description="t('invitation.description')" />
+                <PageHeader :title="t('invitation.title')" :description="t('invitation.description')">
+                    <ExportButtons dataset="invitations" />
+                </PageHeader>
 
                 <div class="card p-4 mb-4 grid gap-3 md:grid-cols-3">
                     <input v-model="search" type="search" class="input" :placeholder="t('invitation.search_placeholder')" :aria-label="t('common.search')">

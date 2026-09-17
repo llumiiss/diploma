@@ -23,6 +23,7 @@
         reports: { component: 'ReportsView', icon: '📈', label: 'nav.reports', permission: 'reports.view' },
         search: { component: 'SearchView', icon: '🔍', label: 'search.title', permission: 'search.use', hidden: true },
         archive: { component: 'ArchiveView', icon: '📦', label: 'nav.archive', permission: 'archive.view', group: 'manage' },
+        exchange: { component: 'ExchangeView', icon: '🔄', label: 'nav.exchange', permission: 'export.run', group: 'manage' },
         events: { component: 'EventLogView', icon: '🧾', label: 'nav.events', permission: 'events.view_all', group: 'admin' },
         templates: { component: 'TemplatesView', icon: '🧩', label: 'nav.templates', permission: 'templates.manage', group: 'admin' },
         accounts: { component: 'AccountsView', icon: '🔐', label: 'nav.accounts', permission: 'accounts.manage', group: 'admin' },

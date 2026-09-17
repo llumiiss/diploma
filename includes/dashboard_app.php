@@ -62,6 +62,8 @@ $boot = [
         'reports'        => 'api/reports.php',
         'search'         => 'api/search.php',
         'events'         => 'api/events.php',
+        'export'         => 'api/export.php',
+        'import'         => 'api/import.php',
         'delete_account' => 'api/delete_account.php',
     ],
     'links'       => [
@@ -90,6 +92,7 @@ $scripts = [
     'assets/js/views/search.js',
     'assets/js/views/reports.js',
     'assets/js/views/events.js',
+    'assets/js/views/exchange.js',
     'assets/js/app.js',
 ];
 

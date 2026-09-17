@@ -40,6 +40,7 @@ final class BeneficiaryService
                 b.id, b.first_name, b.last_name, b.email, b.phone, b.payer_id, b.notes,
                 b.archived_at, b.created_at, b.updated_at,
                 p.company_name AS payer_name,
+                p.tax_id AS payer_tax_id,
                 p.archived_at AS payer_archived_at,
                 COALESCE(cs.certificate_count, 0) AS certificate_count,
                 cs.earliest_expiry

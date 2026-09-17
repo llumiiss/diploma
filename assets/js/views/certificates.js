@@ -134,6 +134,7 @@
             <section>
                 <PageHeader :title="mode === 'todo' ? t('dash.todo_list') : t('certificate.plural')"
                             :description="mode === 'todo' ? t('dash.todo_desc_corporate', { days: warningDays }) : t('certificate.list_description')">
+                    <ExportButtons v-if="mode !== 'todo'" dataset="certificates" />
                     <button v-if="can('certificates.create')" type="button" class="btn-primary" @click="add">+ {{ t('certificate.add') }}</button>
                 </PageHeader>
 

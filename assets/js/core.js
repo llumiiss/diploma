@@ -100,6 +100,49 @@
         post: (url, body) => request(url, { method: 'POST', body }),
     };
 
+    /**
+     * Pobranie pliku z API (eksport). Błąd przychodzi jako JSON i trafia do powiadomienia,
+     * zamiast otwierać surową odpowiedź w karcie przeglądarki. Zwraca nazwę zapisanego pliku.
+     */
+    async function download(url, params) {
+        let response;
+        try {
+            response = await fetch(withQuery(url, params || {}), { credentials: 'same-origin' });
+        } catch (error) {
+            throw new ApiError(t('api.error.network'), 0);
+        }
+
+        if (response.status === 401) {
+            global.location.href = boot.links.login;
+            throw new ApiError(t('api.error.unauthorized'), 401);
+        }
+
+        const type = response.headers.get('Content-Type') || '';
+        if (!response.ok || type.indexOf('application/json') !== -1) {
+            let data = null;
+            try {
+                data = await response.json();
+            } catch (error) {
+                data = null;
+            }
+            throw new ApiError((data && data.message) || t('api.error.server'), response.status, data && data.errors, data);
+        }
+
+        const blob = await response.blob();
+        const match = /filename="?([^";]+)"?/.exec(response.headers.get('Content-Disposition') || '');
+        const name = match ? match[1] : 'export';
+        const href = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = href;
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        global.setTimeout(() => URL.revokeObjectURL(href), 1000);
+
+        return name;
+    }
+
     // ── Formatowanie ──────────────────────────────────────────────────────────
 
     const intlLocale = { pl: 'pl-PL', en: 'en-GB', de: 'de-DE', es: 'es-ES', uk: 'uk-UA' }[boot.locale] || 'pl-PL';
@@ -468,6 +511,7 @@
         data,
         endpoints,
         withQuery,
+        download,
         components: {},
     };
 })(window);

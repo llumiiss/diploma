@@ -136,6 +136,7 @@
         template: `
             <section>
                 <PageHeader :title="t('task.title')" :description="t('task.description', { days: CertiSub.boot.thresholds.warning })">
+                    <ExportButtons dataset="tasks" />
                     <button v-if="can('scanner.run')" type="button" class="btn-secondary" :disabled="scanning" @click="scan">
                         🔎 {{ scanning ? t('task.scanning') : t('task.run_scanner') }}
                     </button>

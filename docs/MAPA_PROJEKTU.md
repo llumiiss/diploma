@@ -11,7 +11,7 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 ## 0. Najważniejsze wnioski
 
 1. **Kod realizuje inny produkt niż opis pracy.** Opis: system ewidencji certyfikatów (np. kwalifikowanych) z użytkownikami certyfikatów, płatnikami, listą zadań, zaproszeniami e-mail, importem/eksportem i raportami. Kod: tracker subskrypcji firmowych (SSL, SaaS, domeny) i prywatnych (Netflix, Spotify).
-2. **Pokrycie 19 wymagań funkcjonalnych po Etapie 4: 16 kompletnych, 1 częściowe, 2 brakujące** (po Etapie 3: 12 / 5 / 2; po Etapie 2: 7 / 10 / 2; po Etapie 1: 0 / 14 / 5; na starcie 0 / 8 / 11; macierz w §3). Brakuje eksportu i importu (Etap 5); perspektywa administratora czeka już tylko na import (F8).
+2. **Pokrycie 19 wymagań funkcjonalnych po Etapie 5: 19 kompletnych** (po Etapie 4: 16 / 1 / 2; po Etapie 3: 12 / 5 / 2; po Etapie 2: 7 / 10 / 2; po Etapie 1: 0 / 14 / 5; na starcie 0 / 8 / 11; macierz w §3). Pozostają wymagania niefunkcjonalne: lokalne zasoby frontendu i limit OTP w bazie (N3, N5) oraz scenariusze E2E (N6) — Etap 6.
 3. **Cykl życia odnowienia z §2.1 działa od początku do końca (Etapy 2–3):** ewidencja → skaner zakłada zadanie ToDo → zaproszenie e-mail z szablonu i załącznikami → przypomnienia → odnowienie (nowy certyfikat, stary do archiwum) albo porzucenie → statystyki zadań. Każdy krok zapisuje zdarzenie w historii.
 4. **`CLAUDE.md` jest spójny z kodem, ale nie z opisem pracy.** Roadmapa pomija m.in. import/eksport, szablony i załączniki, rejestr zaproszeń, archiwizację, zadania ze statusami i statystykami, historię na osi czasu oraz raporty perspektyw (§6).
 5. **Harmonogram jest przesunięty:** CRUD (lipiec), RBAC (sierpień), cron + UX (1–15.09) nie są w kodzie. Freeze 15.10.2026 jest nierealny przy pełnym zakresie (§7).
@@ -23,6 +23,7 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 11. **Etap 2 (ewidencja, archiwizacja, RBAC) wykonany 2026-09-17 (§11):** warstwa usług i API z kontrolą ról, nowy panel firmowy (Vue bez kroku budowania, `assets/js`), archiwum, konta i role, rejestracja wyłączona (D3), zakres danych operatora (D8), testy integracyjne na osobnej bazie testowej.
 12. **Etap 3 (proces odnowień) wykonany 2026-09-17 (§11):** skaner i cron `cron/renewals.php`, lista ToDo ze statusami, przydziałem i odnowieniem certyfikatu, szablony i załączniki, wysyłka zaproszeń z rejestrem i przypomnieniami, ustawienia progów, statystyki zadań na pulpicie.
 13. **Etap 4 (raporty i przegląd) wykonany 2026-09-17 (§11):** karta użytkownika certyfikatu i karta płatnika (perspektywy z opisu pracy) z datami odnowienia, ścieżką realizacji, zaproszeniami i osią czasu; harmonogram wygaśnięć; wyszukiwarka globalna z powiązaniami; dziennik zdarzeń administratora.
+14. **Etap 5 (wymiana danych) wykonany 2026-09-17 (§11):** eksport list, kart i dziennika do CSV i XML, import płatników, osób i certyfikatów z CSV/XML z podglądem każdego wiersza przed zapisem oraz import wiadomości e-mail (EML) — własny parser MIME, rozpoznanie nadawcy, certyfikatów i załączników.
 
 ---
 
@@ -54,9 +55,9 @@ CertiSub Assistant (docelowo)
 │   ├── 🟡 Panel administratora — konta i role, szablony, ustawienia, dziennik zdarzeń; import w Etapie 5
 │   ├── ✅ Wyszukiwarka globalna — certyfikaty, osoby i płatnicy z powiązaniami i powodem dopasowania (Ctrl+K)
 │   └── ✅ Oś czasu — historia rekordu z filtrem rodzaju zdarzeń i podziałem na dni; harmonogram wygaśnięć
-├── Wymiana danych
-│   ├── ❌ Eksport CSV / XML
-│   └── ❌ Import CSV / XML / EML
+├── Wymiana danych  (✅ Etap 5)
+│   ├── ✅ Eksport CSV / XML — listy, karty raportowe, harmonogram i dziennik zdarzeń; wzory plików importu
+│   └── ✅ Import CSV / XML / EML — podgląd wiersz po wierszu, tryb „pomiń” albo „aktualizuj”, wiadomość e-mail z załącznikami
 └── Dodatki spoza opisu pracy
     ├── 🧊 Panel prywatny (Netflix, Spotify…) + menedżer „Moje subskrypcje” — zamrożony (D1)
     ├── ✅ i18n: PL, EN, ES, DE, UK
@@ -176,11 +177,11 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | F3 | Płatnicy (dane płatnika) | ✅ | ekran „Płatnicy” z kontrolą NIP (suma kontrolna, unikalność) i kosztami (`classes/Service/PayerService.php`) | — |
 | F4 | Beneficjent powiązany z płatnikiem | ✅ | powiązania wybierane w formularzach, płatnik podpowiadany z danych osoby, szczegóły pokazują osoby i certyfikaty płatnika (Etap 2); karta płatnika pokazuje także osoby, których certyfikaty płatnik opłaca (Etap 4) | — |
 | F5 | Dodawanie, edycja, archiwizacja | ✅ | API `create/update/archive/restore` dla trzech encji, blokada archiwizacji rekordów z aktywnymi powiązaniami, ekran „Archiwum” (Etap 2) | — |
-| F6 | Perspektywa Użytkownika: daty odnowienia, szczegóły, historia | ✅ | karta użytkownika certyfikatu `#/beneficiaries/N`: certyfikaty z datą „odnowienie od” i priorytetem, historia certyfikatów z łańcuchem odnowień, zadania, zaproszenia, oś czasu z filtrem; wydruk (`App\Service\ReportService::beneficiaryCard`, `assets/js/views/reports.js`, Etap 4) | eksport karty (Etap 5) |
-| F7 | Perspektywa Płatnika: certyfikaty, wygaśnięcia, historia, osoby | ✅ | karta płatnika `#/payers/N`: powiązane osoby, harmonogram wygaśnięć na 12 miesięcy, certyfikaty z kosztem rocznym, archiwum, zadania, zaproszenia, oś czasu; harmonogram dla całej organizacji w „Raportach” (`ReportService::payerCard`, `ReportService::schedule`, Etap 4) | eksport karty (Etap 5) |
-| F8 | Perspektywa Administratora | 🟡 | „Konta i role” (Etap 2); „Szablony i załączniki” oraz „Ustawienia” procesu odnowień (Etap 3); „Dziennik zdarzeń” z filtrami i stronicowaniem, wejście z „Raportów” (`TimelineService::journal`, `assets/js/views/events.js`, Etap 4) | import (Etap 5) |
-| F9 | Eksport CSV / XML | ❌ | — | eksport list i kart (`fputcsv`, `XMLWriter`) |
-| F10 | Import CSV / XML / EML | ❌ | — | import z podglądem; EML przez parser MIME w czystym PHP (np. `zbateson/mail-mime-parser`) |
+| F6 | Perspektywa Użytkownika: daty odnowienia, szczegóły, historia | ✅ | karta użytkownika certyfikatu `#/beneficiaries/N`: certyfikaty z datą „odnowienie od” i priorytetem, historia certyfikatów z łańcuchem odnowień, zadania, zaproszenia, oś czasu z filtrem; wydruk oraz eksport karty do CSV i XML (`App\Service\ReportService::beneficiaryCard`, `assets/js/views/reports.js`, Etapy 4–5) | — |
+| F7 | Perspektywa Płatnika: certyfikaty, wygaśnięcia, historia, osoby | ✅ | karta płatnika `#/payers/N`: powiązane osoby, harmonogram wygaśnięć na 12 miesięcy, certyfikaty z kosztem rocznym, archiwum, zadania, zaproszenia, oś czasu; harmonogram dla całej organizacji w „Raportach”, karty i harmonogram do pobrania w CSV i XML (`ReportService::payerCard`, `ReportService::schedule`, Etapy 4–5) | — |
+| F8 | Perspektywa Administratora | ✅ | „Konta i role” (Etap 2); „Szablony i załączniki” oraz „Ustawienia” procesu odnowień (Etap 3); „Dziennik zdarzeń” z filtrami i stronicowaniem (Etap 4); „Import i eksport” z podglądem importu i importem wiadomości EML (Etap 5) | — |
+| F9 | Eksport CSV / XML | ✅ | `App\Service\ExportService` + `App\Exchange\CsvWriter`/`XmlExporter`: certyfikaty, osoby, płatnicy (także archiwum), zadania, zaproszenia, dziennik zdarzeń, karty raportowe i harmonogram; CSV z etykietami i wartościami w języku interfejsu (UTF-8 z BOM, średnik, ochrona przed formułami), XML z nazwami pól i kodami; każdy eksport zapisuje zdarzenie (Etap 5) | — |
+| F10 | Import CSV / XML / EML | ✅ | `App\Service\ImportService`: płatnicy, osoby i certyfikaty z CSV (UTF-8 i Windows-1250, średnik/przecinek/tabulator) oraz XML; nagłówki po polsku i angielsku, daty i wartości słownikowe w zapisie z arkusza; podgląd wykonuje zapis w transakcji i wycofuje ją, więc pokazuje dokładny wynik; `App\Service\EmlImportService` + `App\Exchange\EmlParser` (własny parser MIME, bez rozszerzenia `mailparse`): nadawca, certyfikaty po numerach seryjnych, płatnicy po NIP-ie, odpowiedzi na zaproszenia i załączniki CSV/XML (Etap 5) | — |
 | F11 | Regularne skanowanie i margines odnowienia | ✅ | `App\Service\RenewalScanner` + `cron/renewals.php`: certyfikaty w marginesie (`renewal_lead_days` albo próg z ustawień) dostają zadanie, priorytet rośnie wraz ze zbliżaniem się daty; bez duplikatów przy ponownym uruchomieniu (Etap 3) | — |
 | F12 | Lista ToDo z priorytetami wg zakresów dat | ✅ | ekran „Lista ToDo”: priorytety wygasłe / krytyczne / do odnowienia, statusy, przydział, porzucenie z powodem, odnowienie certyfikatu (`App\Service\TaskService`, Etap 3) | — |
 | F13 | Zaproszenia e-mail z szablonem i załącznikami | ✅ | okno wysyłki z podglądem, szablony z polami `{imie}`, `{numer_seryjny}`… w PL i EN, załączniki z biblioteki (`App\Service\InvitationService`, `TemplateRenderer`, `Mailer` z `addAttachment`, Etap 3) | — |
@@ -200,7 +201,7 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | N3 | Instalacja publiczna lub intranetowa | 🟡 ⚠️ | katalog projektu = katalog publiczny serwera, brak reguł blokujących (§5 pkt 1–2); frontend z CDN — Tailwind Play CDN (`includes/head.php:9`), Vue z unpkg bez przypiętej wersji (`includes/dashboard_app.php:576`), Google Fonts (`includes/head.php:33-35`), więc w sieci bez internetu interfejs nie działa; `display_errors=On` w php.ini Laragona |
 | N4 | Studium wykonalności (punkt wyjścia: Java + Spring) | 🟡 | tylko jedno zdanie o Spring Boot (`docs/thesis_part1.md:74`) — potrzebne porównanie z kryteriami |
 | N5 | Ochrona danych osobowych | 🟡 | dobrze: PDO, CSRF, hash OTP, regeneracja sesji, zakres danych wg roli (D8), historia zmian w `events`, walidacja wejścia; do zrobienia: limit OTP w sesji (§5 pkt 9), punkt o RODO w pracy |
-| N6 | Testy | 🟡 | 114 testów: 53 jednostkowe (logowanie, role i uprawnienia, walidacja, jądro API, szablony, tłumaczenia, logika certyfikatów i kosztów, harmonogram, poczta) + 61 integracyjnych na osobnej bazie `assistent_subscriptions_test` (migracje, ewidencja, konta, skaner, zadania, zaproszenia z przypomnieniami, szablony, załączniki, ustawienia, raporty, wyszukiwarka, dziennik zdarzeń); brak scenariuszy E2E |
+| N6 | Testy | 🟡 | 145 testów: 68 jednostkowych (logowanie, role i uprawnienia, walidacja, jądro API, szablony, tłumaczenia, logika certyfikatów i kosztów, harmonogram, poczta, formaty CSV/XML, parser EML) + 77 integracyjnych na osobnej bazie `assistent_subscriptions_test` (migracje, ewidencja, konta, skaner, zadania, zaproszenia z przypomnieniami, szablony, załączniki, ustawienia, raporty, wyszukiwarka, dziennik zdarzeń, eksport, import CSV/XML i EML); brak scenariuszy E2E |
 
 ---
 
@@ -212,7 +213,8 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | CSRF dla formularzy i API | `classes/Csrf.php` | wszystkie nowe endpointy |
 | Jądro API (metoda → CSRF → auth → obsługa → błąd z kodem HTTP) i kontrolery | `classes/Http/ApiKernel.php`, `classes/Api/*Controller.php` (Etap 2) | każdy nowy endpoint to kontroler + jednolinijkowy plik w `api/` |
 | Usługi domenowe z kontrolą ról, walidacją i historią | `classes/Service/*Service.php`, `Validator`, `EventLogger`, `Visibility` (Etap 2) | zadania, zaproszenia, raporty, import i eksport korzystają z tych samych reguł |
-| Raporty, wyszukiwarka i dziennik zdarzeń | `ReportService` (karty, harmonogram), `SearchService`, `TimelineService::journal` (Etap 4) | eksport kart i list w Etapie 5 może korzystać z tych samych zapytań i zakresu danych |
+| Raporty, wyszukiwarka i dziennik zdarzeń | `ReportService` (karty, harmonogram), `SearchService`, `TimelineService::journal` (Etap 4) | eksport kart i list korzysta z tych samych zapytań i zakresu danych (Etap 5) |
+| Formaty wymiany danych | `App\Exchange`: `CsvReader`/`CsvWriter`, `XmlRecordReader`/`XmlExporter`, `EmlParser`, `Columns` (nazwy kolumn i aliasy), `Normalizer` (daty, wartości logiczne, słowniki) — Etap 5 | kolejne zbiory danych wystarczy opisać w `Columns`; parser EML nadaje się też do skrzynki odbiorczej (kierunek rozwoju) |
 | Komponenty panelu (okna, panel szczegółów, pola formularzy, oś czasu, powiadomienia) | `assets/js/core.js`, `assets/js/components.js` (Etap 2) | nowe widoki w `assets/js/views/` |
 | Testy integracyjne na osobnej bazie | `tests/Support/MysqlTestDatabase.php`, `IntegrationTestCase.php` (Etap 2) | testy usług bez ryzyka dla bazy użytkownika |
 | Idempotentne migracje | `classes/MigrationRunner.php`, `classes/Migrations/` | każda zmiana schematu jako nowa migracja; `SchemaInspector` sprawdza stan przed każdym krokiem |
@@ -303,11 +305,11 @@ Stan na 16.09.2026. Pierwotnie: freeze 15.10.2026, część pisemna 16.10–31.1
 | 2. Ewidencja + archiwizacja + RBAC ✅ **wykonane 2026-09-17** | API i formularze dla certyfikatów, beneficjentów, płatników; archiwum; role w API i UI; wyłączenie publicznej rejestracji i zakładanie kont przez ADMIN (D3); zakres danych operatora (D8); zapis zdarzeń; etykiety „certyfikaty” w panelu (szczegóły w §11) | — |
 | 3. Proces odnowień ✅ **wykonane 2026-09-17** | skaner → zadania ToDo (priorytety, statusy, przydział); szablony + załączniki; zaproszenia; rejestr i przypomnienia; statystyki zadań; ustawienia progów (szczegóły w §11) | — |
 | 4. Raporty i przegląd ✅ **wykonane 2026-09-17** | karta beneficjenta, karta płatnika, oś czasu z `events`, wyszukiwarka globalna, dziennik zdarzeń administratora, harmonogram wygaśnięć (szczegóły w §11) | — |
-| 5. Wymiana danych | eksport CSV/XML; import CSV/XML z podglądem; import EML | 3–4 |
+| 5. Wymiana danych ✅ **wykonane 2026-09-17** | eksport CSV/XML (listy, karty, harmonogram, dziennik); import CSV/XML z podglądem i trybem aktualizacji; import EML z załącznikami (szczegóły w §11) | — |
 | 6. Jakość i domknięcie | testy nowych serwisów, scenariusze E2E, lokalne zasoby frontendu, aktualizacja README i `CLAUDE.md`, freeze | 3–4 |
 | 7. UX i wydajność (§2.5) | skeleton loadery w panelu; cache agregatów KPI z unieważnianiem przy zapisie i kluczem roli; nagłówki cache dla lokalnych zasobów z Etapu 6 | 2–3 |
 
-**Pozostało ok. 8–11 dni roboczych** (Etapy 5–7, po odjęciu wykonanych Etapów 0–4), więc realny freeze mieści się w październiku 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
+**Pozostało ok. 5–7 dni roboczych** (Etapy 6–7, po odjęciu wykonanych Etapów 0–5), więc realny freeze mieści się w październiku 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
 
 Kolejność etapów = kolejność ważności. Gdy zabraknie czasu, najpierw upraszczać etap 5 (np. import EML ograniczony do jednego formatu wiadomości).
 
@@ -349,7 +351,7 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 
 ## 10. Stan środowiska (zweryfikowany 2026-09-16)
 
-- **Testy:** 114 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 53 zaliczone + 61 pominiętych). Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
+- **Testy:** 145 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 68 zaliczonych + 77 pominiętych). Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
 - **PHPStan (poziom 5):** 1 znana uwaga (`cron/send_reminders.php:120`); analizowane są także pliki wejściowe z katalogu głównego.
 - **PHP-CS-Fixer:** większość plików zgłaszana z powodu CRLF (§5 pkt 19) — `cs-fix` świadomie nieuruchomiony.
 - **Baza `assistent_subscriptions`:** 15 tabel, migracje `login_otp`, `manager_subskrypcji`, `certificates_model`, `accounts_and_ownership`, `renewal_process`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 138 kolumn, 72 pozycje indeksów, 21 kluczy obcych).
@@ -359,7 +361,8 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 - **Strefa czasowa:** PHP i MySQL liczą w `Europe/Warsaw` (§5.4); cron znajduje zaplanowaną płatność.
 - **HTTP:** `/`, `/login.php`, `assets/js/*` → 200; `/register.php` → 302 na `login.php?registration_closed=1`; panele → 302 do logowania; `api/*.php` bez sesji → 401; katalogi wewnętrzne (w tym `storage/`, `classes/`, `config/`, `tests/`), `.git/` → 403.
 - **Raporty i wyszukiwarka (sprawdzone w przeglądarce):** ADMIN — karta Jana Kowalskiego (oś czasu 7 zdarzeń z filtrem), karta NovaTech (2 osoby, 4 bieżące certyfikaty, harmonogram, koszt roczny 1819 PLN), harmonogram organizacji (10 certyfikatów), wyszukiwanie „nova” (5 certyfikatów, 2 osoby, 1 płatnik), dziennik 57 zdarzeń; OPERATOR (Tomasz Wróbel) — karta NovaTech w swoim zakresie (1 osoba, 2 certyfikaty), 403 dla dziennika zdarzeń. Odpowiedzi API kart i wyszukiwarki poniżej 50 ms.
-- **Git:** Etap 0 = `f9ec9df`, Etap 1 = `cef8e72`, Etap 2 = `6ba9729`, Etap 3 = `1578adf`, Etap 4 — gałąź `etap-4-raporty` scalona na `master`; remote `origin` = github.com/llumiiss/diploma (nic nie jest wypychane automatycznie).
+- **Wymiana danych (sprawdzona w przeglądarce):** ADMIN — eksport płatników przez HTTP (nagłówki `Content-Disposition`, CSV z BOM i średnikiem), podgląd importu pliku z trzema wierszami (istniejący płatnik → pominięty, poprawny NIP → nowy, błędny NIP → błąd przy polu, nierozpoznana kolumna oznaczona), analiza wiadomości EML na danych demo (nadawca → Jan Kowalski, certyfikat po numerze seryjnym, płatnik po NIP-ie, otwarte zaproszenie, załącznik CSV rozpoznany jako „Użytkownicy certyfikatów”) i podgląd importu tego załącznika. Po podglądach baza pozostała bez zmian (4 płatników, 58 zdarzeń) — podgląd wycofuje transakcję.
+- **Git:** Etap 0 = `f9ec9df`, Etap 1 = `cef8e72`, Etap 2 = `6ba9729`, Etap 3 = `1578adf`, Etap 4 = `a0b0b2f`, Etap 5 — gałąź `etap-5-wymiana-danych` scalona na `master`; remote `origin` = github.com/llumiiss/diploma (nic nie jest wypychane automatycznie).
 
 ---
 
@@ -479,6 +482,25 @@ Commit: `1578adf`, gałąź `etap-3-proces-odnowien`, scalona na `master` 2026-0
 Weryfikacja: 114/114 testów z integracją (bez flagi: 53 zaliczone, 61 pominiętych); PHPStan: 1 znana uwaga; `node --check` wszystkich plików JS; kontrola kluczy tłumaczeń; w przeglądarce jako ADMIN i OPERATOR (§10): karty, harmonogram z wykresem, wyszukiwarka z klawiaturą i widok wyników, dziennik z filtrami, brak błędów w konsoli, brak poziomego przewijania przy szerokości 375 px; API operatora: 403 dla dziennika, 405 dla POST na wyszukiwarkę.
 
 **Świadomie nie zrobione:** eksport kart i list do CSV/XML oraz import (Etap 5); skeleton loadery w pozostałych widokach i cache agregatów (Etap 7). Bez zmian w schemacie bazy — raporty korzystają z istniejących tabel i indeksów `events`.
+
+Commit: `a0b0b2f`, gałąź `etap-4-raporty`, scalona na `master` 2026-09-17 (fast-forward).
+
+### Etap 5 — wymiana danych (2026-09-17)
+
+| Obszar | Co zrobiono | Pliki |
+|---|---|---|
+| Eksport (F9) | zbiory: certyfikaty, użytkownicy certyfikatów, płatnicy (osobno archiwum), zadania, zaproszenia, dziennik zdarzeń (ADMIN, z filtrami ekranu), karty raportowe osoby i płatnika, harmonogram wygaśnięć; CSV dla arkusza (UTF-8 z BOM, średnik, CRLF, etykiety kolumn i wartości słownikowych w języku interfejsu, apostrof przed znakiem formuły — CSV injection), XML dla systemów (nazwy pól, kody, karty jako struktura zagnieżdżona); wzory plików importu to eksport samych nagłówków; każdy eksport z danymi zapisuje zdarzenie `data_exported` | `classes/Service/ExportService.php`, `classes/Exchange/CsvWriter.php`, `XmlExporter.php`, `api/export.php` |
+| Import CSV/XML (F10) | płatnicy, osoby i certyfikaty; nagłówki rozpoznawane po nazwie pola, etykiecie polskiej lub angielskiej i popularnych nazwach z arkusza („NIP”, „Data wygaśnięcia”); CSV w UTF-8 albo Windows-1250, separator wykrywany (średnik, przecinek, tabulator), pola wielolinijkowe; XML z elementami rekordów (DOCTYPE i encje odrzucane — XXE); daty `DD.MM.RRRR`, kwoty z przecinkiem i „zł”, wartości logiczne „tak/nie”, typy i statusy kodem albo etykietą; powiązania po NIP-ie, nazwie płatnika, e-mailu osoby i koncie opiekuna; tryb „pomiń” albo „aktualizuj” (aktualizacja tylko kolumnami obecnymi w pliku) | `classes/Service/ImportService.php`, `classes/Exchange/CsvReader.php`, `XmlRecordReader.php`, `Columns.php`, `Normalizer.php`, `api/import.php` |
+| Podgląd importu | podgląd wykonuje dokładnie ten sam zapis co import (usługi ewidencji: walidacja, unikalność, uprawnienia, historia) i wycofuje transakcję na końcu, więc wynik podglądu jest wiążący; każdy wiersz ma własny punkt zapisu (SAVEPOINT), więc błąd nie przerywa pozostałych; wynik wiersza: nowy, aktualizacja (z listą zmienionych pól), bez zmian, pominięty, błąd (komunikaty przy polach, duplikat w pliku ze wskazaniem wiersza) | j.w. |
+| Import EML (F10) | własny parser MIME w czystym PHP (bez rozszerzenia `mailparse`): nagłówki łamane i kodowane (RFC 2047), base64 i quoted-printable, zestawy znaków, multipart zagnieżdżony, nazwy załączników RFC 2231, daty z błędną nazwą dnia tygodnia; analiza wiadomości: nadawca (dopasowany do osoby, płatnika albo propozycja nowej osoby z telefonem z treści), certyfikaty po numerach seryjnych, płatnicy po NIP-ie, otwarte zaproszenia do nadawcy, załączniki CSV/XML z rozpoznanym zbiorem danych; zastosowanie zaznaczonych działań w jednej transakcji: dodanie osoby, oznaczenie zaproszeń „z odpowiedzią”, wpis „Zarejestrowano wiadomość e-mail” na osi czasu certyfikatu, osoby albo płatnika | `classes/Service/EmlImportService.php`, `classes/Exchange/EmlParser.php`, `EmlMessage.php` |
+| Panel | widok „Import i eksport” (MANAGER — eksport, ADMIN — import): kafelki eksportu, kreator importu (rodzaj danych, tryb, plik, tabela rozpoznanych kolumn, wzory plików), tabela podglądu z filtrem wierszy i podsumowaniem, panel analizy wiadomości EML z zaznaczaniem działań; przyciski „Eksport CSV/XML” na listach certyfikatów, osób, płatników, w archiwum, zadaniach, zaproszeniach, dzienniku, kartach i harmonogramie; pobieranie przez `fetch` z obsługą błędu JSON | `assets/js/views/exchange.js`, `assets/js/components.js`, `assets/js/core.js`, `includes/dashboard_app.php` |
+| Uprawnienia i historia | eksport od roli MANAGER (`export.run`) w zakresie danych konta (D8), import tylko ADMIN (`import.run`); zdarzenia `data_exported`, `data_imported`, `eml_imported`, `email_received` z opisem na osi czasu | `classes/Rbac.php`, `lang/*` |
+| Język (D4) | ok. 180 nowych kluczy PL i EN (kolumny plików, komunikaty walidacji importu, ekran wymiany danych) | `lang/pl.php`, `lang/en.php` |
+| Testy | +31: `ExchangeFormatsTest` (CSV z polskiego Excela, formuły, XML z DOCTYPE, aliasy nagłówków), `EmlParserTest`, `ExportServiceTest` (w tym pełny obieg eksport → import bez duplikatów dla trzech zbiorów w obu formatach), `ImportServiceTest`, `EmlImportServiceTest` | `tests/*` |
+
+Weryfikacja: 145/145 testów z integracją (bez flagi 68 zaliczonych, 77 pominiętych); PHPStan: 1 znana uwaga; `node --check` wszystkich plików JS; kontrola kluczy tłumaczeń; eksport i import sprawdzone w przeglądarce oraz przez HTTP (§10) — po podglądach baza bez zmian. Bez zmian w schemacie bazy.
+
+**Świadomie nie zrobione:** import tworzący brakujące rekordy powiązane „w locie” (płatnik zakładany przy imporcie certyfikatu) — kolejność plików jest prostsza do wyjaśnienia i bezpieczniejsza; harmonogram importu z katalogu albo skrzynki pocztowej (kierunek rozwoju w pracy); eksport do PDF — karty drukuje przeglądarka (Etap 4).
 
 ---
 
