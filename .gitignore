@@ -11,3 +11,4 @@
 !/storage/attachments/.gitkeep
 graphify-out/
 /node_modules/
+.php-cs-fixer.cache
