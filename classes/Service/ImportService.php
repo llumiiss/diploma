@@ -282,9 +282,14 @@ final class ImportService
             return ['status' => 'create', 'record_id' => $this->payers->create($actor, $input)['id']];
         }
 
-        return $this->existing($existing, $input, $mode, PayerService::FIELDS,
+        return $this->existing(
+            $existing,
+            $input,
+            $mode,
+            PayerService::FIELDS,
             fn (array $merged): array => $this->payers->validate($merged),
-            fn (array $merged): mixed => $this->payers->update($actor, (int) $existing['id'], $merged));
+            fn (array $merged): mixed => $this->payers->update($actor, (int) $existing['id'], $merged)
+        );
     }
 
     /**
@@ -329,9 +334,14 @@ final class ImportService
             return ['status' => 'create', 'record_id' => $this->beneficiaries->create($actor, $input)['id']];
         }
 
-        return $this->existing($existing, $input, $mode, BeneficiaryService::FIELDS,
+        return $this->existing(
+            $existing,
+            $input,
+            $mode,
+            BeneficiaryService::FIELDS,
             fn (array $merged): array => $this->beneficiaries->validate($actor, $merged, self::castIds($existing, ['payer_id'])),
-            fn (array $merged): mixed => $this->beneficiaries->update($actor, (int) $existing['id'], $merged));
+            fn (array $merged): mixed => $this->beneficiaries->update($actor, (int) $existing['id'], $merged)
+        );
     }
 
     /**
@@ -408,9 +418,14 @@ final class ImportService
             return ['status' => 'create', 'record_id' => $this->certificates->create($actor, $input)['id']];
         }
 
-        return $this->existing($existing, $input, $mode, CertificateService::FIELDS,
+        return $this->existing(
+            $existing,
+            $input,
+            $mode,
+            CertificateService::FIELDS,
             fn (array $merged): array => $this->certificates->validate($actor, $merged, self::castIds($existing, ['user_id', 'beneficiary_id', 'payer_id'])),
-            fn (array $merged): mixed => $this->certificates->update($actor, (int) $existing['id'], $merged));
+            fn (array $merged): mixed => $this->certificates->update($actor, (int) $existing['id'], $merged)
+        );
     }
 
     /**

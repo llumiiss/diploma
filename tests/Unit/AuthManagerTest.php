@@ -137,7 +137,7 @@ final class AuthManagerTest extends TestCase
     {
         $db = SqliteTestDatabase::create();
         SqliteTestDatabase::seedUser($db, 'known@example.com');
-        $failingMail = new class implements \App\OtpMailer {
+        $failingMail = new class () implements \App\OtpMailer {
             public function sendOtpCode(string $toEmail, string $code): bool
             {
                 return false;

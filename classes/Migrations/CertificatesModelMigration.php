@@ -368,7 +368,7 @@ final class CertificatesModelMigration
                 'name'      => 'Zaproszenie do odnowienia certyfikatu',
                 'subject'   => 'Zaproszenie do odnowienia: {typ_certyfikatu} nr {numer_seryjny}',
                 'body_html' => "<p>Dzień dobry {imie} {nazwisko},</p>\n"
-                    . "<p>certyfikat <strong>{typ_certyfikatu}</strong> o numerze seryjnym <strong>{numer_seryjny}</strong> "
+                    . '<p>certyfikat <strong>{typ_certyfikatu}</strong> o numerze seryjnym <strong>{numer_seryjny}</strong> '
                     . "jest ważny do <strong>{data_waznosci}</strong> (pozostało dni: {dni_do_wygasniecia}).</p>\n"
                     . "<p>Zapraszamy do odnowienia. Płatnikiem usługi jest {platnik}. Instrukcja odnowienia jest w załączniku.</p>\n"
                     . '<p>Pozdrawiamy<br>Zespół CertiSub</p>',
@@ -384,7 +384,7 @@ final class CertificatesModelMigration
                 'name'      => 'Przypomnienie o odnowieniu certyfikatu',
                 'subject'   => 'Przypomnienie: {typ_certyfikatu} nr {numer_seryjny} wygasa {data_waznosci}',
                 'body_html' => "<p>Dzień dobry {imie} {nazwisko},</p>\n"
-                    . "<p>przypominamy, że certyfikat <strong>{typ_certyfikatu}</strong> o numerze seryjnym <strong>{numer_seryjny}</strong> "
+                    . '<p>przypominamy, że certyfikat <strong>{typ_certyfikatu}</strong> o numerze seryjnym <strong>{numer_seryjny}</strong> '
                     . "wygasa <strong>{data_waznosci}</strong> (pozostało dni: {dni_do_wygasniecia}).</p>\n"
                     . "<p>Jeśli odnowienie jest już w toku, prosimy zignorować tę wiadomość.</p>\n"
                     . '<p>Pozdrawiamy<br>Zespół CertiSub</p>',
@@ -400,7 +400,7 @@ final class CertificatesModelMigration
                 'name'      => 'Certificate renewal invitation',
                 'subject'   => 'Renewal invitation: {typ_certyfikatu} no. {numer_seryjny}',
                 'body_html' => "<p>Hello {imie} {nazwisko},</p>\n"
-                    . "<p>the <strong>{typ_certyfikatu}</strong> certificate with serial number <strong>{numer_seryjny}</strong> "
+                    . '<p>the <strong>{typ_certyfikatu}</strong> certificate with serial number <strong>{numer_seryjny}</strong> '
                     . "is valid until <strong>{data_waznosci}</strong> ({dni_do_wygasniecia} days left).</p>\n"
                     . "<p>We invite you to renew it. The service is paid by {platnik}. Renewal instructions are attached.</p>\n"
                     . '<p>Kind regards<br>The CertiSub team</p>',
@@ -416,7 +416,7 @@ final class CertificatesModelMigration
                 'name'      => 'Certificate renewal reminder',
                 'subject'   => 'Reminder: {typ_certyfikatu} no. {numer_seryjny} expires on {data_waznosci}',
                 'body_html' => "<p>Hello {imie} {nazwisko},</p>\n"
-                    . "<p>this is a reminder that the <strong>{typ_certyfikatu}</strong> certificate with serial number "
+                    . '<p>this is a reminder that the <strong>{typ_certyfikatu}</strong> certificate with serial number '
                     . "<strong>{numer_seryjny}</strong> expires on <strong>{data_waznosci}</strong> ({dni_do_wygasniecia} days left).</p>\n"
                     . "<p>If the renewal is already in progress, please ignore this message.</p>\n"
                     . '<p>Kind regards<br>The CertiSub team</p>',

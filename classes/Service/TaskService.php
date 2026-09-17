@@ -451,8 +451,8 @@ final class TaskService
     public function markInProgress(Actor $actor, int $taskId): void
     {
         $stmt = $this->db->prepare(
-            "SELECT t.id, t.status, t.certificate_id, c.beneficiary_id, c.payer_id
-             FROM renewal_tasks t INNER JOIN certificates c ON c.id = t.certificate_id WHERE t.id = :id"
+            'SELECT t.id, t.status, t.certificate_id, c.beneficiary_id, c.payer_id
+             FROM renewal_tasks t INNER JOIN certificates c ON c.id = t.certificate_id WHERE t.id = :id'
         );
         $stmt->execute(['id' => $taskId]);
         $task = $stmt->fetch();

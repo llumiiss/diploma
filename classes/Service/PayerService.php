@@ -38,7 +38,7 @@ final class PayerService
         [$beneficiaryVisibility, $beneficiaryParams] = Visibility::beneficiaries($actor, 'b');
         $archivedCondition = $archived ? 'p.archived_at IS NOT NULL' : 'p.archived_at IS NULL';
 
-        $sql = "
+        $sql = '
             SELECT
                 p.id, p.company_name, p.contact_person, p.tax_id, p.email, p.phone,
                 p.address_line, p.postal_code, p.city, p.archived_at, p.created_at, p.updated_at,
@@ -50,7 +50,7 @@ final class PayerService
             LEFT JOIN (
                 SELECT c.payer_id,
                        COUNT(*) AS certificate_count,
-                       SUM(" . CertificateHelper::annualizedCostSql('c') . ") AS total_annual_cost,
+                       SUM(' . CertificateHelper::annualizedCostSql('c') . ") AS total_annual_cost,
                        MIN(c.expiry_date) AS earliest_expiry
                 FROM certificates c
                 WHERE c.archived_at IS NULL AND c.scope = 'corporate' AND {$certificateVisibility}
@@ -64,9 +64,9 @@ final class PayerService
             ) bs ON bs.payer_id = p.id
             WHERE {$archivedCondition}
               AND {$payerVisibility}
-              AND " . self::notPersonalOnly('p') . "
-            ORDER BY " . ($archived ? 'p.archived_at DESC' : 'p.company_name') . "
-        ";
+              AND " . self::notPersonalOnly('p') . '
+            ORDER BY ' . ($archived ? 'p.archived_at DESC' : 'p.company_name') . '
+        ';
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params + $certificateParams + $beneficiaryParams);
@@ -126,8 +126,8 @@ final class PayerService
 
         [$certificateVisibility, $certificateParams] = Visibility::certificates($actor, 'c');
         $stmt = $this->db->prepare(
-            "SELECT c.id, c.name, c.certificate_type, c.serial_number, c.expiry_date, c.status, c.annual_cost, c.currency,
-                    " . CertificateHelper::annualizedCostSql('c') . " AS annualized_cost,
+            'SELECT c.id, c.name, c.certificate_type, c.serial_number, c.expiry_date, c.status, c.annual_cost, c.currency,
+                    ' . CertificateHelper::annualizedCostSql('c') . " AS annualized_cost,
                     b.first_name AS beneficiary_first_name, b.last_name AS beneficiary_last_name
              FROM certificates c
              LEFT JOIN beneficiaries b ON b.id = c.beneficiary_id
