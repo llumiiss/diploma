@@ -271,6 +271,137 @@ final class CertificateService
     }
 
     /**
+     * Bieżący (niezarchiwizowany) certyfikat widoczny dla konta — do użycia przez inne usługi.
+     *
+     * @return array<string, mixed>
+     */
+    public function findActive(Actor $actor, int $id): array
+    {
+        return $this->findVisible($actor, $id, false);
+    }
+
+    /**
+     * Wynik odnowienia (cykl życia z §2.1): nowy certyfikat z tymi samymi powiązaniami i nową
+     * ważnością zastępuje poprzedni, który trafia do archiwum. Łańcuch tworzy previous_certificate_id.
+     *
+     * Wywołujący odpowiada za transakcję i zamknięcie zadania odnowienia.
+     *
+     * @param array<string, mixed> $data expiry_date (wymagana), valid_from, serial_number, issuer,
+     *                                   annual_cost, payment_status, last_payment_date, notes, name
+     */
+    public function renewFrom(Actor $actor, int $oldId, array $data): int
+    {
+        $actor->authorize('certificates.create');
+        $old = $this->findVisible($actor, $oldId, false);
+
+        $pick = static fn (string $key, mixed $fallback): mixed => array_key_exists($key, $data) && $data[$key] !== null ? $data[$key] : $fallback;
+        $merged = [
+            'name'              => $pick('name', $old['name']),
+            'certificate_type'  => $old['certificate_type'],
+            'serial_number'     => $pick('serial_number', null),
+            'issuer'            => $pick('issuer', $old['issuer']),
+            'valid_from'        => $pick('valid_from', null),
+            'expiry_date'       => $pick('expiry_date', null),
+            'renewal_lead_days' => $old['renewal_lead_days'],
+            'user_id'           => $old['user_id'],
+            'beneficiary_id'    => $old['beneficiary_id'],
+            'payer_id'          => $old['payer_id'],
+            'status'            => 'active',
+            'annual_cost'       => $pick('annual_cost', $old['annual_cost']),
+            'billing_cycle'     => $old['billing_cycle'],
+            'currency'          => $old['currency'],
+            'payment_status'    => $pick('payment_status', 'paid'),
+            'last_payment_date' => $pick('last_payment_date', null),
+            'auto_renew'        => $old['auto_renew'],
+            'notes'             => $pick('notes', null),
+        ];
+
+        $expiry = is_string($merged['expiry_date']) ? trim($merged['expiry_date']) : '';
+        if ($expiry !== '' && Validator::isValidDate($expiry) && $expiry <= (string) $old['expiry_date']) {
+            throw ServiceException::validation(['expiry_date' => \__('certificate.error.renewal_expiry', [
+                'date' => (string) $old['expiry_date'],
+            ])]);
+        }
+
+        // Stan poprzedni = stary certyfikat, więc zachowane powiązania i opiekun przechodzą walidację.
+        $values = $this->validate($actor, $merged, $old);
+        $this->assertSerialAvailable($actor, $values['issuer'], $values['serial_number'], null);
+
+        return Transaction::run($this->db, function () use ($actor, $old, $oldId, $values): int {
+            try {
+                $stmt = $this->db->prepare(
+                    "INSERT INTO certificates (name, scope, certificate_type, serial_number, issuer, valid_from, expiry_date,
+                        renewal_lead_days, user_id, beneficiary_id, payer_id, previous_certificate_id, status, annual_cost,
+                        billing_cycle, currency, payment_status, last_payment_date, auto_renew, notes)
+                     VALUES (:name, 'corporate', :certificate_type, :serial_number, :issuer, :valid_from, :expiry_date,
+                        :renewal_lead_days, :user_id, :beneficiary_id, :payer_id, :previous_certificate_id, :status, :annual_cost,
+                        :billing_cycle, :currency, :payment_status, :last_payment_date, :auto_renew, :notes)"
+                );
+                $stmt->execute(self::bindable($values) + ['previous_certificate_id' => $oldId]);
+            } catch (PDOException $e) {
+                throw $this->translateDuplicate($e, $actor, $values);
+            }
+            $newId = (int) $this->db->lastInsertId();
+
+            $this->db->prepare('UPDATE certificates SET archived_at = NOW() WHERE id = :id')->execute(['id' => $oldId]);
+
+            $this->events->log('certificate', $oldId, 'renewed', $actor->id, self::context($oldId, $old), [
+                'new_certificate_id' => $newId,
+                'new_expiry_date'    => $values['expiry_date'],
+            ]);
+            $this->events->log('certificate', $newId, 'created', $actor->id, self::context($newId, $values), [
+                'name'                    => $values['name'],
+                'certificate_type'        => $values['certificate_type'],
+                'expiry_date'             => $values['expiry_date'],
+                'previous_certificate_id' => $oldId,
+                'source'                  => 'renewal',
+            ]);
+            $this->events->log('certificate', $oldId, 'archived', $actor->id, self::context($oldId, $old), [
+                'name'   => $old['name'],
+                'reason' => 'renewed',
+            ]);
+
+            return $newId;
+        });
+    }
+
+    /**
+     * Status certyfikatu podąża za zadaniem odnowienia: praca nad zadaniem to „odnowienie w toku”,
+     * a jego przerwanie przywraca status wynikający z daty wygaśnięcia.
+     */
+    public function syncStatusWithTask(Actor $actor, int $certificateId, string $taskStatus): void
+    {
+        $stmt = $this->db->prepare(
+            "SELECT id, status, expiry_date, beneficiary_id, payer_id FROM certificates
+             WHERE id = :id AND archived_at IS NULL AND scope = 'corporate'"
+        );
+        $stmt->execute(['id' => $certificateId]);
+        $certificate = $stmt->fetch();
+        if ($certificate === false) {
+            return;
+        }
+
+        $current = (string) $certificate['status'];
+        $target = $current;
+        if ($taskStatus === 'in_progress' && in_array($current, ['active', 'pending', 'expired'], true)) {
+            $target = 'renewal_in_progress';
+        } elseif ($taskStatus !== 'in_progress' && $current === 'renewal_in_progress') {
+            $target = (string) $certificate['expiry_date'] < date('Y-m-d') ? 'expired' : 'active';
+        }
+
+        if ($target === $current) {
+            return;
+        }
+
+        $this->db->prepare('UPDATE certificates SET status = :status WHERE id = :id')
+            ->execute(['status' => $target, 'id' => $certificateId]);
+        $this->events->log('certificate', $certificateId, 'updated', $actor->id > 0 ? $actor->id : null, self::context($certificateId, $certificate), [
+            'changes' => ['status' => ['from' => $current, 'to' => $target]],
+            'reason'  => 'task_' . $taskStatus,
+        ]);
+    }
+
+    /**
      * @param array<string, mixed>      $data
      * @param array<string, mixed>|null $before
      * @return array<string, mixed>

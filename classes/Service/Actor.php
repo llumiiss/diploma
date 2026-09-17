@@ -35,6 +35,19 @@ final class Actor
         );
     }
 
+    /**
+     * Zadania uruchamiane automatycznie (cron): pełny zakres danych, a w historii brak autora.
+     */
+    public static function system(): self
+    {
+        return new self(0, Rbac::ADMIN, 'System');
+    }
+
+    public function isSystem(): bool
+    {
+        return $this->id === 0;
+    }
+
     public function can(string $permission): bool
     {
         return Rbac::can($this->role, $permission);

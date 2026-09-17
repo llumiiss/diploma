@@ -9,18 +9,23 @@
 
     const VIEWS = {
         dashboard: { component: 'DashboardView', icon: '📊', label: 'nav.dashboard' },
-        todo: { component: 'CertificatesView', icon: '✅', label: 'nav.todo', props: { mode: 'todo' } },
+        todo: { component: 'TasksView', icon: '✅', label: 'nav.todo', permission: 'tasks.view' },
+        invitations: { component: 'InvitationsView', icon: '✉️', label: 'nav.invitations', permission: 'invitations.view' },
         certificates: { component: 'CertificatesView', icon: '📜', label: 'nav.certificates', props: { mode: 'all' }, permission: 'certificates.view' },
         beneficiaries: { component: 'BeneficiariesView', icon: '👤', label: 'nav.beneficiaries', permission: 'beneficiaries.view' },
         payers: { component: 'PayersView', icon: '🏢', label: 'nav.payers', permission: 'payers.view' },
         archive: { component: 'ArchiveView', icon: '📦', label: 'nav.archive', permission: 'archive.view', group: 'manage' },
+        templates: { component: 'TemplatesView', icon: '🧩', label: 'nav.templates', permission: 'templates.manage', group: 'admin' },
         accounts: { component: 'AccountsView', icon: '🔐', label: 'nav.accounts', permission: 'accounts.manage', group: 'admin' },
+        settings: { component: 'SettingsView', icon: '⚙️', label: 'nav.settings', permission: 'settings.manage', group: 'admin' },
     };
 
     const DRAWERS = {
         certificate: 'CertificateDrawer',
         beneficiary: 'BeneficiaryDrawer',
         payer: 'PayerDrawer',
+        task: 'TaskDrawer',
+        invitation: 'InvitationDrawer',
     };
 
     function allowed(viewId) {
@@ -49,8 +54,8 @@
                 return Object.keys(VIEWS).filter(allowed).map((id) => {
                     const view = VIEWS[id];
                     let badgeCount = null;
-                    if (id === 'todo' && store.summary) {
-                        badgeCount = store.summary.renewal_summary.expiring_warning + store.summary.renewal_summary.expired || null;
+                    if (id === 'todo' && store.taskStats) {
+                        badgeCount = store.taskStats.open || null;
                     }
                     return { id, icon: view.icon, label: t(view.label), group: view.group || 'main', badge: badgeCount };
                 });
@@ -79,6 +84,9 @@
                 }
             });
             CertiSub.data.summary();
+            if (can('tasks.view')) {
+                CertiSub.data.taskStats();
+            }
         },
         methods: {
             go(id) {
@@ -179,6 +187,7 @@
         format: CertiSub.format,
         labels: CertiSub.labels,
         badge: CertiSub.badge,
+        CertiSub,
     });
     app.mount('#app');
     CertiSub.app = app;

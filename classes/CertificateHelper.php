@@ -24,9 +24,10 @@ final class CertificateHelper
                 'warning'  => 15,  // monthly payment reminder
                 'billing'  => 'monthly',
             ],
+            // Progi ewidencji firmowej ustawia administrator (App\Settings, domyślnie 7 i 30 dni).
             default => [
-                'critical' => 7,   // corporate annual — urgent renewal
-                'warning'  => 30,  // annual payment / renewal reminder
+                'critical' => Settings::int('renewal.critical_days'),
+                'warning'  => Settings::int('renewal.warning_days'),
                 'billing'  => 'annual',
             ],
         };
@@ -141,20 +142,28 @@ final class CertificateHelper
 
     public static function typeLabel(string $type): string
     {
+        return \__(self::typeKey($type));
+    }
+
+    /**
+     * Klucz tłumaczenia typu — pozwala podać etykietę w innym języku niż interfejs (szablony wiadomości).
+     */
+    public static function typeKey(string $type): string
+    {
         return match ($type) {
-            'QUALIFIED_SIGNATURE' => \__('type.qualified_signature'),
-            'QUALIFIED_SEAL'      => \__('type.qualified_seal'),
-            'SSL_CERTIFICATE'     => \__('type.ssl'),
-            'SAAS'                => \__('type.saas'),
-            'DOMAIN'              => \__('type.domain'),
-            'CLOUD_SUPPORT'       => \__('type.cloud_support'),
-            'CODE_SIGNING'        => \__('type.code_signing'),
-            'STREAMING'           => \__('type.streaming'),
-            'MUSIC'               => \__('type.music'),
-            'GAMING'              => \__('type.gaming'),
-            'FITNESS'             => \__('type.fitness'),
-            'CLOUD_STORAGE'       => \__('type.cloud_storage'),
-            default               => \__('type.other'),
+            'QUALIFIED_SIGNATURE' => 'type.qualified_signature',
+            'QUALIFIED_SEAL'      => 'type.qualified_seal',
+            'SSL_CERTIFICATE'     => 'type.ssl',
+            'SAAS'                => 'type.saas',
+            'DOMAIN'              => 'type.domain',
+            'CLOUD_SUPPORT'       => 'type.cloud_support',
+            'CODE_SIGNING'        => 'type.code_signing',
+            'STREAMING'           => 'type.streaming',
+            'MUSIC'               => 'type.music',
+            'GAMING'              => 'type.gaming',
+            'FITNESS'             => 'type.fitness',
+            'CLOUD_STORAGE'       => 'type.cloud_storage',
+            default               => 'type.other',
         };
     }
 

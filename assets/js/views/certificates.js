@@ -219,9 +219,12 @@
             id: { type: Number, required: true },
         },
         data() {
-            return { certificate: null, loading: true, error: '' };
+            return { certificate: null, loading: true, error: '', tasks: [], invitations: [] };
         },
         computed: {
+            openTask() {
+                return this.tasks.find((task) => task.is_open) || null;
+            },
             rows() {
                 const c = this.certificate;
                 return [
@@ -251,6 +254,14 @@
                 try {
                     const data = await api.get(endpoints.certificates, { id: this.id });
                     this.certificate = data.certificate;
+                    if (CertiSub.can('tasks.view')) {
+                        const [tasks, invitations] = await Promise.all([
+                            api.get(endpoints.tasks, { certificate_id: this.id, status: 'all' }),
+                            api.get(endpoints.invitations, { certificate_id: this.id }),
+                        ]);
+                        this.tasks = tasks.tasks;
+                        this.invitations = invitations.invitations;
+                    }
                 } catch (error) {
                     this.error = error.message;
                 } finally {
@@ -262,6 +273,25 @@
             },
             edit() {
                 CertiSub.openModal('CertificateForm', { certificateId: this.id }, () => this.load());
+            },
+            async createTask() {
+                try {
+                    const result = await api.post(endpoints.tasks, { action: 'create', data: { certificate_id: this.id } });
+                    CertiSub.notify(t('task.created'));
+                    CertiSub.data.refresh('tasks', 'taskStats');
+                    CertiSub.openDrawer('task', result.task.id);
+                } catch (error) {
+                    CertiSub.notifyError(error);
+                }
+            },
+            invite() {
+                CertiSub.openModal('InvitationComposer', { certificateId: this.id }, () => this.load());
+            },
+            openTaskDrawer(task) {
+                CertiSub.openDrawer('task', task.id);
+            },
+            openInvitation(invitation) {
+                CertiSub.openDrawer('invitation', invitation.id);
             },
             async archive() {
                 if (await certificateActions.archive(this.certificate)) {
@@ -328,6 +358,35 @@
                             <button type="button" class="text-brand-700 hover:underline" @click="openLinked(certificate.next)">{{ certificate.next.name }} ({{ format.date(certificate.next.expiry_date) }})</button>
                         </p>
                     </div>
+
+                    <template v-if="can('tasks.view')">
+                        <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mt-6 mb-3">{{ t('task.renewal_section') }}</h4>
+                        <div class="card p-4">
+                            <div v-if="openTask" class="flex flex-wrap items-center justify-between gap-3">
+                                <button type="button" class="text-left" @click="openTaskDrawer(openTask)">
+                                    <span class="block text-sm font-medium text-slate-800">{{ t('task.open_task') }}: {{ t('task.status.' + openTask.status) }}</span>
+                                    <span class="block text-xs text-slate-500">{{ labels.priority(openTask.priority) }} · {{ openTask.assignee_name || t('task.unassigned') }}</span>
+                                </button>
+                                <span :class="['badge', CertiSub.taskBadge(openTask.status)]">{{ t('task.status.' + openTask.status) }}</span>
+                            </div>
+                            <p v-else class="text-sm text-slate-500">{{ t('task.no_open_task') }}</p>
+                            <div v-if="!certificate.archived_at" class="flex flex-wrap gap-2 mt-3">
+                                <button v-if="!openTask && can('tasks.update')" type="button" class="btn-secondary" @click="createTask">+ {{ t('task.create') }}</button>
+                                <button v-if="can('invitations.send')" type="button" class="btn-secondary" @click="invite">✉️ {{ t('invitation.send') }}</button>
+                            </div>
+                            <ul v-if="invitations.length" class="mt-3 divide-y divide-slate-100 border-t border-slate-100">
+                                <li v-for="invitation in invitations" :key="invitation.id">
+                                    <button type="button" class="w-full text-left py-2 flex items-center justify-between gap-3 text-sm" @click="openInvitation(invitation)">
+                                        <span>
+                                            <span class="block text-slate-800">{{ invitation.recipient_email }}</span>
+                                            <span class="block text-xs text-slate-500">{{ format.dateTime(invitation.sent_at || invitation.created_at) }} · {{ t('invitation.reminders') }}: {{ invitation.reminder_count }}</span>
+                                        </span>
+                                        <span :class="['badge', CertiSub.invitationBadge(invitation.status)]">{{ t('invitation.status.' + invitation.status) }}</span>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </template>
 
                     <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mt-6 mb-3">{{ t('timeline.title') }}</h4>
                     <EventTimeline :events="certificate.events" />

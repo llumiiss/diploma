@@ -11,8 +11,8 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 ## 0. Najważniejsze wnioski
 
 1. **Kod realizuje inny produkt niż opis pracy.** Opis: system ewidencji certyfikatów (np. kwalifikowanych) z użytkownikami certyfikatów, płatnikami, listą zadań, zaproszeniami e-mail, importem/eksportem i raportami. Kod: tracker subskrypcji firmowych (SSL, SaaS, domeny) i prywatnych (Netflix, Spotify).
-2. **Pokrycie 19 wymagań funkcjonalnych po Etapie 2: 7 kompletnych, 10 częściowych, 2 brakujące** (po Etapie 1: 0 / 14 / 5; na starcie 0 / 8 / 11; macierz w §3). Brakuje importu i eksportu (Etap 5); częściowe to głównie proces odnowień (Etap 3) i raporty perspektyw (Etap 4).
-3. **Ewidencja działa od początku do końca (Etap 2):** certyfikaty, użytkownicy certyfikatów i płatnicy mają formularze, walidację, archiwum i historię zdarzeń; konta zakłada ADMIN, a API egzekwuje role. Nie ma jeszcze skanera odnowień, zadań i wysyłki zaproszeń (Etap 3).
+2. **Pokrycie 19 wymagań funkcjonalnych po Etapie 3: 12 kompletnych, 5 częściowych, 2 brakujące** (po Etapie 2: 7 / 10 / 2; po Etapie 1: 0 / 14 / 5; na starcie 0 / 8 / 11; macierz w §3). Brakuje importu i eksportu (Etap 5); częściowe to raporty perspektyw, wyszukiwarka i oś czasu (Etap 4).
+3. **Cykl życia odnowienia z §2.1 działa od początku do końca (Etapy 2–3):** ewidencja → skaner zakłada zadanie ToDo → zaproszenie e-mail z szablonu i załącznikami → przypomnienia → odnowienie (nowy certyfikat, stary do archiwum) albo porzucenie → statystyki zadań. Każdy krok zapisuje zdarzenie w historii.
 4. **`CLAUDE.md` jest spójny z kodem, ale nie z opisem pracy.** Roadmapa pomija m.in. import/eksport, szablony i załączniki, rejestr zaproszeń, archiwizację, zadania ze statusami i statystykami, historię na osi czasu oraz raporty perspektyw (§6).
 5. **Harmonogram jest przesunięty:** CRUD (lipiec), RBAC (sierpień), cron + UX (1–15.09) nie są w kodzie. Freeze 15.10.2026 jest nierealny przy pełnym zakresie (§7).
 6. **Błędy krytyczne z §5.1 zostały naprawione w Etapie 0 (2026-09-16)** — dziennik zmian w §11. Były to: skrypt z `scripts/` kasujący dane bez logowania, publiczny dostęp do `.git/` i logów, niedziałające wylogowanie, brak kontroli dostępu do danych oraz kasowanie rekordów biznesowych przy usuwaniu konta.
@@ -21,6 +21,7 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 9. **Decyzje D1–D5 i D7 podjęte 2026-09-16 (§8):** panel prywatny zamrożony, perspektywy jako raporty dla personelu, rejestracja tylko przez ADMIN, nowe teksty PL+EN z domyślnym PL, `subscriptions` → `certificates`, ogólny model typów certyfikatów. Otwarty zostaje D6 (harmonogram).
 10. **Etap 1 (model danych) wykonany 2026-09-16 (§11):** certyfikaty z typami wg D7, użytkownicy certyfikatów, rozszerzeni płatnicy, archiwizacja, zadania ToDo ze statusami, szablony, załączniki, zaproszenia i historia zdarzeń. Struktura po migracji jest identyczna ze świeżą instalacją.
 11. **Etap 2 (ewidencja, archiwizacja, RBAC) wykonany 2026-09-17 (§11):** warstwa usług i API z kontrolą ról, nowy panel firmowy (Vue bez kroku budowania, `assets/js`), archiwum, konta i role, rejestracja wyłączona (D3), zakres danych operatora (D8), testy integracyjne na osobnej bazie testowej.
+12. **Etap 3 (proces odnowień) wykonany 2026-09-17 (§11):** skaner i cron `cron/renewals.php`, lista ToDo ze statusami, przydziałem i odnowieniem certyfikatu, szablony i załączniki, wysyłka zaproszeń z rejestrem i przypomnieniami, ustawienia progów, statystyki zadań na pulpicie.
 
 ---
 
@@ -39,12 +40,12 @@ CertiSub Assistant (docelowo)
 │   ├── ✅ Użytkownicy certyfikatów (beneficjenci) — lista, formularz, szczegóły z certyfikatami
 │   ├── ✅ Płatnicy — lista z kosztami, formularz z kontrolą NIP, szczegóły z osobami i certyfikatami
 │   └── ✅ Archiwizacja — archiwizacja zamiast usuwania, ekran archiwum z przywracaniem
-├── Proces odnowień  (model danych ✅ Etap 1 — logika w Etapie 3)
-│   ├── 🟡 Skaner (cron) — działa tylko dla prywatnego menedżera, „dokładnie za 3 dni”
-│   ├── 🟡 Lista ToDo — tabela zadań ze statusami gotowa; w panelu nadal filtr listy
-│   ├── 🟡 Szablony wiadomości + załączniki — 4 szablony PL/EN, tabela załączników; brak ekranu
-│   ├── 🟡 Zaproszenia + przypomnienia — rejestr wysyłek w bazie; brak wysyłki
-│   └── 🟡 Statystyki zadań — dane do grupowania wg statusów; brak widoku
+├── Proces odnowień  (✅ Etap 3)
+│   ├── ✅ Skaner (cron/renewals.php i przycisk w panelu) — margines z certyfikatu albo z ustawień, priorytety rosną wraz z datą
+│   ├── ✅ Lista ToDo — statusy, przydział (MANAGER), porzucenie z powodem, odnowienie certyfikatu
+│   ├── ✅ Szablony wiadomości + załączniki — ekran ADMIN-a z podglądem, biblioteka plików z kontrolą typu
+│   ├── ✅ Zaproszenia + przypomnienia — wysyłka z podglądem, rejestr, ponowienie, automatyczne przypomnienia wg ustawień
+│   └── ✅ Statystyki zadań — wg statusów, priorytetów i osób (pulpit)
 ├── Przegląd i raporty
 │   ├── 🟡 Pulpit KPI (statusy, płatności, priorytety)
 │   ├── 🟡 Karta użytkownika certyfikatu — szczegóły z certyfikatami i datami; historia w Etapie 4
@@ -176,17 +177,17 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | F5 | Dodawanie, edycja, archiwizacja | ✅ | API `create/update/archive/restore` dla trzech encji, blokada archiwizacji rekordów z aktywnymi powiązaniami, ekran „Archiwum” (Etap 2) | — |
 | F6 | Perspektywa Użytkownika: daty odnowienia, szczegóły, historia | 🟡 | szczegóły osoby z certyfikatami i datami wygaśnięcia (Etap 2) | historia osoby na osi czasu, karta raportowa (Etap 4) |
 | F7 | Perspektywa Płatnika: certyfikaty, wygaśnięcia, historia, osoby | 🟡 | szczegóły płatnika z osobami, certyfikatami, datami i kosztem (Etap 2) | historia płatnika, karta raportowa (Etap 4) |
-| F8 | Perspektywa Administratora | 🟡 | ekran „Konta i role”: zakładanie kont, role, wyłączanie, przekazywanie rekordów (Etap 2) | szablony i załączniki (Etap 3), dziennik zdarzeń (Etap 4), import (Etap 5) |
+| F8 | Perspektywa Administratora | 🟡 | „Konta i role” (Etap 2); „Szablony i załączniki” oraz „Ustawienia” procesu odnowień (Etap 3) | dziennik zdarzeń (Etap 4), import (Etap 5) |
 | F9 | Eksport CSV / XML | ❌ | — | eksport list i kart (`fputcsv`, `XMLWriter`) |
 | F10 | Import CSV / XML / EML | ❌ | — | import z podglądem; EML przez parser MIME w czystym PHP (np. `zbateson/mail-mime-parser`) |
-| F11 | Regularne skanowanie i margines odnowienia | 🟡 | cron tylko dla `manager_subskrypcji`, warunek „dokładnie za 3 dni” (`cron/send_reminders.php`); progi 7/30 dni liczone przy wyświetlaniu (`classes/CertificateHelper.php`); wymagany czas odnowienia per certyfikat w modelu (`renewal_lead_days`) | skaner certyfikatów tworzący zadania (Etap 3) |
-| F12 | Lista ToDo z priorytetami wg zakresów dat | 🟡 | tabela `renewal_tasks` ze statusami i priorytetem (Etap 1); w panelu ToDo to nadal filtr listy | tworzenie zadań przez skaner i ekran zadań (Etap 3) |
-| F13 | Zaproszenia e-mail z szablonem i załącznikami | 🟡 | tabele `email_templates` (4 domyślne szablony), `attachments`, `invitations` (Etap 1); `Mailer::send` wciąż bez załączników (`classes/Mailer.php`) | wysyłka z szablonu + `addAttachment` (Etap 3) |
-| F14 | Zarządzanie wysłanymi zaproszeniami (przypomnienia) | 🟡 | rejestr `invitations`: status, liczba i termin przypomnień, błąd wysyłki (Etap 1) | reguły przypomnień i ekran rejestru (Etap 3) |
+| F11 | Regularne skanowanie i margines odnowienia | ✅ | `App\Service\RenewalScanner` + `cron/renewals.php`: certyfikaty w marginesie (`renewal_lead_days` albo próg z ustawień) dostają zadanie, priorytet rośnie wraz ze zbliżaniem się daty; bez duplikatów przy ponownym uruchomieniu (Etap 3) | — |
+| F12 | Lista ToDo z priorytetami wg zakresów dat | ✅ | ekran „Lista ToDo”: priorytety wygasłe / krytyczne / do odnowienia, statusy, przydział, porzucenie z powodem, odnowienie certyfikatu (`App\Service\TaskService`, Etap 3) | — |
+| F13 | Zaproszenia e-mail z szablonem i załącznikami | ✅ | okno wysyłki z podglądem, szablony z polami `{imie}`, `{numer_seryjny}`… w PL i EN, załączniki z biblioteki (`App\Service\InvitationService`, `TemplateRenderer`, `Mailer` z `addAttachment`, Etap 3) | — |
+| F14 | Zarządzanie wysłanymi zaproszeniami (przypomnienia) | ✅ | rejestr „Zaproszenia”: statusy, ponowienie nieudanej wysyłki, ręczne i automatyczne przypomnienia wg odstępu i limitu z ustawień, oznaczenie odpowiedzi, zamknięcie; zamknięcie zadania kończy przypomnienia (Etap 3) | — |
 | F15 | Dostęp oparty o konta użytkowników | ✅ | OTP, sesje, CSRF, wylogowanie (Etap 0); konta zakłada ADMIN, `register.php` przekierowuje do logowania, wyłączone konto nie zaloguje się, a jego sesja kończy się przy następnym żądaniu (Etap 2) | limit wysyłek OTP w bazie zamiast sesji (§5 pkt 9, Etap 6) |
 | F16 | Wyszukiwanie usług, osób, płatników i powiązań | 🟡 | wyszukiwanie i filtry na listach certyfikatów, osób i płatników; API certyfikatów przyjmuje `q` (Etap 2) | wyszukiwarka globalna z powiązaniami (Etap 4) |
-| F17 | Ścieżka realizacji i powiązania na osi czasu | 🟡 | każda zmiana ewidencji i kont zapisuje zdarzenie ze zmienionymi polami (`App\Service\EventLogger`); historia w szczegółach certyfikatu (Etap 2) | zdarzenia procesu odnowień (Etap 3), oś czasu osoby i płatnika, dziennik (Etap 4) |
-| F18 | Statystyki zadań wg statusów | 🟡 | dane w `renewal_tasks.status`: do zrobienia / w toku / zrobione / porzucone (Etap 1) | agregaty i wykres na pulpicie (Etap 3) |
+| F17 | Ścieżka realizacji i powiązania na osi czasu | 🟡 | każda zmiana ewidencji i kont zapisuje zdarzenie ze zmienionymi polami (Etap 2); zdarzenia procesu odnowień: zadania, priorytety, przydział, zaproszenia, przypomnienia, odnowienie (Etap 3); historia w szczegółach certyfikatu, zadania i zaproszenia | oś czasu osoby i płatnika, dziennik zdarzeń (Etap 4) |
+| F18 | Statystyki zadań wg statusów | ✅ | panel statystyk na pulpicie i liczniki na liście ToDo: statusy z udziałem procentowym, otwarte wg priorytetu, po terminie, skuteczność, średni czas realizacji, rozkład wg osób (`TaskService::stats`, Etap 3) | — |
 | F19 | Hierarchiczny plan kont z rolami | ✅ | macierz uprawnień `Rbac::can()` sprawdzana w każdej usłudze, zakres danych operatora (D8, `App\Service\Visibility`), ekran „Konta i role”, ochrona ostatniego administratora (Etap 2) | — |
 
 ### 3.2. Niefunkcjonalne i techniczne
@@ -198,7 +199,7 @@ Opcjonalnie (kierunek rozwoju): logowanie OTP dla użytkowników certyfikatów i
 | N3 | Instalacja publiczna lub intranetowa | 🟡 ⚠️ | katalog projektu = katalog publiczny serwera, brak reguł blokujących (§5 pkt 1–2); frontend z CDN — Tailwind Play CDN (`includes/head.php:9`), Vue z unpkg bez przypiętej wersji (`includes/dashboard_app.php:576`), Google Fonts (`includes/head.php:33-35`), więc w sieci bez internetu interfejs nie działa; `display_errors=On` w php.ini Laragona |
 | N4 | Studium wykonalności (punkt wyjścia: Java + Spring) | 🟡 | tylko jedno zdanie o Spring Boot (`docs/thesis_part1.md:74`) — potrzebne porównanie z kryteriami |
 | N5 | Ochrona danych osobowych | 🟡 | dobrze: PDO, CSRF, hash OTP, regeneracja sesji, zakres danych wg roli (D8), historia zmian w `events`, walidacja wejścia; do zrobienia: limit OTP w sesji (§5 pkt 9), punkt o RODO w pracy |
-| N6 | Testy | 🟡 | 70 testów: 44 jednostkowe (logowanie, role i uprawnienia, walidacja, jądro API, tłumaczenia, logika certyfikatów, poczta) + 26 integracyjnych na osobnej bazie `assistent_subscriptions_test` (migracje, usługi ewidencji i kont); brak testów crona i scenariuszy E2E |
+| N6 | Testy | 🟡 | 91 testów: 48 jednostkowych (logowanie, role i uprawnienia, walidacja, jądro API, szablony, tłumaczenia, logika certyfikatów, poczta) + 43 integracyjne na osobnej bazie `assistent_subscriptions_test` (migracje, ewidencja, konta, skaner, zadania, zaproszenia z przypomnieniami, szablony, załączniki, ustawienia); brak scenariuszy E2E |
 
 ---
 
@@ -241,7 +242,7 @@ Numeracja ciągła — odwołania w innych miejscach: „§5 pkt N”.
 
 ### 5.2. Średnie
 
-6. **Cron gubi przypomnienia:** warunek `=` dokładnie 3 dni (`cron/send_reminders.php:48`), więc jeden pominięty dzień oznacza brak wysyłki. Nie ma rejestru wysyłek, więc ponowne uruchomienie tego samego dnia wyśle duplikaty. Treść jest wpisana po polsku w kodzie, wbrew konwencji i18n.
+6. **Cron gubi przypomnienia** (`cron/send_reminders.php`): warunek „dokładnie 3 dni”, brak rejestru wysyłek, treść wpisana w kodzie. W ewidencji certyfikatów rozwiązane w Etapie 3 nowym `cron/renewals.php` (margines zamiast dokładnej daty, rejestr w `invitations`, szablony z tłumaczeniami). Stary skrypt obsługuje już tylko zamrożony menedżer osobisty (D1) i zostaje bez zmian.
 7. **`cron/.htaccess`** ma niepełną dyrektywę `Require all` (bez `denied`). Apache zwraca 500 zamiast 403, czyli blokuje dostęp przypadkiem. Poprawnie: `Require all denied`.
 8. ✅ **Listy osób i płatników ukrywały rekordy bez subskrypcji** (`HAVING subscription_count > 0`). Naprawione w Etapie 2: panel firmowy korzysta z nowych usług, które pokazują wszystkie aktywne rekordy; stare zapytania zostały tylko w zamrożonym panelu prywatnym.
 9. **Limit wysyłek kodów OTP trzymany w sesji** (`classes/AuthManager.php`, metody `canSendOtp`/`markOtpSent`) — wystarczy usunąć ciasteczko, żeby go obejść. Przenieść do bazy (limit per e-mail i IP) — Etap 6.
@@ -298,13 +299,13 @@ Stan na 16.09.2026. Pierwotnie: freeze 15.10.2026, część pisemna 16.10–31.1
 | 0. Naprawy krytyczne ✅ **wykonane 2026-09-16** | wszystko z §5.1; `cron/.htaccess`; konto ADMIN; PHPStan także dla plików z katalogu głównego (szczegóły w §11) | — |
 | 1. Model danych ✅ **wykonane 2026-09-16** | migracje: `subscriptions` → `certificates` z typami wg D7, beneficjenci, rozszerzenie płatników, `archived_at`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events`; język domyślny PL (D4); panel prywatny nietknięty (D1); dane demonstracyjne (szczegóły w §11) | — |
 | 2. Ewidencja + archiwizacja + RBAC ✅ **wykonane 2026-09-17** | API i formularze dla certyfikatów, beneficjentów, płatników; archiwum; role w API i UI; wyłączenie publicznej rejestracji i zakładanie kont przez ADMIN (D3); zakres danych operatora (D8); zapis zdarzeń; etykiety „certyfikaty” w panelu (szczegóły w §11) | — |
-| 3. Proces odnowień | skaner → zadania ToDo (priorytety, statusy, przydział); szablony + załączniki; zaproszenia; rejestr i przypomnienia; statystyki zadań | 5–6 |
+| 3. Proces odnowień ✅ **wykonane 2026-09-17** | skaner → zadania ToDo (priorytety, statusy, przydział); szablony + załączniki; zaproszenia; rejestr i przypomnienia; statystyki zadań; ustawienia progów (szczegóły w §11) | — |
 | 4. Raporty i przegląd | karta beneficjenta, karta płatnika, oś czasu z `events`, wyszukiwarka globalna | 3–4 |
 | 5. Wymiana danych | eksport CSV/XML; import CSV/XML z podglądem; import EML | 3–4 |
 | 6. Jakość i domknięcie | testy nowych serwisów, scenariusze E2E, lokalne zasoby frontendu, aktualizacja README i `CLAUDE.md`, freeze | 3–4 |
 | 7. UX i wydajność (§2.5) | skeleton loadery w panelu; cache agregatów KPI z unieważnianiem przy zapisie i kluczem roli; nagłówki cache dla lokalnych zasobów z Etapu 6 | 2–3 |
 
-**Pozostało ok. 16–21 dni roboczych** (Etapy 3–7, po odjęciu wykonanych Etapów 0–2), więc realny freeze wypada na przełomie października i listopada 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
+**Pozostało ok. 11–15 dni roboczych** (Etapy 4–7, po odjęciu wykonanych Etapów 0–3), więc realny freeze mieści się w październiku 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
 
 Kolejność etapów = kolejność ważności. Gdy zabraknie czasu, najpierw upraszczać etap 5 (np. import EML ograniczony do jednego formatu wiadomości).
 
@@ -346,15 +347,16 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 
 ## 10. Stan środowiska (zweryfikowany 2026-09-16)
 
-- **Testy:** 70 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 44 zaliczone + 26 pominiętych). Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji. Przed Etapem 0 było 11 testów.
+- **Testy:** 91 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 48 zaliczonych + 43 pominięte). Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
 - **PHPStan (poziom 5):** 1 znana uwaga (`cron/send_reminders.php:120`); analizowane są także pliki wejściowe z katalogu głównego.
 - **PHP-CS-Fixer:** większość plików zgłaszana z powodu CRLF (§5 pkt 19) — `cs-fix` świadomie nieuruchomiony.
-- **Baza `assistent_subscriptions`:** 14 tabel, migracje `login_otp`, `manager_subskrypcji`, `certificates_model`, `accounts_and_ownership`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 134 kolumny, 70 pozycji indeksów, 20 kluczy obcych).
+- **Baza `assistent_subscriptions`:** 15 tabel, migracje `login_otp`, `manager_subskrypcji`, `certificates_model`, `accounts_and_ownership`, `renewal_process`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 138 kolumn, 72 pozycje indeksów, 21 kluczy obcych).
+- **Cron odnowień:** `php cron/renewals.php` na danych demo — 6 certyfikatów w marginesie, 1 nowe zadanie (Microsoft 365), 0 przypomnień do wysłania; wynik w `logs/renewals.log`.
 - **Dane demo (`scripts/seed-demo-data.php`):** 4 płatników (NovaTech z poprawnym NIP-em), 5 użytkowników certyfikatów, 2 aktywne i 1 wyłączone konto personelu demo + 3 prawdziwe konta (1 ADMIN), 12 certyfikatów firmowych (10 aktywnych, 2 w archiwum, 1 łańcuch odnowień) i 5 prywatnych, 7 zadań (todo 3, in_progress 2, done 1, abandoned 1), 4 zaproszenia, 4 szablony, 1 załącznik, 54 zdarzenia, 4 pozycje menedżera osobistego.
 - **Panel firmowy (sprawdzony w przeglądarce):** ADMIN — 10 certyfikatów, 3 płatników, archiwum (2 certyfikaty), konta; OPERATOR (Tomasz Wróbel) — 4 certyfikaty, 2 osoby, 2 płatników, a API zwraca 403 dla archiwum, kont, archiwizacji i zapisu bez tokenu CSRF. Oba panele renderują się bez ostrzeżeń PHP.
 - **Strefa czasowa:** PHP i MySQL liczą w `Europe/Warsaw` (§5.4); cron znajduje zaplanowaną płatność.
 - **HTTP:** `/`, `/login.php`, `assets/js/*` → 200; `/register.php` → 302 na `login.php?registration_closed=1`; panele → 302 do logowania; `api/*.php` bez sesji → 401; katalogi wewnętrzne (w tym `storage/`, `classes/`, `config/`, `tests/`), `.git/` → 403.
-- **Git:** Etap 0 = `f9ec9df`, Etap 1 = `cef8e72`, Etap 2 — gałąź `etap-2-ewidencja-rbac` scalona na `master`; remote `origin` = github.com/llumiiss/diploma (nic nie jest wypychane automatycznie).
+- **Git:** Etap 0 = `f9ec9df`, Etap 1 = `cef8e72`, Etap 2 = `6ba9729`, Etap 3 — gałąź `etap-3-proces-odnowien` scalona na `master`; remote `origin` = github.com/llumiiss/diploma (nic nie jest wypychane automatycznie).
 
 ---
 
@@ -429,6 +431,29 @@ Naprawione przy okazji: §5 pkt 8, 10, 15 i 21; częściowo pkt 11 (przypięta w
 Weryfikacja: kopia bazy przed migracją (`mysqldump`); migracja na bazie użytkownika i drugi przebieg bez zmian; porównanie `information_schema` bazy po migracji ze świeżą instalacją (identyczne: 134 kolumny, 70 pozycji indeksów, 20 kluczy obcych); 70/70 testów z integracją; PHPStan: 1 znana uwaga; `node --check` dla wszystkich plików JS; w przeglądarce jako ADMIN: pulpit, lista i szczegóły certyfikatu z historią, walidacja formularza (data „ważny od” po wygaśnięciu), konflikt NIP z odnośnikiem do istniejącego płatnika, blokada archiwizacji płatnika z certyfikatami, archiwizacja i przywrócenie z archiwum, konta i role; jako OPERATOR: 4 certyfikaty, 2 osoby, 2 płatników i 403 dla akcji spoza roli; render obu paneli z CLI bez ostrzeżeń PHP; matryca kodów HTTP.
 
 **Świadomie nie zrobione:** skaner, zadania ToDo jako osobny ekran, szablony, załączniki i wysyłka zaproszeń (Etap 3); karty raportowe z historią osoby i płatnika, wyszukiwarka globalna, dziennik zdarzeń (Etap 4); import i eksport (Etap 5); limit OTP w bazie, lokalne zasoby frontendu (Etap 6); skeleton loadery i cache (Etap 7).
+
+Commit: `6ba9729`, gałąź `etap-2-ewidencja-rbac`, scalona na `master` 2026-09-17 (fast-forward).
+
+### Etap 3 — proces odnowień (2026-09-17)
+
+| Obszar | Co zrobiono | Pliki |
+|---|---|---|
+| Skaner (F11) | certyfikaty firmowe w marginesie odnowienia (`renewal_lead_days` albo domyślny próg) dostają zadanie ToDo przypisane opiekunowi; priorytet: wygasłe / krytyczne (≤ próg krytyczny) / do odnowienia; przy kolejnych uruchomieniach aktualizacja priorytetu i terminu; zamknięte zadanie dla tej samej daty wygaśnięcia oznacza obsłużony cykl; cron i przycisk „Uruchom skaner” (MANAGER+) | `classes/Service/RenewalScanner.php`, `cron/renewals.php` |
+| Zadania ToDo (F12) | lista z filtrami (status, przydział, priorytet, wyszukiwanie) i licznikami; przejścia statusów z kontrolą (porzucenie wymaga powodu, ponowne otwarcie tylko MANAGER); przydział tylko do aktywnych kont; status certyfikatu podąża za zadaniem („odnowienie w toku”); zamknięcie zadania kończy przypomnienia | `classes/Service/TaskService.php`, `assets/js/views/tasks.js` |
+| Odnowienie (§2.1) | „Odnów certyfikat”: nowy certyfikat z tymi samymi powiązaniami i nową ważnością (`previous_certificate_id`), stary do archiwum, zadanie → zrobione; nowa data musi być późniejsza | `CertificateService::renewFrom`, `TaskService::renew` |
+| Szablony i załączniki (F13) | ekran ADMIN-a: szablony PL/EN z polami (dodatkowo `{nazwa_certyfikatu}`, `{wystawca}`, `{opiekun}`, `{opiekun_email}`), podgląd na przykładowym certyfikacie, przypisane załączniki; biblioteka plików: rozszerzenie + typ z zawartości (finfo), limit 10 MB, losowa nazwa na dysku, SHA-256, pobieranie przez API, usuwanie tylko nieużywanych | `classes/Service/TemplateService.php`, `TemplateRenderer.php`, `AttachmentService.php`, `assets/js/views/templates.js` |
+| Zaproszenia (F13, F14) | okno wysyłki: odbiorca (użytkownik certyfikatu albo płatnik), szablon, załączniki, podgląd w izolowanej ramce; wysyłka poza transakcją z zapisem statusu i błędu; brak otwartego zadania → zakładane automatycznie; rejestr z filtrem zaległych przypomnień; przypomnij, ponów, odpowiedziano, zamknij; automatyczne przypomnienia wg odstępu i limitu (szablon przypomnienia w języku zaproszenia, kolejna próba po nieudanej wysyłce następnego dnia) | `classes/Service/InvitationService.php`, `InvitationMailer.php`, `MailerInvitationMailer.php`, `classes/Mailer.php`, `assets/js/views/invitations.js` |
+| Ustawienia | tabela `settings` (migracja `renewal_process`): domyślny margines, próg krytyczny, odstęp i limit przypomnień; walidacja zakresów i zależności progów; zmiany w historii; progi pulpitu korzystają z ustawień | `classes/Settings.php`, `classes/Service/SettingsService.php`, `classes/Migrations/RenewalProcessMigration.php`, `classes/CertificateHelper.php` |
+| Statystyki (F18) | panel na pulpicie: statusy z udziałem procentowym, otwarte wg priorytetu, po terminie, moje, skuteczność, średni czas realizacji, rozkład wg osób (MANAGER+) | `TaskService::stats`, `assets/js/views/dashboard.js` |
+| Poczta | załączniki w `Mailer::send`; sterownik `log` (wiadomości do `logs/mail.log`) dla demonstracji i instalacji bez SMTP | `classes/Mailer.php`, `classes/MailConfig.php`, `config/mail.php` |
+| API | `api/tasks.php`, `invitations.php`, `templates.php`, `attachments.php` (pobieranie plików), `settings.php` | `classes/Api/*` |
+| Panel | nawigacja: Lista ToDo (zadania), Zaproszenia, Szablony i załączniki, Ustawienia; w szczegółach certyfikatu sekcja „Odnowienie” (otwarte zadanie, utworzenie zadania, wysyłka, lista zaproszeń); oś czasu opisuje zdarzenia procesu | `assets/js/*`, `includes/dashboard_app.php` |
+| Język (D4) | ok. 230 nowych kluczy PL i EN; etykiety typów w wiadomości w języku szablonu | `lang/pl.php`, `lang/en.php`, `classes/Translator.php` |
+| Testy | +21: `TemplateRendererTest`, `RenewalScannerTest`, `TaskServiceTest`, `InvitationServiceTest` (z rejestrującym zamiennikiem poczty), `TemplateAttachmentSettingsTest` | `tests/*` |
+
+Weryfikacja: kopia bazy przed migracją; migracja i drugi przebieg bez zmian; porównanie `information_schema` z świeżą instalacją (138 kolumn, 72 pozycje indeksów, 21 kluczy obcych); 91/91 testów z integracją; PHPStan: 1 znana uwaga; `node --check` wszystkich plików JS; w przeglądarce jako ADMIN: lista ToDo z licznikami, „Uruchom skaner” (1 nowe zadanie), panel zadania z akcjami i historią, okno wysyłki z podglądem wiadomości i załącznikiem (bez faktycznej wysyłki), rejestr zaproszeń z błędem SMTP i przypomnieniami, szablony z podglądem, ustawienia, statystyki na pulpicie, brak błędów w konsoli; `cron/renewals.php` na danych demo.
+
+**Świadomie nie zrobione:** karty raportowe z historią osoby i płatnika, wyszukiwarka globalna, dziennik zdarzeń administratora (Etap 4); import i eksport (Etap 5); limit OTP w bazie, lokalne zasoby frontendu, strona główna bez zmyślonych liczb (Etap 6); skeleton loadery i cache (Etap 7). Stary `cron/send_reminders.php` menedżera osobistego zostaje bez zmian (D1).
 
 ---
 

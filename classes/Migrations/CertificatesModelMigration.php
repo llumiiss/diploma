@@ -331,7 +331,10 @@ final class CertificatesModelMigration
         );
     }
 
-    private static function insertDefaultTemplates(PDO $db): void
+    /**
+     * Wstawia brakujące domyślne szablony (zaproszenie i przypomnienie, PL i EN) — używane także przez testy.
+     */
+    public static function insertDefaultTemplates(PDO $db): void
     {
         $exists = $db->prepare('SELECT 1 FROM email_templates WHERE code = :code AND locale = :locale LIMIT 1');
         $insert = $db->prepare(

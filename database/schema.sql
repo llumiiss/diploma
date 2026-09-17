@@ -1,7 +1,7 @@
 -- ============================================================
 -- CertiSub Assistant — schemat bazy danych (świeża instalacja)
 --
--- Model danych Etapów 1–2, opis w docs/MAPA_PROJEKTU.md (sekcja 2.2).
+-- Model danych Etapów 1–3, opis w docs/MAPA_PROJEKTU.md (sekcja 2.2).
 -- Kształt tabel jest taki sam jak po migracjach z classes/Migrations/ (sprawdzane porównaniem
 -- information_schema), dlatego istniejące instalacje aktualizuje się poleceniem: php scripts/migrate.php
 --
@@ -18,6 +18,7 @@ CREATE DATABASE IF NOT EXISTS assistent_subscriptions
 
 USE assistent_subscriptions;
 
+DROP TABLE IF EXISTS settings;
 DROP TABLE IF EXISTS events;
 DROP TABLE IF EXISTS invitation_attachments;
 DROP TABLE IF EXISTS invitations;
@@ -332,4 +333,17 @@ CREATE TABLE events (
     KEY idx_events_beneficiary (beneficiary_id, occurred_at),
     KEY idx_events_payer (payer_id, occurred_at),
     KEY idx_events_occurred (occurred_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ustawienia procesu odnowień zmieniane przez administratora (Etap 3).
+-- Wartości domyślne są w kodzie (App\Settings), tabela przechowuje tylko zmiany.
+CREATE TABLE settings (
+    setting_key         VARCHAR(64) NOT NULL PRIMARY KEY,
+    setting_value       VARCHAR(255) NOT NULL,
+    updated_by_user_id  INT UNSIGNED NULL,
+    updated_at          TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_settings_user (updated_by_user_id),
+    CONSTRAINT fk_settings_user
+        FOREIGN KEY (updated_by_user_id) REFERENCES users(id)
+        ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
