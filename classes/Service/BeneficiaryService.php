@@ -49,7 +49,7 @@ final class BeneficiaryService
             LEFT JOIN (
                 SELECT c.beneficiary_id, COUNT(*) AS certificate_count, MIN(c.expiry_date) AS earliest_expiry
                 FROM certificates c
-                WHERE c.archived_at IS NULL AND c.scope = 'corporate' AND {$certificateVisibility}
+                WHERE c.archived_at IS NULL AND {$certificateVisibility}
                 GROUP BY c.beneficiary_id
             ) cs ON cs.beneficiary_id = b.id
             WHERE {$archivedCondition} AND {$beneficiaryVisibility}
@@ -101,7 +101,7 @@ final class BeneficiaryService
                     c.renewal_lead_days, c.status, c.payer_id, p.company_name AS payer_name
              FROM certificates c
              INNER JOIN payers p ON p.id = c.payer_id
-             WHERE c.beneficiary_id = :beneficiary_id AND c.archived_at IS NULL AND c.scope = 'corporate' AND {$certificateVisibility}
+             WHERE c.beneficiary_id = :beneficiary_id AND c.archived_at IS NULL AND {$certificateVisibility}
              ORDER BY c.expiry_date"
         );
         $stmt->execute(['beneficiary_id' => $id] + $certificateParams);

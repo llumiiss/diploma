@@ -3,13 +3,11 @@
 declare(strict_types=1);
 
 /**
- * Panel firmowy — ewidencja certyfikatów, użytkowników certyfikatów i płatników (dziedzina pracy).
+ * Panel aplikacji — ewidencja certyfikatów, użytkowników certyfikatów i płatników.
  *
  * PHP sprawdza sesję i przekazuje dane startowe (tłumaczenia, token CSRF, konto, uprawnienia).
  * Widoki to komponenty Vue w assets/js, a dane przychodzą z API (api/*.php), które samo
  * pilnuje ról — ukrycie przycisku w przeglądarce nie jest kontrolą dostępu.
- *
- * Panel prywatny (moduł zamrożony, D1) ma osobny widok: includes/personal_dashboard_app.php.
  */
 
 require dirname(__DIR__) . '/bootstrap.php';
@@ -47,7 +45,7 @@ $boot = [
         'role'       => $role,
     ],
     'permissions' => Rbac::permissionsFor($role),
-    'thresholds'  => CertificateHelper::getThresholds('corporate'),
+    'thresholds'  => CertificateHelper::getThresholds(),
     'endpoints'   => [
         'certificates'   => 'api/certificates.php',
         'beneficiaries'  => 'api/beneficiaries.php',
@@ -67,10 +65,9 @@ $boot = [
         'delete_account' => 'api/delete_account.php',
     ],
     'links'       => [
-        'login'    => 'login.php' . $langQ,
-        'logout'   => 'logout.php' . $langQ,
-        'home'     => 'index.php' . $langQ,
-        'personal' => 'dashboard-personal.php' . $langQ,
+        'login'  => 'login.php' . $langQ,
+        'logout' => 'logout.php' . $langQ,
+        'home'   => 'index.php' . $langQ,
     ],
 ];
 
@@ -122,10 +119,6 @@ $assetUrl = static function (string $path): string {
                     <p class="text-lg font-semibold leading-tight"><?= htmlspecialchars(__('corporate.assistant')) ?></p>
                     <p class="text-xs opacity-75"><?= htmlspecialchars(__('corporate.subtitle')) ?></p>
                 </div>
-            </a>
-            <a href="<?= htmlspecialchars($boot['links']['personal']) ?>"
-               class="text-xs px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 transition border border-white/20">
-                ↔ <?= htmlspecialchars(__('corporate.switch')) ?>
             </a>
         </div>
         <div class="flex items-center gap-3">

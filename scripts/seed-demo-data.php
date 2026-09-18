@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Wypełnia bazę danymi demonstracyjnymi modelu z Etapu 1, żeby dało się pokazać wszystkie
  * panele i funkcje aplikacji: certyfikaty z użytkownikami i płatnikami, wszystkie priorytety
  * i statusy płatności, archiwum z łańcuchem odnowień, zadania ToDo w każdym statusie,
- * zaproszenia z załącznikiem, historię zdarzeń, panel prywatny i menedżer osobisty.
+ * zaproszenia z załącznikiem i historię zdarzeń.
  *
  *   php scripts/seed-demo-data.php                      # tylko na pustej bazie
  *   php scripts/seed-demo-data.php --force              # odtwórz dane demo od zera
@@ -71,7 +71,6 @@ $demoPayers = [
     'novatech' => ['NovaTech Sp. z o.o.', 'Katarzyna Zielińska', '6342851974', 'faktury@novatech.example.com', '+48 32 111 22 33', 'ul. Przemysłowa 12', '40-020', 'Katowice'],
     'wisla'    => ['Grupa Wisła S.A.', 'Marek Dąbrowski', '9876543210', 'ksiegowosc@grupawisla.example.com', '+48 33 444 55 66', 'ul. Nadrzeczna 5', '43-460', 'Wisła'],
     'fundacja' => ['Fundacja Cyfrowy Śląsk', 'Anna Nowacka', '5551112223', 'biuro@cyfrowyslask.example.org', '+48 32 777 88 99', 'ul. Bankowa 14', '40-007', 'Katowice'],
-    'dom'      => ['Budżet domowy', 'Konto prywatne', null, null, null, null, null, null],
 ];
 
 /** Konta personelu demo — opiekunowie rekordów: [imię, nazwisko, e-mail, rola] */
@@ -101,7 +100,6 @@ $demoBeneficiaries = [
  * Pola pominięte w definicji dostają wartości z $certificateDefaults.
  */
 $certificateDefaults = [
-    'scope'        => 'corporate',
     'serial'       => null,
     'issuer'       => null,
     'valid_from'   => null,
@@ -194,28 +192,6 @@ $demoCertificates = array_map(static fn (array $certificate): array => array_mer
         'status' => 'expired', 'cost' => 99.00, 'cycle' => 'annual', 'payment' => 'not_applicable', 'last_payment' => -400,
         'notes' => 'Klient zrezygnował z domeny.',
     ],
-    // Panel prywatny — moduł dodatkowy, zamrożony (D1)
-    'netflix' => [
-        'name' => 'Netflix Standard', 'scope' => 'personal', 'type' => 'STREAMING', 'expiry' => 3,
-        'owner' => 'owner', 'payer' => 'dom', 'status' => 'active', 'cost' => 43.00, 'cycle' => 'monthly', 'payment' => 'due_soon', 'last_payment' => -28,
-    ],
-    'spotify' => [
-        'name' => 'Spotify Family', 'scope' => 'personal', 'type' => 'MUSIC', 'expiry' => 12,
-        'owner' => 'owner', 'payer' => 'dom', 'status' => 'active', 'cost' => 29.99, 'cycle' => 'monthly', 'payment' => 'due_soon', 'last_payment' => -19,
-    ],
-    'psplus' => [
-        'name' => 'PlayStation Plus', 'scope' => 'personal', 'type' => 'GAMING', 'expiry' => -2,
-        'owner' => 'owner', 'payer' => 'dom', 'status' => 'expired', 'cost' => 37.00, 'cycle' => 'monthly', 'payment' => 'overdue', 'last_payment' => -32,
-        'notes' => 'Płatność nie przeszła.',
-    ],
-    'fitness' => [
-        'name' => 'Karnet fitness', 'scope' => 'personal', 'type' => 'FITNESS', 'expiry' => 21,
-        'owner' => 'owner', 'payer' => 'dom', 'status' => 'active', 'cost' => 149.00, 'cycle' => 'monthly', 'payment' => 'paid', 'last_payment' => -10,
-    ],
-    'icloud' => [
-        'name' => 'iCloud 200 GB', 'scope' => 'personal', 'type' => 'CLOUD_STORAGE', 'expiry' => 60,
-        'owner' => 'owner', 'payer' => 'dom', 'status' => 'active', 'cost' => 3.99, 'cycle' => 'monthly', 'payment' => 'paid', 'last_payment' => -20,
-    ],
 ]);
 
 /** Zadania ToDo — każdy status: [certyfikat => [status, priorytet, przypisany, utworzono, zamknięto, notatka]] */
@@ -238,14 +214,6 @@ $demoInvitations = [
     ['novatech_seal', 'payer', 'responded', -20, 0, null, null, 'ewa', null],
     ['novatech_ssl', 'payer', 'failed', null, 0, null, null, 'owner', 'SMTP 421: serwer odbiorcy chwilowo niedostępny — ponów wysyłkę'],
     ['wisla_ssl_ev_old', 'payer', 'closed', -285, 1, -278, null, 'tomasz', null],
-];
-
-/** Menedżer osobisty zalogowanej osoby: [usługa, e-mail, login, koszt, następna płatność] */
-$demoManagerRows = [
-    ['Netflix Standard', 'netflix@example.com', 'konto.rodzinne', 43.00, 3],
-    ['Spotify Family', 'spotify@example.com', 'rodzina', 29.99, 12],
-    ['iCloud 200 GB', 'icloud@example.com', 'moje.konto', 3.99, 21],
-    ['PlayStation Plus', 'psn@example.com', 'gracz_pl', 37.00, -2],
 ];
 
 $attachmentName = 'instrukcja-odnowienia-certyfikatu.txt';
@@ -308,10 +276,6 @@ if ($force) {
         $db->exec("DELETE FROM certificates WHERE id IN ({$certificateList})");
         $db->exec("DELETE FROM beneficiaries WHERE id IN ({$beneficiaryList})");
     }
-
-    $managerNames = array_column($demoManagerRows, 0);
-    $stmt = $db->prepare('DELETE FROM manager_subskrypcji WHERE user_id = ? AND nazwa_uslugi IN (' . $placeholders($managerNames) . ')');
-    $stmt->execute(array_merge([$ownerId], $managerNames));
 
     $db->exec("DELETE FROM events WHERE entity_type = 'user' AND entity_id IN (SELECT id FROM users WHERE email LIKE '%@example.com')");
     $db->exec("DELETE FROM users WHERE email LIKE '%@example.com'");
@@ -433,11 +397,11 @@ $certificateIds = [];
 $certificateContext = [];
 $insertCertificate = $db->prepare(
     'INSERT INTO certificates
-        (name, scope, certificate_type, serial_number, issuer, valid_from, expiry_date, renewal_lead_days,
+        (name, certificate_type, serial_number, issuer, valid_from, expiry_date, renewal_lead_days,
          user_id, beneficiary_id, payer_id, status, annual_cost, billing_cycle, currency, payment_status,
          last_payment_date, auto_renew, notes, archived_at, created_at)
      VALUES
-        (:name, :scope, :type, :serial, :issuer, :valid_from, :expiry, :lead,
+        (:name, :type, :serial, :issuer, :valid_from, :expiry, :lead,
          :user_id, :beneficiary_id, :payer_id, :status, :cost, :cycle, "PLN", :payment,
          :last_payment, :auto_renew, :notes, :archived_at, :created_at)'
 );
@@ -450,7 +414,6 @@ foreach ($demoCertificates as $key => $cert) {
 
     $insertCertificate->execute([
         'name'           => $cert['name'],
-        'scope'          => $cert['scope'],
         'type'           => $cert['type'],
         'serial'         => $cert['serial'],
         'issuer'         => $cert['issuer'],
@@ -675,24 +638,6 @@ foreach ($demoInvitations as [$certKey, $recipientType, $status, $sentOffset, $r
     }
 }
 
-// ── Menedżer osobisty zalogowanej osoby ───────────────────────────────────────
-
-$insertManager = $db->prepare(
-    'INSERT INTO manager_subskrypcji (user_id, nazwa_uslugi, mail_subskrypcji, username_konta, koszt_pln, data_nastepnej_platnosci)
-     VALUES (:user_id, :nazwa, :mail, :username, :koszt, :data)'
-);
-
-foreach ($demoManagerRows as $row) {
-    $insertManager->execute([
-        'user_id'  => $ownerId,
-        'nazwa'    => $row[0],
-        'mail'     => $row[1],
-        'username' => $row[2],
-        'koszt'    => $row[3],
-        'data'     => $day($row[4]),
-    ]);
-}
-
 // ── Podsumowanie ──────────────────────────────────────────────────────────────
 
 $count = static fn (string $sql): int => (int) $db->query($sql)->fetchColumn();
@@ -710,22 +655,20 @@ printf("  Płatnicy:                         %d\n", count($payerIds));
 printf("  Konta personelu demo:             %d aktywne + %d wyłączone (@example.com)\n", count($demoStaff), count($demoInactiveStaff));
 printf("  Użytkownicy certyfikatów:         %d\n", count($beneficiaryIds));
 printf(
-    "  Certyfikaty firmowe:              %d aktywnych + %d w archiwum\n",
-    $count("SELECT COUNT(*) FROM certificates WHERE scope = 'corporate' AND archived_at IS NULL"),
-    $count("SELECT COUNT(*) FROM certificates WHERE scope = 'corporate' AND archived_at IS NOT NULL")
+    "  Certyfikaty:                      %d aktywnych + %d w archiwum\n",
+    $count('SELECT COUNT(*) FROM certificates WHERE archived_at IS NULL'),
+    $count('SELECT COUNT(*) FROM certificates WHERE archived_at IS NOT NULL')
 );
-printf("  Subskrypcje prywatne:             %d\n", $count("SELECT COUNT(*) FROM certificates WHERE scope = 'personal'"));
 printf("  Zadania ToDo:                     %s\n", $grouped('SELECT status, COUNT(*) FROM renewal_tasks GROUP BY status ORDER BY FIELD(status, "todo", "in_progress", "done", "abandoned")'));
 printf("  Zaproszenia:                      %s\n", $grouped('SELECT status, COUNT(*) FROM invitations GROUP BY status ORDER BY status'));
 printf("  Zdarzenia w historii:             %d\n", $count('SELECT COUNT(*) FROM events'));
-printf("  Menedżer osobisty:                %d\n", count($demoManagerRows));
 printf(
-    "\n  Twoje konto: %s %s <%s>, rola %s — opiekun %d aktywnych pozycji firmowych\n",
+    "\n  Twoje konto: %s %s <%s>, rola %s — opiekun %d aktywnych certyfikatów\n",
     (string) $owner['first_name'],
     (string) $owner['last_name'],
     (string) $owner['email'],
     (string) $owner['role'],
-    $count("SELECT COUNT(*) FROM certificates WHERE scope = 'corporate' AND archived_at IS NULL AND user_id = {$ownerId}")
+    $count("SELECT COUNT(*) FROM certificates WHERE archived_at IS NULL AND user_id = {$ownerId}")
 );
 echo "\nUsuwanie: php scripts/seed-demo-data.php --force (odtworzenie) lub php scripts/cleanup-demo-data.php\n";
 

@@ -54,7 +54,7 @@ final class InvitationService
     {
         $actor->authorize('invitations.view');
         [$visibility, $params] = Visibility::certificates($actor, 'c');
-        $conditions = ["c.scope = 'corporate'", $visibility];
+        $conditions = [$visibility];
 
         $status = (string) ($filters['status'] ?? '');
         if (in_array($status, self::STATUSES, true)) {
@@ -538,7 +538,7 @@ final class InvitationService
     private function findVisible(Actor $actor, int $id): array
     {
         [$visibility, $params] = Visibility::certificates($actor, 'c');
-        $stmt = $this->db->prepare(self::selectSql() . " WHERE i.id = :id AND c.scope = 'corporate' AND {$visibility} LIMIT 1");
+        $stmt = $this->db->prepare(self::selectSql() . " WHERE i.id = :id AND {$visibility} LIMIT 1");
         $stmt->execute(['id' => $id] + $params);
         $row = $stmt->fetch();
 

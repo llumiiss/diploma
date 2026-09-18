@@ -1,7 +1,9 @@
 -- ============================================================
 -- CertiSub Assistant — schemat bazy danych (świeża instalacja)
 --
--- Model danych Etapów 1–6, opis w docs/MAPA_PROJEKTU.md (sekcja 2.2).
+-- Model danych Etapów 1–8, opis w docs/MAPA_PROJEKTU.md (sekcja 2.2).
+-- Baza opisuje wyłącznie ewidencję firmową — subskrypcje prywatne mają własną aplikację
+-- (katalog menedzer_subskrypcji) i własną bazę, bez wspólnych tabel.
 -- Kształt tabel jest taki sam jak po migracjach z classes/Migrations/ (sprawdzane porównaniem
 -- information_schema), dlatego istniejące instalacje aktualizuje się poleceniem: php scripts/migrate.php
 --
@@ -91,23 +93,6 @@ CREATE TABLE login_otps (
     INDEX idx_login_otps_ip_created (request_ip, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Menedżer osobisty (moduł dodatkowy, zamrożony — decyzja D1)
-CREATE TABLE manager_subskrypcji (
-    id                        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_id                   INT UNSIGNED NOT NULL,
-    nazwa_uslugi              VARCHAR(255) NOT NULL,
-    mail_subskrypcji          VARCHAR(255) NULL,
-    username_konta            VARCHAR(255) NULL,
-    koszt_pln                 DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-    data_nastepnej_platnosci  DATE NOT NULL,
-    created_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_manager_subskrypcji_user
-        FOREIGN KEY (user_id) REFERENCES users(id)
-        ON DELETE CASCADE ON UPDATE CASCADE,
-    INDEX idx_manager_sub_user (user_id),
-    INDEX idx_manager_sub_payment_date (data_nastepnej_platnosci)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- Użytkownicy certyfikatów (beneficjenci) — dane osobowe, powiązanie z płatnikiem
 CREATE TABLE beneficiaries (
     id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -140,12 +125,9 @@ CREATE TABLE beneficiaries (
 CREATE TABLE certificates (
     id                       INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name                     VARCHAR(255) NOT NULL,
-    scope                    ENUM('corporate', 'personal') NOT NULL DEFAULT 'corporate',
     certificate_type         ENUM(
         'QUALIFIED_SIGNATURE', 'QUALIFIED_SEAL', 'SSL_CERTIFICATE', 'CODE_SIGNING',
-        'DOMAIN', 'SAAS', 'CLOUD_SUPPORT',
-        'STREAMING', 'MUSIC', 'GAMING', 'FITNESS', 'CLOUD_STORAGE',
-        'OTHER'
+        'DOMAIN', 'SAAS', 'CLOUD_SUPPORT', 'OTHER'
     ) NOT NULL DEFAULT 'OTHER',
     serial_number            VARCHAR(128) NULL,
     issuer                   VARCHAR(255) NULL,
@@ -172,7 +154,6 @@ CREATE TABLE certificates (
     KEY idx_certificates_beneficiary (beneficiary_id),
     KEY idx_certificates_payer (payer_id),
     KEY idx_certificates_previous (previous_certificate_id),
-    KEY idx_scope (scope),
     KEY idx_certificates_type (certificate_type),
     KEY idx_expiry_date (expiry_date),
     KEY idx_status (status),

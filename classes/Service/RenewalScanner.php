@@ -46,8 +46,7 @@ final class RenewalScanner
              FROM certificates c
              INNER JOIN users u ON u.id = c.user_id
              LEFT JOIN renewal_tasks t ON t.certificate_id = c.id AND t.status IN ('todo', 'in_progress')
-             WHERE c.scope = 'corporate'
-               AND c.archived_at IS NULL
+             WHERE c.archived_at IS NULL
                AND c.expiry_date <= DATE_ADD(:today, INTERVAL COALESCE(c.renewal_lead_days, :default_lead) DAY)
                AND (t.id IS NOT NULL OR NOT EXISTS (
                     SELECT 1 FROM renewal_tasks handled

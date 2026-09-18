@@ -16,33 +16,6 @@ final class UserManager
     }
 
     /**
-     * @return array<int, array<string, mixed>>
-     */
-    public function getAllUsers(string $scope = 'corporate'): array
-    {
-        $sql = <<<'SQL'
-            SELECT
-                u.id,
-                u.first_name,
-                u.last_name,
-                u.role,
-                u.email,
-                COUNT(c.id) AS subscription_count
-            FROM users u
-            LEFT JOIN certificates c
-                ON c.user_id = u.id AND c.scope = :scope AND c.archived_at IS NULL
-            GROUP BY u.id
-            HAVING subscription_count > 0
-            ORDER BY u.last_name, u.first_name
-        SQL;
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['scope' => $scope]);
-
-        return $stmt->fetchAll();
-    }
-
-    /**
      * @return array<string, mixed>|false
      */
     public function getAdminUser(): array|false
@@ -159,7 +132,7 @@ final class UserManager
     }
 
     /**
-     * Usuwa konto wraz z kodami logowania i prywatnym menedżerem (FK ON DELETE CASCADE).
+     * Usuwa konto wraz z kodami logowania (FK ON DELETE CASCADE).
      * Certyfikatów NIE usuwa — jeśli osoba jest ich opiekunem, konto zostaje,
      * żeby nie stracić danych ani historii (docs/MAPA_PROJEKTU.md §5).
      */

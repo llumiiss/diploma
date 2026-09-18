@@ -8,7 +8,7 @@ use App\Service\Visibility;
 use PDO;
 
 /**
- * Odczyt certyfikatów i usług wraz ze wskaźnikami pulpitu.
+ * Wskaźniki pulpitu liczone na tabeli certyfikatów.
  * Rekordy zarchiwizowane (archived_at) są pomijane we wszystkich widokach bieżących.
  */
 final class CertificateManager
@@ -21,73 +21,16 @@ final class CertificateManager
     }
 
     /**
-     * @param int|null $ownerId Gdy podane, zwraca wyłącznie rekordy tej osoby
-     *                          (rola bez dostępu do danych całej organizacji).
-     * @return array<int, array<string, mixed>>
-     */
-    public function getAllCertificates(string $scope = 'corporate', ?int $ownerId = null): array
-    {
-        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope], 'c');
-
-        $sql = <<<SQL
-            SELECT
-                c.id,
-                c.name,
-                c.scope,
-                c.certificate_type,
-                c.serial_number,
-                c.issuer,
-                c.valid_from,
-                c.expiry_date,
-                c.renewal_lead_days,
-                c.status,
-                c.annual_cost,
-                c.billing_cycle,
-                c.currency,
-                c.payment_status,
-                c.last_payment_date,
-                c.auto_renew,
-                c.notes,
-                c.user_id,
-                c.beneficiary_id,
-                c.payer_id,
-                c.previous_certificate_id,
-                u.first_name   AS user_first_name,
-                u.last_name    AS user_last_name,
-                u.role         AS user_role,
-                u.email        AS user_email,
-                b.first_name   AS beneficiary_first_name,
-                b.last_name    AS beneficiary_last_name,
-                b.email        AS beneficiary_email,
-                p.company_name,
-                p.contact_person
-            FROM certificates c
-            INNER JOIN users u ON c.user_id = u.id
-            INNER JOIN payers p ON c.payer_id = p.id
-            LEFT JOIN beneficiaries b ON c.beneficiary_id = b.id
-            WHERE c.scope = :scope
-              AND c.archived_at IS NULL{$ownerFilter}
-            ORDER BY c.expiry_date ASC
-        SQL;
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-
-        return $stmt->fetchAll();
-    }
-
-    /**
      * @return array{pending: int, active: int, renewal_in_progress: int, expired: int}
      */
-    public function getStatusStats(string $scope = 'corporate', ?int $ownerId = null): array
+    public function getStatusStats(?int $ownerId = null): array
     {
-        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope]);
+        [$ownerFilter, $params] = $this->ownerFilter($ownerId, []);
 
         $sql = <<<SQL
             SELECT status, COUNT(*) AS total
             FROM certificates
-            WHERE scope = :scope
-              AND archived_at IS NULL{$ownerFilter}
+            WHERE archived_at IS NULL{$ownerFilter}
             GROUP BY status
         SQL;
 
@@ -111,9 +54,9 @@ final class CertificateManager
     /**
      * @return array{due_soon: int, overdue: int, paid: int, total_due_amount: float}
      */
-    public function getPaymentSummary(string $scope = 'corporate', ?int $ownerId = null): array
+    public function getPaymentSummary(?int $ownerId = null): array
     {
-        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope]);
+        [$ownerFilter, $params] = $this->ownerFilter($ownerId, []);
 
         $sql = <<<SQL
             SELECT
@@ -121,8 +64,7 @@ final class CertificateManager
                 COUNT(*) AS total,
                 COALESCE(SUM(annual_cost), 0) AS amount
             FROM certificates
-            WHERE scope = :scope
-              AND archived_at IS NULL{$ownerFilter}
+            WHERE archived_at IS NULL{$ownerFilter}
               AND payment_status IN ('due_soon', 'overdue')
             GROUP BY payment_status
         SQL;
@@ -144,7 +86,7 @@ final class CertificateManager
 
         $paidStmt = $this->db->prepare(
             "SELECT COUNT(*) FROM certificates
-             WHERE scope = :scope AND archived_at IS NULL{$ownerFilter} AND payment_status = 'paid'"
+             WHERE archived_at IS NULL{$ownerFilter} AND payment_status = 'paid'"
         );
         $paidStmt->execute($params);
         $summary['paid'] = (int) $paidStmt->fetchColumn();
@@ -155,13 +97,13 @@ final class CertificateManager
     /**
      * @return array{expired: int, expiring_critical: int, expiring_warning: int, critical_days: int, warning_days: int, annual_commitment: float, monthly_spend: float}
      */
-    public function getRenewalSummary(string $scope = 'corporate', ?int $ownerId = null): array
+    public function getRenewalSummary(?int $ownerId = null): array
     {
-        $thresholds = CertificateHelper::getThresholds($scope);
+        $thresholds = CertificateHelper::getThresholds();
         $criticalDays = (int) $thresholds['critical'];
         $warningDays = (int) $thresholds['warning'];
 
-        [$ownerFilter, $params] = $this->ownerFilter($ownerId, ['scope' => $scope], 'c');
+        [$ownerFilter, $params] = $this->ownerFilter($ownerId, [], 'c');
 
         $sql = "
             SELECT
@@ -171,8 +113,7 @@ final class CertificateManager
                 COALESCE(SUM(" . CertificateHelper::annualizedCostSql('c') . '), 0) AS annual_commitment,
                 COALESCE(SUM((' . CertificateHelper::annualizedCostSql('c') . ") / 12), 0) AS monthly_spend
             FROM certificates c
-            WHERE scope = :scope
-              AND archived_at IS NULL{$ownerFilter}
+            WHERE archived_at IS NULL{$ownerFilter}
         ";
 
         $stmt = $this->db->prepare($sql);

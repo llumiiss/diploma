@@ -9,6 +9,7 @@ use App\Migrations\CertificatesModelMigration;
 use App\Migrations\OtpRateLimitMigration;
 use App\Migrations\RenewalProcessMigration;
 use App\Migrations\SchemaInspector;
+use App\Migrations\SplitPersonalAppMigration;
 use PDO;
 use PDOException;
 
@@ -124,27 +125,6 @@ final class MigrationRunner
                     );
                 }
             },
-            'manager_subskrypcji' => static function (PDO $db): void {
-                if (!SchemaInspector::tableExists($db, 'manager_subskrypcji')) {
-                    $db->exec(
-                        'CREATE TABLE manager_subskrypcji (
-                            id                        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                            user_id                   INT UNSIGNED NOT NULL,
-                            nazwa_uslugi              VARCHAR(255) NOT NULL,
-                            mail_subskrypcji          VARCHAR(255) NULL,
-                            username_konta            VARCHAR(255) NULL,
-                            koszt_pln                 DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-                            data_nastepnej_platnosci  DATE NOT NULL,
-                            created_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            CONSTRAINT fk_manager_subskrypcji_user
-                                FOREIGN KEY (user_id) REFERENCES users(id)
-                                ON DELETE CASCADE ON UPDATE CASCADE,
-                            INDEX idx_manager_sub_user (user_id),
-                            INDEX idx_manager_sub_payment_date (data_nastepnej_platnosci)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-                    );
-                }
-            },
             // Etap 1: subscriptions → certificates + beneficjenci, zadania, szablony, załączniki, zaproszenia, historia.
             'certificates_model' => static function (PDO $db): void {
                 CertificatesModelMigration::up($db);
@@ -160,6 +140,10 @@ final class MigrationRunner
             // Etap 6: limit wysyłek kodów logowania liczony w bazie (§5 pkt 9).
             'otp_rate_limit' => static function (PDO $db): void {
                 OtpRateLimitMigration::up($db);
+            },
+            // Etap 8: panel prywatny wyprowadzony do osobnej aplikacji — baza opisuje tylko ewidencję firmową.
+            'split_personal_app' => static function (PDO $db): void {
+                SplitPersonalAppMigration::up($db);
             },
         ];
     }

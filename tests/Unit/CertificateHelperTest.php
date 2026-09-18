@@ -23,14 +23,14 @@ final class CertificateHelperTest extends TestCase
         $_SESSION = [];
     }
 
-    public function testCorporateThresholds(): void
+    public function testThresholdsFollowTheAdminSettings(): void
     {
-        $this->assertSame('expired', CertificateHelper::resolvePriority(-1, 'corporate'));
-        $this->assertSame('critical', CertificateHelper::resolvePriority(0, 'corporate'));
-        $this->assertSame('critical', CertificateHelper::resolvePriority(7, 'corporate'));
-        $this->assertSame('warning', CertificateHelper::resolvePriority(8, 'corporate'));
-        $this->assertSame('warning', CertificateHelper::resolvePriority(30, 'corporate'));
-        $this->assertSame('ok', CertificateHelper::resolvePriority(31, 'corporate'));
+        $this->assertSame('expired', CertificateHelper::resolvePriority(-1));
+        $this->assertSame('critical', CertificateHelper::resolvePriority(0));
+        $this->assertSame('critical', CertificateHelper::resolvePriority(7));
+        $this->assertSame('warning', CertificateHelper::resolvePriority(8));
+        $this->assertSame('warning', CertificateHelper::resolvePriority(30));
+        $this->assertSame('ok', CertificateHelper::resolvePriority(31));
     }
 
     public function testPriorityForUsesGivenThresholds(): void
@@ -55,14 +55,6 @@ final class CertificateHelperTest extends TestCase
         $this->assertSame(900.0, CertificateHelper::annualizedCost(900.0, 'multi_year', '2026-01-01', '2026-03-01'));
     }
 
-    public function testPersonalThresholdsAreShorter(): void
-    {
-        $this->assertSame('critical', CertificateHelper::resolvePriority(3, 'personal'));
-        $this->assertSame('warning', CertificateHelper::resolvePriority(4, 'personal'));
-        $this->assertSame('warning', CertificateHelper::resolvePriority(15, 'personal'));
-        $this->assertSame('ok', CertificateHelper::resolvePriority(16, 'personal'));
-    }
-
     public function testQualifiedCertificateTypesHaveLabels(): void
     {
         $this->assertSame('Certyfikat kwalifikowany', CertificateHelper::typeLabel('QUALIFIED_SIGNATURE'));
@@ -73,7 +65,6 @@ final class CertificateHelperTest extends TestCase
     public function testEnrichAddsComputedFields(): void
     {
         $rows = CertificateHelper::enrich([[
-            'scope'                  => 'corporate',
             'certificate_type'       => 'QUALIFIED_SIGNATURE',
             'expiry_date'            => '2026-09-20',
             'annual_cost'            => '320.00',
@@ -100,7 +91,6 @@ final class CertificateHelperTest extends TestCase
     public function testEnrichHandlesCertificateWithoutBeneficiary(): void
     {
         $rows = CertificateHelper::enrich([[
-            'scope'          => 'corporate',
             'certificate_type' => 'DOMAIN',
             'expiry_date'    => '2026-12-31',
             'annual_cost'    => 129,

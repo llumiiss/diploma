@@ -50,7 +50,7 @@ final class TaskService
     {
         $actor->authorize('tasks.view');
         [$visibility, $params] = Visibility::certificates($actor, 'c');
-        $conditions = ["c.scope = 'corporate'", $visibility];
+        $conditions = [$visibility];
 
         $status = (string) ($filters['status'] ?? 'open');
         if ($status === 'open') {
@@ -160,7 +160,7 @@ final class TaskService
     {
         [$visibility, $params] = Visibility::certificates($actor, 'c');
         $from = "FROM renewal_tasks t INNER JOIN certificates c ON c.id = t.certificate_id
-                 WHERE c.scope = 'corporate' AND {$visibility}";
+                 WHERE {$visibility}";
 
         $byStatus = array_fill_keys(self::STATUSES, 0);
         foreach ($this->pairs("SELECT t.status, COUNT(*) {$from} GROUP BY t.status", $params) as $key => $count) {
@@ -214,7 +214,7 @@ final class TaskService
                  FROM renewal_tasks t
                  INNER JOIN certificates c ON c.id = t.certificate_id
                  LEFT JOIN users u ON u.id = t.assigned_user_id
-                 WHERE c.scope = 'corporate' AND {$visibility}
+                 WHERE {$visibility}
                  GROUP BY t.assigned_user_id, u.first_name, u.last_name, t.status
                  ORDER BY u.last_name, u.first_name"
             );
@@ -521,7 +521,7 @@ final class TaskService
     private function findVisible(Actor $actor, int $id): array
     {
         [$visibility, $params] = Visibility::certificates($actor, 'c');
-        $stmt = $this->db->prepare(self::selectSql() . " WHERE t.id = :id AND c.scope = 'corporate' AND {$visibility} LIMIT 1");
+        $stmt = $this->db->prepare(self::selectSql() . " WHERE t.id = :id AND {$visibility} LIMIT 1");
         $stmt->execute(['id' => $id] + $params);
         $row = $stmt->fetch();
 

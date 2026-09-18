@@ -247,7 +247,7 @@ final class ReportService
              LEFT JOIN beneficiaries b ON b.id = c.beneficiary_id
              LEFT JOIN renewal_tasks t ON t.certificate_id = c.id AND t.status IN ('todo', 'in_progress')
              LEFT JOIN users ta ON ta.id = t.assigned_user_id
-             WHERE c.scope = 'corporate' AND {$condition} AND {$visibility}{$archived}
+             WHERE {$condition} AND {$visibility}{$archived}
              ORDER BY c.archived_at IS NOT NULL, c.expiry_date, c.id"
         );
         $stmt->execute($params + $visibilityParams + $nextParams);
@@ -410,15 +410,15 @@ final class ReportService
             "SELECT b.id, b.first_name, b.last_name, b.email, b.phone, b.archived_at,
                     (b.payer_id = :payer_direct) AS linked_directly,
                     (SELECT COUNT(*) FROM certificates cc
-                     WHERE cc.beneficiary_id = b.id AND cc.payer_id = :payer_count AND cc.scope = 'corporate'
+                     WHERE cc.beneficiary_id = b.id AND cc.payer_id = :payer_count
                        AND cc.archived_at IS NULL AND {$countVisibility}) AS certificate_count,
                     (SELECT MIN(ec.expiry_date) FROM certificates ec
-                     WHERE ec.beneficiary_id = b.id AND ec.payer_id = :payer_expiry AND ec.scope = 'corporate'
+                     WHERE ec.beneficiary_id = b.id AND ec.payer_id = :payer_expiry
                        AND ec.archived_at IS NULL AND {$expiryVisibility}) AS next_expiry
              FROM beneficiaries b
              WHERE (b.payer_id = :payer_where OR EXISTS (
                         SELECT 1 FROM certificates lc
-                        WHERE lc.beneficiary_id = b.id AND lc.payer_id = :payer_link AND lc.scope = 'corporate' AND {$linkVisibility}))
+                        WHERE lc.beneficiary_id = b.id AND lc.payer_id = :payer_link AND {$linkVisibility}))
                AND {$visibility}{$archived}
              ORDER BY b.archived_at IS NOT NULL, b.last_name, b.first_name"
         );

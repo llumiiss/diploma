@@ -59,10 +59,10 @@ final class TimelineService
         }
 
         $params = ['id' => $id];
-        $scope = '';
+        $scopeFilter = '';
         if ($actor !== null && !$actor->seesAllRecords()) {
             [$visibility, $visibilityParams] = Visibility::certificates($actor, 'vc');
-            $scope = " AND (e.certificate_id IS NULL OR EXISTS (SELECT 1 FROM certificates vc WHERE vc.id = e.certificate_id AND {$visibility}))";
+            $scopeFilter = " AND (e.certificate_id IS NULL OR EXISTS (SELECT 1 FROM certificates vc WHERE vc.id = e.certificate_id AND {$visibility}))";
             $params += $visibilityParams;
         }
 
@@ -74,7 +74,7 @@ final class TimelineService
              FROM events e
              LEFT JOIN users u ON u.id = e.user_id
              LEFT JOIN certificates c ON c.id = e.certificate_id
-             WHERE e.{$column} = :id{$scope}
+             WHERE e.{$column} = :id{$scopeFilter}
              ORDER BY e.occurred_at DESC, e.id DESC
              LIMIT {$limit}"
         );
@@ -144,7 +144,7 @@ final class TimelineService
         $stmt = $this->db->prepare(
             "SELECT e.id, e.entity_type, e.entity_id, e.event_type, e.user_id, e.certificate_id, e.beneficiary_id,
                     e.payer_id, e.payload, e.occurred_at, u.first_name AS user_first_name, u.last_name AS user_last_name,
-                    c.name AS certificate_name, c.archived_at AS certificate_archived_at, c.scope AS certificate_scope,
+                    c.name AS certificate_name, c.archived_at AS certificate_archived_at,
                     b.first_name AS beneficiary_first_name, b.last_name AS beneficiary_last_name,
                     p.company_name AS payer_name,
                     CASE e.entity_type

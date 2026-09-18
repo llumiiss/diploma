@@ -174,8 +174,8 @@ final class TemplateService
 
         if ($certificateId === null) {
             $sample = $this->db->query(
-                "SELECT id FROM certificates WHERE scope = 'corporate' AND archived_at IS NULL
-                 ORDER BY beneficiary_id IS NULL, expiry_date LIMIT 1"
+                'SELECT id FROM certificates WHERE archived_at IS NULL
+                 ORDER BY beneficiary_id IS NULL, expiry_date LIMIT 1'
             );
             $certificateId = $sample !== false ? (int) $sample->fetchColumn() : 0;
         }

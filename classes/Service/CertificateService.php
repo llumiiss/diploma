@@ -10,8 +10,7 @@ use PDOException;
 
 /**
  * Ewidencja certyfikatów i usług (F1, F5): lista, szczegóły z historią, dodawanie, edycja,
- * archiwizacja i przywracanie. Obsługuje wyłącznie część firmową — panel prywatny jest
- * zamrożonym modułem dodatkowym (D1).
+ * archiwizacja i przywracanie.
  */
 final class CertificateService
 {
@@ -54,7 +53,7 @@ final class CertificateService
         $actor->authorize($archived ? 'archive.view' : 'certificates.view');
 
         [$visibility, $params] = Visibility::certificates($actor, 'c');
-        $conditions = ["c.scope = 'corporate'", $archived ? 'c.archived_at IS NOT NULL' : 'c.archived_at IS NULL', $visibility];
+        $conditions = [$archived ? 'c.archived_at IS NOT NULL' : 'c.archived_at IS NULL', $visibility];
 
         $query = trim((string) ($filters['q'] ?? ''));
         if ($query !== '') {
@@ -138,12 +137,12 @@ final class CertificateService
         try {
             $id = Transaction::run($this->db, function () use ($actor, $values): int {
                 $stmt = $this->db->prepare(
-                    "INSERT INTO certificates (name, scope, certificate_type, serial_number, issuer, valid_from, expiry_date,
+                    'INSERT INTO certificates (name, certificate_type, serial_number, issuer, valid_from, expiry_date,
                         renewal_lead_days, user_id, beneficiary_id, payer_id, status, annual_cost, billing_cycle, currency,
                         payment_status, last_payment_date, auto_renew, notes)
-                     VALUES (:name, 'corporate', :certificate_type, :serial_number, :issuer, :valid_from, :expiry_date,
+                     VALUES (:name, :certificate_type, :serial_number, :issuer, :valid_from, :expiry_date,
                         :renewal_lead_days, :user_id, :beneficiary_id, :payer_id, :status, :annual_cost, :billing_cycle, :currency,
-                        :payment_status, :last_payment_date, :auto_renew, :notes)"
+                        :payment_status, :last_payment_date, :auto_renew, :notes)'
                 );
                 $stmt->execute(self::bindable($values));
                 $id = (int) $this->db->lastInsertId();
@@ -330,12 +329,12 @@ final class CertificateService
         return Transaction::run($this->db, function () use ($actor, $old, $oldId, $values): int {
             try {
                 $stmt = $this->db->prepare(
-                    "INSERT INTO certificates (name, scope, certificate_type, serial_number, issuer, valid_from, expiry_date,
+                    'INSERT INTO certificates (name, certificate_type, serial_number, issuer, valid_from, expiry_date,
                         renewal_lead_days, user_id, beneficiary_id, payer_id, previous_certificate_id, status, annual_cost,
                         billing_cycle, currency, payment_status, last_payment_date, auto_renew, notes)
-                     VALUES (:name, 'corporate', :certificate_type, :serial_number, :issuer, :valid_from, :expiry_date,
+                     VALUES (:name, :certificate_type, :serial_number, :issuer, :valid_from, :expiry_date,
                         :renewal_lead_days, :user_id, :beneficiary_id, :payer_id, :previous_certificate_id, :status, :annual_cost,
-                        :billing_cycle, :currency, :payment_status, :last_payment_date, :auto_renew, :notes)"
+                        :billing_cycle, :currency, :payment_status, :last_payment_date, :auto_renew, :notes)'
                 );
                 $stmt->execute(self::bindable($values) + ['previous_certificate_id' => $oldId]);
             } catch (PDOException $e) {
@@ -372,8 +371,8 @@ final class CertificateService
     public function syncStatusWithTask(Actor $actor, int $certificateId, string $taskStatus): void
     {
         $stmt = $this->db->prepare(
-            "SELECT id, status, expiry_date, beneficiary_id, payer_id FROM certificates
-             WHERE id = :id AND archived_at IS NULL AND scope = 'corporate'"
+            'SELECT id, status, expiry_date, beneficiary_id, payer_id FROM certificates
+             WHERE id = :id AND archived_at IS NULL'
         );
         $stmt->execute(['id' => $certificateId]);
         $certificate = $stmt->fetch();
@@ -480,7 +479,7 @@ final class CertificateService
     {
         [$visibility, $params] = Visibility::certificates($actor, 'c');
         $stmt = $this->db->prepare(
-            self::selectSql() . " WHERE c.id = :id AND c.scope = 'corporate' AND {$visibility} LIMIT 1"
+            self::selectSql() . " WHERE c.id = :id AND {$visibility} LIMIT 1"
         );
         $stmt->execute(['id' => $id] + $params);
         $row = $stmt->fetch();
@@ -586,7 +585,7 @@ final class CertificateService
     private static function selectSql(): string
     {
         return 'SELECT
-                c.id, c.name, c.scope, c.certificate_type, c.serial_number, c.issuer, c.valid_from, c.expiry_date,
+                c.id, c.name, c.certificate_type, c.serial_number, c.issuer, c.valid_from, c.expiry_date,
                 c.renewal_lead_days, c.status, c.annual_cost, c.billing_cycle, c.currency, c.payment_status,
                 c.last_payment_date, c.auto_renew, c.notes, c.user_id, c.beneficiary_id, c.payer_id,
                 c.previous_certificate_id, c.archived_at, c.created_at, c.updated_at,

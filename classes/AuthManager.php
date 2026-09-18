@@ -20,7 +20,7 @@ final class AuthManager
     private const SESSION_PENDING_REDIRECT = 'auth_pending_redirect';
 
     /** @var list<string> */
-    private const ALLOWED_REDIRECTS = ['dashboard.php', 'dashboard-personal.php'];
+    private const ALLOWED_REDIRECTS = ['dashboard.php'];
 
     private PDO $db;
     private UserManager $users;

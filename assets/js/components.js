@@ -381,12 +381,10 @@
             return lines;
         },
         /**
-         * Czy nazwę certyfikatu w zdarzeniu można otworzyć — certyfikat z archiwum tylko z dostępem do archiwum,
-         * a pozycje zamrożonego panelu prywatnego (D1) nie mają szczegółów w panelu firmowym.
+         * Czy nazwę certyfikatu w zdarzeniu można otworzyć — rekord z archiwum tylko z dostępem do archiwum.
          */
         certificateLink(event) {
             return Boolean(event.certificate_id && event.certificate_name)
-                && event.certificate_scope !== 'personal'
                 && (!event.certificate_archived_at || CertiSub.can('archive.view'));
         },
     };
