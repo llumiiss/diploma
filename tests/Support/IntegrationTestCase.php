@@ -99,7 +99,6 @@ abstract class IntegrationTestCase extends TestCase
         ++$sequence;
         $row = array_merge([
             'name'             => 'Certyfikat testowy ' . $sequence,
-            'scope'            => 'corporate',
             'certificate_type' => 'QUALIFIED_SIGNATURE',
             'serial_number'    => null,
             'issuer'           => null,
@@ -112,9 +111,9 @@ abstract class IntegrationTestCase extends TestCase
         ], $overrides);
 
         $stmt = $this->db->prepare(
-            'INSERT INTO certificates (name, scope, certificate_type, serial_number, issuer, expiry_date, user_id,
+            'INSERT INTO certificates (name, certificate_type, serial_number, issuer, expiry_date, user_id,
                 beneficiary_id, payer_id, status, archived_at)
-             VALUES (:name, :scope, :certificate_type, :serial_number, :issuer, :expiry_date, :user_id,
+             VALUES (:name, :certificate_type, :serial_number, :issuer, :expiry_date, :user_id,
                 :beneficiary_id, :payer_id, :status, :archived_at)'
         );
         $stmt->execute($row);

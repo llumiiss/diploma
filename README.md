@@ -41,7 +41,7 @@ Migrations are idempotent — run them after every update. The `database/migrati
 php scripts\seed-demo-data.php
 ```
 
-Fills every panel: certificates in all priorities, beneficiaries, payers, an archive with a renewal chain, ToDo tasks in every status, invitations with an attachment, event history and the personal module. Re-create with `--force`; remove with `php scripts\cleanup-demo-data.php`.
+Fills the panel: certificates in all priorities, beneficiaries, payers, an archive with a renewal chain, ToDo tasks in every status, invitations with an attachment and event history. Re-create with `--force`; remove with `php scripts\cleanup-demo-data.php`.
 
 ### Accounts and roles
 
@@ -76,8 +76,11 @@ Integration tests create a throwaway database `assistent_subscriptions_test` (fr
 ## URLs
 
 - Landing: http://localhost/assistent_subscription/
-- Corporate dashboard: http://localhost/assistent_subscription/dashboard.php
-- Personal dashboard: http://localhost/assistent_subscription/dashboard-personal.php
+- Dashboard: http://localhost/assistent_subscription/dashboard.php
+
+Private subscriptions (Netflix, Spotify, the gym…) are **a separate application** since 2026-09-18:
+`menedzer_subskrypcji`, with its own database and accounts. The two share no tables and do not link
+to each other.
 
 ## Cron
 
@@ -85,10 +88,9 @@ Run daily (CLI only):
 
 ```powershell
 php cron\renewals.php         # renewal scanner (opens ToDo tasks) + due invitation reminders
-php cron\send_reminders.php   # payment reminders of the personal module
 ```
 
-Windows Task Scheduler: program = full path to `php.exe`, argument = full path to the script. Results go to `logs/renewals.log` and `logs/reminders.log`.
+Windows Task Scheduler: program = full path to `php.exe`, argument = full path to the script. Results go to `logs/renewals.log`.
 
 Without an SMTP server set `'driver' => 'log'` in `config/mail.local.php` — messages are written to `logs/mail.log` (demo/intranet only).
 
@@ -97,7 +99,7 @@ Without an SMTP server set `'driver' => 'log'` in `config/mail.local.php` — me
 ```
 assistent_subscription/
 ├── index.php, login.php, register.php (redirect), logout.php
-├── dashboard.php, dashboard-personal.php
+├── dashboard.php
 ├── api/                     # JSON endpoints — one line each, logic in classes/Api
 ├── assets/                  # css (Tailwind build), js (Vue components), fonts, vendor (Vue runtime)
 ├── classes/                 # AuthManager, Rbac, CertificateHelper, …
@@ -106,8 +108,8 @@ assistent_subscription/
 │   ├── Http/                # ApiKernel (CSRF, auth, JSON errors), Request, Response
 │   ├── Api/                 # endpoint controllers
 │   └── Migrations/          # idempotent schema migrations
-├── includes/                # dashboard shells, shared head, language switcher
-├── cron/                    # renewals.php (scanner + invitation reminders), send_reminders.php (personal module)
+├── includes/                # dashboard shell, shared head, language switcher
+├── cron/                    # renewals.php (scanner + invitation reminders)
 ├── database/schema.sql      # fresh install (same structure as a migrated database)
 ├── scripts/                 # migrate, seed-demo-data, cleanup-demo-data, set-role, test-mail
 ├── storage/                 # attachments/ (uploaded files) and cache/ (dashboard aggregates) — not served over HTTP
@@ -117,7 +119,7 @@ assistent_subscription/
 
 ## Data model
 
-`certificates`, `beneficiaries`, `payers`, `users`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events` (+ join tables), `settings`, `login_otps`, `manager_subskrypcji`. Details: `docs/MAPA_PROJEKTU.md` §2.2.
+`certificates`, `beneficiaries`, `payers`, `users`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events` (+ join tables), `settings`, `login_otps`. Details: `docs/MAPA_PROJEKTU.md` §2.2.
 
 ## Features (current)
 
@@ -131,6 +133,5 @@ assistent_subscription/
 - No CDN: Tailwind CSS is built locally, Vue and the Inter font ship with the repository, so the app works on an intranet without internet access
 - Content skeletons instead of blank screens, cached dashboard aggregates (keyed by role and owner, invalidated on every write) and long-lived cache headers for versioned assets
 - Data exchange: CSV/XML export of lists, report cards, the expiry schedule and the event log; CSV/XML import of payers, certificate users and certificates with a row-by-row preview (the preview runs the real writes and rolls them back); EML import that matches a message to the registry (sender, certificates by serial number, payers by tax ID, open invitations) and imports its CSV/XML attachments
-- Corporate dashboard: KPIs, priority renewals, payments, ToDo view, search and filters
-- Personal dashboard (frozen extra module) and its payment reminder cron
+- Dashboard: KPIs, priority renewals, payments, ToDo view, search and filters
 - i18n: PL (default), EN, ES, DE, UK

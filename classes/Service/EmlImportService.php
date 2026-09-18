@@ -347,7 +347,7 @@ final class EmlImportService
              FROM certificates c
              INNER JOIN payers p ON p.id = c.payer_id
              LEFT JOIN beneficiaries b ON b.id = c.beneficiary_id
-             WHERE c.scope = 'corporate' AND c.archived_at IS NULL AND c.serial_number IS NOT NULL
+             WHERE c.archived_at IS NULL AND c.serial_number IS NOT NULL
                AND CHAR_LENGTH(c.serial_number) >= 6 AND {$visibility}
              ORDER BY c.expiry_date"
         );
@@ -383,7 +383,7 @@ final class EmlImportService
         $stmt = $this->db->prepare(
             "SELECT i.id, i.certificate_id, i.status, i.sent_at, i.reminder_count, i.subject, c.name AS certificate_name
              FROM invitations i INNER JOIN certificates c ON c.id = i.certificate_id
-             WHERE i.recipient_email = :email AND i.status IN ('sent', 'failed') AND c.scope = 'corporate' AND {$visibility}
+             WHERE i.recipient_email = :email AND i.status IN ('sent', 'failed') AND {$visibility}
              ORDER BY COALESCE(i.sent_at, i.created_at) DESC"
         );
         $stmt->execute(['email' => $email] + $params);
@@ -415,7 +415,7 @@ final class EmlImportService
         [$visibility, $params] = Visibility::certificates($actor, 'c');
         $stmt = $this->db->prepare(
             "SELECT c.id, c.beneficiary_id, c.payer_id FROM certificates c
-             WHERE c.id = :id AND c.scope = 'corporate' AND c.archived_at IS NULL AND {$visibility} LIMIT 1"
+             WHERE c.id = :id AND c.archived_at IS NULL AND {$visibility} LIMIT 1"
         );
         $stmt->execute(['id' => $id] + $params);
         $row = $stmt->fetch();

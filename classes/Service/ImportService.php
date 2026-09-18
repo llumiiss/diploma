@@ -271,7 +271,7 @@ final class ImportService
             $existing = $this->fetchOne('SELECT * FROM payers WHERE tax_id = :tax_id LIMIT 1', ['tax_id' => $taxId]);
         } else {
             $existing = $this->fetchUnique(
-                'SELECT * FROM payers p WHERE p.company_name = :name AND p.archived_at IS NULL AND ' . PayerService::notPersonalOnly('p') . ' LIMIT 2',
+                'SELECT * FROM payers p WHERE p.company_name = :name AND p.archived_at IS NULL LIMIT 2',
                 ['name' => $name],
                 'company_name',
                 'exchange.error.payer_ambiguous'
@@ -403,13 +403,13 @@ final class ImportService
 
         if ($issuer !== '' && $serial !== '') {
             $existing = $this->fetchOne(
-                "SELECT * FROM certificates WHERE issuer = :issuer AND serial_number = :serial AND scope = 'corporate' LIMIT 1",
+                'SELECT * FROM certificates WHERE issuer = :issuer AND serial_number = :serial LIMIT 1',
                 ['issuer' => $issuer, 'serial' => $serial]
             );
         } else {
             $existing = $payerId === null ? null : $this->fetchOne(
-                "SELECT * FROM certificates WHERE name = :name AND expiry_date = :expiry AND payer_id = :payer_id
-                   AND scope = 'corporate' AND archived_at IS NULL LIMIT 1",
+                'SELECT * FROM certificates WHERE name = :name AND expiry_date = :expiry AND payer_id = :payer_id
+                   AND archived_at IS NULL LIMIT 1',
                 ['name' => $input['name'] ?? '', 'expiry' => $input['expiry_date'] ?? '', 'payer_id' => $payerId]
             );
         }
@@ -486,7 +486,7 @@ final class ImportService
         }
 
         $payer = $this->fetchUnique(
-            'SELECT id FROM payers p WHERE p.company_name = :name AND p.archived_at IS NULL AND ' . PayerService::notPersonalOnly('p') . ' LIMIT 2',
+            'SELECT id FROM payers p WHERE p.company_name = :name AND p.archived_at IS NULL LIMIT 2',
             ['name' => $name],
             'payer_name',
             'exchange.error.payer_ambiguous'

@@ -53,7 +53,7 @@ final class PayerService
                        SUM(' . CertificateHelper::annualizedCostSql('c') . ") AS total_annual_cost,
                        MIN(c.expiry_date) AS earliest_expiry
                 FROM certificates c
-                WHERE c.archived_at IS NULL AND c.scope = 'corporate' AND {$certificateVisibility}
+                WHERE c.archived_at IS NULL AND {$certificateVisibility}
                 GROUP BY c.payer_id
             ) cs ON cs.payer_id = p.id
             LEFT JOIN (
@@ -64,9 +64,7 @@ final class PayerService
             ) bs ON bs.payer_id = p.id
             WHERE {$archivedCondition}
               AND {$payerVisibility}
-              AND " . self::notPersonalOnly('p') . '
-            ORDER BY ' . ($archived ? 'p.archived_at DESC' : 'p.company_name') . '
-        ';
+            ORDER BY " . ($archived ? 'p.archived_at DESC' : 'p.company_name');
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params + $certificateParams + $beneficiaryParams);
@@ -87,8 +85,8 @@ final class PayerService
         $stmt = $this->db->prepare(
             "SELECT p.id, p.company_name, p.tax_id, p.city
              FROM payers p
-             WHERE p.archived_at IS NULL AND {$visibility} AND " . self::notPersonalOnly('p') . '
-             ORDER BY p.company_name'
+             WHERE p.archived_at IS NULL AND {$visibility}
+             ORDER BY p.company_name"
         );
         $stmt->execute($params);
 
@@ -131,7 +129,7 @@ final class PayerService
                     b.first_name AS beneficiary_first_name, b.last_name AS beneficiary_last_name
              FROM certificates c
              LEFT JOIN beneficiaries b ON b.id = c.beneficiary_id
-             WHERE c.payer_id = :payer_id AND c.archived_at IS NULL AND c.scope = 'corporate' AND {$certificateVisibility}
+             WHERE c.payer_id = :payer_id AND c.archived_at IS NULL AND {$certificateVisibility}
              ORDER BY c.expiry_date"
         );
         $stmt->execute(['payer_id' => $id] + $certificateParams);
@@ -390,15 +388,6 @@ final class PayerService
         $stmt->execute(['id' => $payerId]);
 
         return (int) $stmt->fetchColumn();
-    }
-
-    /**
-     * Płatnik używany wyłącznie przez zamrożony panel prywatny (D1) nie należy do ewidencji firmowej.
-     */
-    public static function notPersonalOnly(string $alias): string
-    {
-        return "NOT (EXISTS (SELECT 1 FROM certificates personal_c WHERE personal_c.payer_id = {$alias}.id AND personal_c.scope = 'personal')"
-            . " AND NOT EXISTS (SELECT 1 FROM certificates corporate_c WHERE corporate_c.payer_id = {$alias}.id AND corporate_c.scope = 'corporate'))";
     }
 
     /**

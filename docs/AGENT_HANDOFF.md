@@ -1,6 +1,11 @@
 # CertiSub Assistant — podsumowanie projektu + roadmapa dla agentów
 
-> **Dokument historyczny.** Roadmapa z tego pliku jest nieaktualna względem opisu pracy — obowiązuje [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) (§6 porównuje oba dokumenty).
+> **Dokument historyczny — opisuje stan sprzed Etapu 1 (czerwiec 2026).** Roadmapa z tego pliku jest
+> nieaktualna względem opisu pracy — obowiązuje [MAPA_PROJEKTU.md](MAPA_PROJEKTU.md) (§6 porównuje oba dokumenty).
+> Nieaktualne jest tu wszystko, co dotyczy dwóch asystentów: od Etapu 8 (18.09.2026) ta aplikacja prowadzi
+> wyłącznie ewidencję certyfikatów, a subskrypcje prywatne są osobnym programem w katalogu
+> `menedzer_subskrypcji` (własna baza, własne konta). Tabela `manager_subskrypcji`, kolumna `scope`,
+> `dashboard-personal.php` i `api/add_subscription.php` już nie istnieją.
 
 **Projekt:** Informatyczny asystent zarządzania certyfikatami i subskrypcjami (CertiSub Assistant)  
 **Autor:** Maksym Litosh  

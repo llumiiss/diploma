@@ -8,7 +8,7 @@ use PDO;
 use RuntimeException;
 
 /**
- * Etap 1 — model danych zgodny z opisem pracy (docs/MAPA_PROJEKTU.md §2.2, decyzje D1, D5, D7).
+ * Etap 1 — model danych zgodny z opisem pracy (docs/MAPA_PROJEKTU.md §2.2, decyzje D5, D7).
  *
  * Każdy krok najpierw sprawdza bieżący kształt schematu, dlatego migracja jest idempotentna:
  * przerwaną można uruchomić ponownie, a na świeżej instalacji z database/schema.sql
@@ -17,7 +17,7 @@ use RuntimeException;
 final class CertificatesModelMigration
 {
     /**
-     * Słownik typów: certyfikaty i usługi (D7) oraz typy zamrożonego panelu prywatnego (D1).
+     * Słownik typów certyfikatów i usług (D7). Typy subskrypcji prywatnych usunął Etap 8.
      *
      * @var list<string>
      */

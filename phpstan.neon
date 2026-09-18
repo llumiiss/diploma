@@ -12,7 +12,6 @@ parameters:
         - logout.php
         - register.php
         - dashboard.php
-        - dashboard-personal.php
     excludePaths:
         - vendor
         - tests/Support/*

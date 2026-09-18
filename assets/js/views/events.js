@@ -229,8 +229,7 @@
                                     </div>
                                     <div v-if="event.payer_name">
                                         🏢
-                                        <button v-if="event.certificate_scope !== 'personal'" type="button" class="text-brand-700 hover:underline text-left" @click="openPayer(event)">{{ event.payer_name }}</button>
-                                        <span v-else>{{ event.payer_name }}</span>
+                                        <button type="button" class="text-brand-700 hover:underline text-left" @click="openPayer(event)">{{ event.payer_name }}</button>
                                     </div>
                                     <div v-if="(event.entity_type === 'renewal_task' || event.entity_type === 'invitation') && event.entity_id">
                                         <button type="button" class="text-brand-700 hover:underline" @click="openEntity(event)">{{ t(event.entity_type === 'renewal_task' ? 'eventlog.task' : 'eventlog.invitation', { id: event.entity_id }) }}</button>

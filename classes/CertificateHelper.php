@@ -12,25 +12,17 @@ use DateTimeImmutable;
 final class CertificateHelper
 {
     /**
-     * Reminder thresholds per scope (days until renewal/payment).
+     * Progi przypomnień w dniach — ustawia je administrator (App\Settings, domyślnie 7 i 30 dni).
      *
      * @return array{critical: int, warning: int, billing: string}
      */
-    public static function getThresholds(string $scope): array
+    public static function getThresholds(): array
     {
-        return match ($scope) {
-            'personal' => [
-                'critical' => 3,   // renewal very soon
-                'warning'  => 15,  // monthly payment reminder
-                'billing'  => 'monthly',
-            ],
-            // Progi ewidencji firmowej ustawia administrator (App\Settings, domyślnie 7 i 30 dni).
-            default => [
-                'critical' => Settings::int('renewal.critical_days'),
-                'warning'  => Settings::int('renewal.warning_days'),
-                'billing'  => 'annual',
-            ],
-        };
+        return [
+            'critical' => Settings::int('renewal.critical_days'),
+            'warning'  => Settings::int('renewal.warning_days'),
+            'billing'  => 'annual',
+        ];
     }
 
     /**
@@ -41,10 +33,9 @@ final class CertificateHelper
     {
         $today = $today ?? new DateTimeImmutable('today');
 
-        foreach ($certificates as &$item) {
-            $scope = (string) ($item['scope'] ?? 'corporate');
-            $thresholds = self::getThresholds($scope);
+        $thresholds = self::getThresholds();
 
+        foreach ($certificates as &$item) {
             $expiry = new DateTimeImmutable((string) $item['expiry_date']);
             $daysLeft = (int) $today->diff($expiry)->format('%r%a');
 
@@ -53,12 +44,12 @@ final class CertificateHelper
             $item['beneficiary_name'] = self::fullName($item['beneficiary_first_name'] ?? '', $item['beneficiary_last_name'] ?? '');
             $item['annual_cost'] = (float) $item['annual_cost'];
             $item['thresholds'] = $thresholds;
-            $item['priority'] = self::resolvePriority($daysLeft, $scope);
-            $item['priority_label'] = self::priorityLabel($item['priority'], $scope);
-            $item['reminder_message'] = self::reminderMessage($daysLeft, $scope);
+            $item['priority'] = self::priorityFor($daysLeft, $thresholds['critical'], $thresholds['warning']);
+            $item['priority_label'] = self::priorityLabel($item['priority']);
+            $item['reminder_message'] = self::reminderMessage($daysLeft);
             $item['type_label'] = self::typeLabel((string) ($item['certificate_type'] ?? 'OTHER'));
             $item['status_label'] = self::statusLabel((string) $item['status']);
-            $item['display_payment_status'] = self::resolveDisplayPaymentStatus($item, $daysLeft, $scope);
+            $item['display_payment_status'] = self::resolveDisplayPaymentStatus($item, $daysLeft);
             $item['payment_label'] = self::paymentLabel($item['display_payment_status']);
         }
         unset($item);
@@ -66,9 +57,9 @@ final class CertificateHelper
         return $certificates;
     }
 
-    public static function resolvePriority(int $daysLeft, string $scope = 'corporate'): string
+    public static function resolvePriority(int $daysLeft): string
     {
-        $t = self::getThresholds($scope);
+        $t = self::getThresholds();
 
         return self::priorityFor($daysLeft, $t['critical'], $t['warning']);
     }
@@ -125,34 +116,30 @@ final class CertificateHelper
         return round($amount, 2);
     }
 
-    public static function priorityLabel(string $priority, string $scope = 'corporate'): string
+    public static function priorityLabel(string $priority): string
     {
         return match ($priority) {
             'expired'  => \__('priority.expired'),
-            'critical' => $scope === 'personal' ? \__('priority.renewal_soon') : \__('priority.critical'),
-            'warning'  => $scope === 'personal' ? \__('priority.payment_due') : \__('priority.renewal_due'),
+            'critical' => \__('priority.critical'),
+            'warning'  => \__('priority.renewal_due'),
             default    => \__('priority.normal'),
         };
     }
 
-    public static function reminderMessage(int $daysLeft, string $scope = 'corporate'): string
+    public static function reminderMessage(int $daysLeft): string
     {
         if ($daysLeft < 0) {
             return \__('reminder.expired', ['days' => (string) abs($daysLeft)]);
         }
 
-        $t = self::getThresholds($scope);
+        $t = self::getThresholds();
 
         if ($daysLeft <= $t['critical']) {
-            return $scope === 'personal'
-                ? \__('reminder.renewal_soon', ['days' => (string) $daysLeft])
-                : \__('reminder.critical', ['days' => (string) $daysLeft]);
+            return \__('reminder.critical', ['days' => (string) $daysLeft]);
         }
 
         if ($daysLeft <= $t['warning']) {
-            return $scope === 'personal'
-                ? \__('reminder.payment_due', ['days' => (string) $daysLeft])
-                : \__('reminder.renewal_due', ['days' => (string) $daysLeft]);
+            return \__('reminder.renewal_due', ['days' => (string) $daysLeft]);
         }
 
         return '';
@@ -161,7 +148,7 @@ final class CertificateHelper
     /**
      * @param array<string, mixed> $item
      */
-    public static function resolveDisplayPaymentStatus(array $item, int $daysLeft, string $scope): string
+    public static function resolveDisplayPaymentStatus(array $item, int $daysLeft): string
     {
         $stored = (string) ($item['payment_status'] ?? 'due_soon');
 
@@ -169,7 +156,7 @@ final class CertificateHelper
             return $stored;
         }
 
-        $t = self::getThresholds($scope);
+        $t = self::getThresholds();
 
         if ($daysLeft < 0) {
             return 'overdue';
@@ -200,11 +187,6 @@ final class CertificateHelper
             'DOMAIN'              => 'type.domain',
             'CLOUD_SUPPORT'       => 'type.cloud_support',
             'CODE_SIGNING'        => 'type.code_signing',
-            'STREAMING'           => 'type.streaming',
-            'MUSIC'               => 'type.music',
-            'GAMING'              => 'type.gaming',
-            'FITNESS'             => 'type.fitness',
-            'CLOUD_STORAGE'       => 'type.cloud_storage',
             default               => 'type.other',
         };
     }

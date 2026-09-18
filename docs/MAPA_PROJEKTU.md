@@ -10,7 +10,7 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 
 ## 0. Najważniejsze wnioski
 
-1. **Kod realizuje inny produkt niż opis pracy.** Opis: system ewidencji certyfikatów (np. kwalifikowanych) z użytkownikami certyfikatów, płatnikami, listą zadań, zaproszeniami e-mail, importem/eksportem i raportami. Kod: tracker subskrypcji firmowych (SSL, SaaS, domeny) i prywatnych (Netflix, Spotify).
+1. ✅ **Kod realizuje inny produkt niż opis pracy.** Opis: system ewidencji certyfikatów (np. kwalifikowanych) z użytkownikami certyfikatów, płatnikami, listą zadań, zaproszeniami e-mail, importem/eksportem i raportami. Kod (stan wyjściowy): tracker subskrypcji firmowych (SSL, SaaS, domeny) i prywatnych (Netflix, Spotify). Zamknięte w Etapach 1–8: ewidencja odpowiada opisowi pracy, a część prywatna została wyprowadzona do osobnej aplikacji (§11, Etap 8).
 2. **Pokrycie 19 wymagań funkcjonalnych po Etapie 5: 19 kompletnych** (po Etapie 4: 16 / 1 / 2; po Etapie 3: 12 / 5 / 2; po Etapie 2: 7 / 10 / 2; po Etapie 1: 0 / 14 / 5; na starcie 0 / 8 / 11; macierz w §3). Pozostają wymagania niefunkcjonalne: lokalne zasoby frontendu i limit OTP w bazie (N3, N5) oraz scenariusze E2E (N6) — Etap 6.
 3. **Cykl życia odnowienia z §2.1 działa od początku do końca (Etapy 2–3):** ewidencja → skaner zakłada zadanie ToDo → zaproszenie e-mail z szablonu i załącznikami → przypomnienia → odnowienie (nowy certyfikat, stary do archiwum) albo porzucenie → statystyki zadań. Każdy krok zapisuje zdarzenie w historii.
 4. **`CLAUDE.md` jest spójny z kodem, ale nie z opisem pracy.** Roadmapa pomija m.in. import/eksport, szablony i załączniki, rejestr zaproszeń, archiwizację, zadania ze statusami i statystykami, historię na osi czasu oraz raporty perspektyw (§6).
@@ -18,7 +18,7 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 6. **Błędy krytyczne z §5.1 zostały naprawione w Etapie 0 (2026-09-16)** — dziennik zmian w §11. Były to: skrypt z `scripts/` kasujący dane bez logowania, publiczny dostęp do `.git/` i logów, niedziałające wylogowanie, brak kontroli dostępu do danych oraz kasowanie rekordów biznesowych przy usuwaniu konta.
 7. **Mocne strony do ponownego użycia (§4):** logowanie OTP z testami, CSRF, migracje, mailer, layout panelu, narzędzia jakości.
 8. **Dodatkowe wymagania autora (§2.5):** skeleton loadery i cache'owanie — wykonane w Etapie 7.
-9. **Decyzje D1–D5 i D7 podjęte 2026-09-16 (§8):** panel prywatny zamrożony, perspektywy jako raporty dla personelu, rejestracja tylko przez ADMIN, nowe teksty PL+EN z domyślnym PL, `subscriptions` → `certificates`, ogólny model typów certyfikatów. Otwarty zostaje D6 (harmonogram).
+9. **Decyzje D1–D5 i D7 podjęte 2026-09-16 (§8):** panel prywatny zamrożony (zmienione 2026-09-18 na wydzielenie do osobnej aplikacji), perspektywy jako raporty dla personelu, rejestracja tylko przez ADMIN, nowe teksty PL+EN z domyślnym PL, `subscriptions` → `certificates`, ogólny model typów certyfikatów. Otwarty zostaje D6 (harmonogram).
 10. **Etap 1 (model danych) wykonany 2026-09-16 (§11):** certyfikaty z typami wg D7, użytkownicy certyfikatów, rozszerzeni płatnicy, archiwizacja, zadania ToDo ze statusami, szablony, załączniki, zaproszenia i historia zdarzeń. Struktura po migracji jest identyczna ze świeżą instalacją.
 11. **Etap 2 (ewidencja, archiwizacja, RBAC) wykonany 2026-09-17 (§11):** warstwa usług i API z kontrolą ról, nowy panel firmowy (Vue bez kroku budowania, `assets/js`), archiwum, konta i role, rejestracja wyłączona (D3), zakres danych operatora (D8), testy integracyjne na osobnej bazie testowej.
 12. **Etap 3 (proces odnowień) wykonany 2026-09-17 (§11):** skaner i cron `cron/renewals.php`, lista ToDo ze statusami, przydziałem i odnowieniem certyfikatu, szablony i załączniki, wysyłka zaproszeń z rejestrem i przypomnieniami, ustawienia progów, statystyki zadań na pulpicie.
@@ -61,9 +61,11 @@ CertiSub Assistant (docelowo)
 │   ├── ✅ Eksport CSV / XML — listy, karty raportowe, harmonogram i dziennik zdarzeń; wzory plików importu
 │   └── ✅ Import CSV / XML / EML — podgląd wiersz po wierszu, tryb „pomiń” albo „aktualizuj”, wiadomość e-mail z załącznikami
 └── Dodatki spoza opisu pracy
-    ├── 🧊 Panel prywatny (Netflix, Spotify…) + menedżer „Moje subskrypcje” — zamrożony (D1)
     ├── ✅ i18n: PL, EN, ES, DE, UK
     └── ✅ Strona główna (landing)
+
+Subskrypcje prywatne (Netflix, Spotify…) nie są już częścią tej aplikacji — od 2026-09-18
+stanowią osobny program „Menedżer Subskrypcji” (katalog `menedzer_subskrypcji`, własna baza).
 ```
 
 ---
@@ -111,7 +113,6 @@ Każdy krok zapisuje zdarzenie w historii (`events`) — z niej powstaje oś cza
 | Zaproszenia (`invitations` + `invitation_attachments`) | certyfikat, zadanie, szablon, odbiorca (użytkownik certyfikatu lub płatnik), treść z chwili wysyłki, status (queued / sent / failed / responded / closed), przypomnienia, błąd | ✅ |
 | Historia (`events`) | typ i id encji, typ zdarzenia, konto, kontekst (certyfikat, użytkownik, płatnik), dane JSON, czas — celowo bez kluczy obcych | ✅ |
 | `login_otps`, `schema_migrations` | — | ✅ |
-| `manager_subskrypcji` | — | 🧊 moduł dodatkowy, zamrożony (D1) |
 
 Tabele są gotowe w bazie; ekrany i logika dla nich powstają w Etapach 2–5.
 
@@ -248,17 +249,17 @@ Numeracja ciągła — odwołania w innych miejscach: „§5 pkt N”.
 
 ### 5.2. Średnie
 
-6. **Cron gubi przypomnienia** (`cron/send_reminders.php`): warunek „dokładnie 3 dni”, brak rejestru wysyłek, treść wpisana w kodzie. W ewidencji certyfikatów rozwiązane w Etapie 3 nowym `cron/renewals.php` (margines zamiast dokładnej daty, rejestr w `invitations`, szablony z tłumaczeniami). Stary skrypt obsługuje już tylko zamrożony menedżer osobisty (D1) i zostaje bez zmian.
+6. ✅ **Cron gubi przypomnienia** (`cron/send_reminders.php`): warunek „dokładnie 3 dni”, brak rejestru wysyłek, treść wpisana w kodzie. W ewidencji certyfikatów rozwiązane w Etapie 3 nowym `cron/renewals.php` (margines zamiast dokładnej daty, rejestr w `invitations`, szablony z tłumaczeniami). Stary skrypt zniknął razem z panelem prywatnym w Etapie 8 — nowa aplikacja ma własny `cron/reminders.php` z ustawianym wyprzedzeniem i podglądem `--dry-run`.
 7. **`cron/.htaccess`** ma niepełną dyrektywę `Require all` (bez `denied`). Apache zwraca 500 zamiast 403, czyli blokuje dostęp przypadkiem. Poprawnie: `Require all denied`.
-8. ✅ **Listy osób i płatników ukrywały rekordy bez subskrypcji** (`HAVING subscription_count > 0`). Naprawione w Etapie 2: panel firmowy korzysta z nowych usług, które pokazują wszystkie aktywne rekordy; stare zapytania zostały tylko w zamrożonym panelu prywatnym.
+8. ✅ **Listy osób i płatników ukrywały rekordy bez subskrypcji** (`HAVING subscription_count > 0`). Naprawione w Etapie 2: panel korzysta z nowych usług, które pokazują wszystkie aktywne rekordy; stare zapytania (`UserManager::getAllUsers`, `PayerManager`) usunięte w Etapie 8 razem z panelem prywatnym, który był ich ostatnim odbiorcą.
 9. ✅ **Limit wysyłek kodów OTP trzymany w sesji** — naprawione w Etapie 6: limit liczy historię w tabeli `login_otps` (3 kody na adres e-mail i 10 na adres IP w 15 minutach, kolumna `request_ip` z migracji `otp_rate_limit`), więc usunięcie ciasteczka nic nie daje.
 10. ✅ **Walidacja daty tylko wyrażeniem regularnym** — naprawione w Etapie 2: `App\Service\Validator::date()` sprawdza datę kalendarzem; endpoint menedżera osobistego korzysta z tej samej walidacji.
 11. ✅ **Zależności z CDN** (N3) — naprawione w Etapie 6: Tailwind budowany poleceniem `npm run css` do `assets/css/app.css`, Vue w `assets/vendor`, krój Inter w `assets/fonts`; strony nie odwołują się już do `cdn.tailwindcss.com`, `unpkg.com` ani Google Fonts.
 
 ### 5.3. Drobne i porządki
 
-12. ✅ Model danych: `annual_cost` przechowuje kwotę za okres rozliczeniowy. Wszystkie sumy liczą teraz koszt roczny tym samym przelicznikiem (miesięczny × 12, wieloletni ÷ liczba lat ważności): `CertificateHelper::annualizedCost` w PHP i `CertificateHelper::annualizedCostSql` w zapytaniach pulpitu oraz list płatników (Etapy 4–6). Zmiana nazwy kolumny na `period_cost` zostaje jako kierunek rozwoju. Rozdzielenie kont i użytkowników certyfikatów zrobione w Etapie 1; `manager_subskrypcji` z polskimi nazwami kolumn zostaje jako zamrożony moduł dodatkowy (D1).
-13. ✅ Oś czasu: „Następna płatność” bez daty — w panelu firmowym zastąpiona szczegółami certyfikatu z historią zdarzeń (Etap 2); została w zamrożonym panelu prywatnym. Zmyślone liczby na stronie głównej zastąpione w Etapie 6 opisem trzech funkcji systemu (skaner, zaproszenia, raporty i eksport).
+12. ✅ Model danych: `annual_cost` przechowuje kwotę za okres rozliczeniowy. Wszystkie sumy liczą teraz koszt roczny tym samym przelicznikiem (miesięczny × 12, wieloletni ÷ liczba lat ważności): `CertificateHelper::annualizedCost` w PHP i `CertificateHelper::annualizedCostSql` w zapytaniach pulpitu oraz list płatników (Etapy 4–6). Zmiana nazwy kolumny na `period_cost` zostaje jako kierunek rozwoju. Rozdzielenie kont i użytkowników certyfikatów zrobione w Etapie 1; `manager_subskrypcji` z polskimi nazwami kolumn zniknęła z tej bazy w Etapie 8 (dane przeniesione do osobnej aplikacji).
+13. ✅ Oś czasu: „Następna płatność” bez daty — zastąpiona szczegółami certyfikatu z historią zdarzeń (Etap 2). Zmyślone liczby na stronie głównej zastąpione w Etapie 6 opisem trzech funkcji systemu (skaner, zaproszenia, raporty i eksport).
 14. ✅ Domyślny język interfejsu — od Etapu 1 polski (`Translator::DEFAULT_LOCALE`), angielski jako drugi (D4).
 15. ✅ JSON w `<script>` bez `JSON_HEX_TAG` — panel firmowy przekazuje dane startowe jednym obiektem z flagami `JSON_HEX_*`, a odpowiedzi API też je stosują (Etap 2).
 16. ✅ `composer-setup.php` (instalator Composera) usunięty z repozytorium w Etapie 6. Katalog `.claude/` nie jest śledzony, `node_modules/` dopisane do `.gitignore`.
@@ -277,7 +278,7 @@ Numeracja ciągła — odwołania w innych miejscach: „§5 pkt N”.
 
 | Aspekt | Opis pracy | `CLAUDE.md` / `AGENT_HANDOFF.md` | Zgodność |
 |---|---|---|---|
-| Dziedzina | certyfikaty (np. kwalifikowane), użytkownicy certyfikatów, płatnicy | SSL, SaaS, domeny, płatności + panel prywatny (Netflix, Spotify) | ⚠️ poszerzone poza temat, a rdzeń zawężony |
+| Dziedzina | certyfikaty (np. kwalifikowane), użytkownicy certyfikatów, płatnicy | certyfikaty kwalifikowane, SSL, SaaS, domeny, płatności | ✅ zgodne po Etapie 8 (część prywatna wyprowadzona do osobnej aplikacji) |
 | Kto wprowadza dane | zarządzający (personel) | każdy zarejestrowany użytkownik, dla siebie | ❌ |
 | Konta i role | hierarchiczny plan kont z rolami | samorejestracja; RBAC dopiero na 4. miejscu roadmapy | 🟡 |
 | Dodawanie, edycja, archiwizacja | wymagane | CRUD w roadmapie, archiwizacji brak | 🟡 |
@@ -292,7 +293,7 @@ Numeracja ciągła — odwołania w innych miejscach: „§5 pkt N”.
 | Studium wykonalności (Java/Spring) | wymagane w pracy | brak (dotyczy części pisemnej) | 🟡 |
 | Część pisemna: dokumentacja użytkownika | wymagana | brak w spisie treści szkicu | ❌ |
 
-**Wniosek:** roadmapa z `CLAUDE.md` (5 punktów) obejmuje ok. 5 z 19 wymagań funkcjonalnych (F1, F3, F5 bez archiwizacji, F11, F19). Jej punkt 2 (edycja i usuwanie w prywatnym menedżerze) jest poza opisem pracy. Konwencje kodu z `CLAUDE.md` (strict types, `final`, PDO, CSRF, i18n, testy) są dobre i zostają. Do zmiany jest sekcja „What this is” i roadmapa — po decyzjach z §8.
+**Wniosek:** roadmapa z `CLAUDE.md` (5 punktów) obejmowała ok. 5 z 19 wymagań funkcjonalnych (F1, F3, F5 bez archiwizacji, F11, F19). Jej punkt 2 (edycja i usuwanie w prywatnym menedżerze) był poza opisem pracy — trafił do osobnej aplikacji w Etapie 8. Konwencje kodu z `CLAUDE.md` (strict types, `final`, PDO, CSRF, i18n, testy) są dobre i zostają. Do zmiany jest sekcja „What this is” i roadmapa — po decyzjach z §8.
 
 ---
 
@@ -303,15 +304,16 @@ Stan na 16.09.2026. Pierwotnie: freeze 15.10.2026, część pisemna 16.10–31.1
 | Etap | Zakres | Dni |
 |---|---|---|
 | 0. Naprawy krytyczne ✅ **wykonane 2026-09-16** | wszystko z §5.1; `cron/.htaccess`; konto ADMIN; PHPStan także dla plików z katalogu głównego (szczegóły w §11) | — |
-| 1. Model danych ✅ **wykonane 2026-09-16** | migracje: `subscriptions` → `certificates` z typami wg D7, beneficjenci, rozszerzenie płatników, `archived_at`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events`; język domyślny PL (D4); panel prywatny nietknięty (D1); dane demonstracyjne (szczegóły w §11) | — |
+| 1. Model danych ✅ **wykonane 2026-09-16** | migracje: `subscriptions` → `certificates` z typami wg D7, beneficjenci, rozszerzenie płatników, `archived_at`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events`; język domyślny PL (D4); dane demonstracyjne (szczegóły w §11) | — |
 | 2. Ewidencja + archiwizacja + RBAC ✅ **wykonane 2026-09-17** | API i formularze dla certyfikatów, beneficjentów, płatników; archiwum; role w API i UI; wyłączenie publicznej rejestracji i zakładanie kont przez ADMIN (D3); zakres danych operatora (D8); zapis zdarzeń; etykiety „certyfikaty” w panelu (szczegóły w §11) | — |
 | 3. Proces odnowień ✅ **wykonane 2026-09-17** | skaner → zadania ToDo (priorytety, statusy, przydział); szablony + załączniki; zaproszenia; rejestr i przypomnienia; statystyki zadań; ustawienia progów (szczegóły w §11) | — |
 | 4. Raporty i przegląd ✅ **wykonane 2026-09-17** | karta beneficjenta, karta płatnika, oś czasu z `events`, wyszukiwarka globalna, dziennik zdarzeń administratora, harmonogram wygaśnięć (szczegóły w §11) | — |
 | 5. Wymiana danych ✅ **wykonane 2026-09-17** | eksport CSV/XML (listy, karty, harmonogram, dziennik); import CSV/XML z podglądem i trybem aktualizacji; import EML z załącznikami (szczegóły w §11) | — |
 | 6. Jakość i domknięcie ✅ **wykonane 2026-09-17** | frontend bez CDN (Tailwind budowany lokalnie, Vue i Inter w repozytorium), limit kodów OTP w bazie, strona główna bez zmyślonych liczb, jednolity koszt roczny, scenariusz E2E przez API, porządki w repozytorium i dokumentacji (szczegóły w §11) | — |
 | 7. UX i wydajność (§2.5) ✅ **wykonane 2026-09-17** | szkielety treści w panelu; cache agregatów KPI z kluczem roli i unieważnianiem przy zapisie; nagłówki pamięci podręcznej dla zasobów (szczegóły w §11) | — |
+| 8. Rozdzielenie aplikacji ✅ **wykonane 2026-09-18** | panel prywatny wyprowadzony do osobnego programu z własną bazą; z ewidencji firmowej znika `certificates.scope`, `manager_subskrypcji`, typy subskrypcji prywatnych i wszystkie odnośniki między aplikacjami (szczegóły w §11) | — |
 
-**Plan z tej tabeli jest wykonany w całości (Etapy 0–7).** Pozostaje część pisemna (§9) i ustalenie terminu obrony z promotorem (decyzja D6), więc realny freeze mieści się w październiku 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
+**Plan z tej tabeli jest wykonany w całości (Etapy 0–8).** Pozostaje część pisemna (§9) i ustalenie terminu obrony z promotorem (decyzja D6), więc realny freeze mieści się w październiku 2026 (do uzgodnienia z promotorem). Rozdziały 1–3 pracy (wstęp, charakterystyka problemu, analiza rozwiązań, studium wykonalności) można pisać od razu — nie zależą od kodu.
 
 Kolejność etapów = kolejność ważności. Gdy zabraknie czasu, najpierw upraszczać etap 5 (np. import EML ograniczony do jednego formatu wiadomości).
 
@@ -321,13 +323,13 @@ Kolejność etapów = kolejność ważności. Gdy zabraknie czasu, najpierw upra
 
 | ID | Decyzja | Wybór | Co z tego wynika |
 |---|---|---|---|
-| D1 | Panel prywatny (`dashboard-personal.php`, `manager_subskrypcji`, typy STREAMING, MUSIC…) | **b) zamrożony jako dodatek** — nie rozwijamy | kod zostaje bez zmian; kolumna `scope` zostaje; nowe funkcje (zadania, zaproszenia, import/eksport, raporty, archiwum) budujemy wyłącznie dla części certyfikatowej; w pracy opisać jako moduł dodatkowy i kierunek rozwoju |
+| D1 | Panel prywatny (`dashboard-personal.php`, `manager_subskrypcji`, typy STREAMING, MUSIC…) | **b) zamrożony jako dodatek** (2026-09-16) → **c) osobna aplikacja** (2026-09-18) | Etapy 1–7: kod bez zmian, nowe funkcje wyłącznie dla części certyfikatowej. Etap 8: panel prywatny stał się samodzielnym programem (`menedzer_subskrypcji`) z własną bazą, kontami i interfejsem, a ewidencja firmowa straciła kolumnę `scope`, tabelę `manager_subskrypcji` i typy subskrypcji prywatnych. W pracy: obie aplikacje opisane osobno, rozdzielenie jako decyzja projektowa |
 | D2 | Perspektywy Użytkownik / Płatnik | **a) raporty w panelu dla personelu** | ✅ Etap 4: karta użytkownika certyfikatu i karta płatnika jako widoki (`#/beneficiaries/N`, `#/payers/N`) z wydrukiem; osobne logowanie dla beneficjentów i płatników → rozdział „kierunki rozwoju” |
 | D3 | Rejestracja | **a) wyłączona, konta zakłada ADMIN** | `register.php` przestaje być publiczny; ADMIN tworzy konto (imię, nazwisko, e-mail, rola), użytkownik loguje się kodem OTP; potrzebny ekran „Konta” w panelu administracyjnym (Etap 2) |
 | D4 | i18n dla nowych funkcji | **b) PL + EN** | nowe klucze tylko w `lang/pl.php` i `lang/en.php` (ES/DE/UK dziedziczą EN dzięki fallbackowi w `Translator`); ✅ język domyślny PL (`Translator::DEFAULT_LOCALE`, Etap 1) |
 | D5 | Nazwa głównej encji | **a) `subscriptions` → `certificates`** | ✅ Etap 1: tabela, kolumna `certificate_type`, klasy `CertificateManager` i `CertificateHelper`. Zmianę kluczy i18n przeniesiono do Etapu 2 — etykiety panelu zmienią się razem z nowym UI |
 | D6 | Harmonogram | **otwarte — do ustalenia z promotorem** | plan §7 zakłada freeze w połowie listopada 2026 |
-| D7 | Rodzaje certyfikatów | **b) ogólny model z typem** | ✅ Etap 1: `certificates.certificate_type` — QUALIFIED_SIGNATURE, QUALIFIED_SEAL, SSL_CERTIFICATE, CODE_SIGNING, DOMAIN, SAAS, CLOUD_SUPPORT, OTHER (+ typy zamrożonego panelu prywatnego) oraz pola wspólne: numer seryjny, wystawca, ważny od/do, wymagany czas odnowienia; w pracy przykłady na certyfikatach kwalifikowanych |
+| D7 | Rodzaje certyfikatów | **b) ogólny model z typem** | ✅ Etap 1: `certificates.certificate_type` — QUALIFIED_SIGNATURE, QUALIFIED_SEAL, SSL_CERTIFICATE, CODE_SIGNING, DOMAIN, SAAS, CLOUD_SUPPORT, OTHER (typy subskrypcji prywatnych usunięte w Etapie 8) oraz pola wspólne: numer seryjny, wystawca, ważny od/do, wymagany czas odnowienia; w pracy przykłady na certyfikatach kwalifikowanych |
 | D8 | Zakres danych OPERATORA (przyjęte w Etapie 2, 2026-09-17 — do potwierdzenia z promotorem) | **zasada najmniejszych uprawnień** | OPERATOR widzi certyfikaty, których jest opiekunem, i te z przydzielonym mu zadaniem odnowienia; osoby i płatników, których sam wprowadził (`created_by_user_id`) albo którzy są powiązani z jego certyfikatami. MANAGER i ADMIN widzą całą organizację. Duplikat NIP-u zgłaszany operatorowi bez ujawniania cudzego płatnika. Archiwizacja i archiwum od roli MANAGER. Konta się nie usuwa — ADMIN je wyłącza; system zawsze zachowuje aktywnego administratora |
 
 ---
@@ -351,22 +353,23 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 
 ---
 
-## 10. Stan środowiska (zweryfikowany 2026-09-16)
+## 10. Stan środowiska (zweryfikowany 2026-09-18)
 
-- **Testy:** 156 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 75 zaliczonych + 81 pominiętych), w tym scenariusz E2E przez warstwę API i testy cache. Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
-- **PHPStan (poziom 5):** 1 znana uwaga (`cron/send_reminders.php:120`); analizowane są także pliki wejściowe z katalogu głównego.
-- **PHP-CS-Fixer:** `composer cs` bez uwag (0 ze 136 plików) po normalizacji końców linii i poprawkach stylu w Etapie 6 (§5 pkt 19).
-- **Baza `assistent_subscriptions`:** 15 tabel, migracje `login_otp`, `manager_subskrypcji`, `certificates_model`, `accounts_and_ownership`, `renewal_process`, `otp_rate_limit`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 139 kolumn, 76 pozycji indeksów, 21 kluczy obcych).
+- **Testy:** 153 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 72 zaliczone + 81 pominiętych), w tym scenariusz E2E przez warstwę API i testy cache. Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
+- **PHPStan (poziom 5):** bez uwag — jedyna znana uwaga dotyczyła `cron/send_reminders.php`, usuniętego razem z panelem prywatnym (Etap 8); analizowane są także pliki wejściowe z katalogu głównego.
+- **PHP-CS-Fixer:** `composer cs` bez uwag (0 ze 135 plików) po normalizacji końców linii i poprawkach stylu w Etapie 6 (§5 pkt 19).
+- **Baza `assistent_subscriptions`:** 14 tabel, migracje `login_otp`, `certificates_model`, `accounts_and_ownership`, `renewal_process`, `otp_rate_limit`, `split_personal_app`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 130 kolumn, 58 pozycji indeksów, 20 kluczy obcych).
 - **Frontend bez internetu (Etap 6):** żadna strona nie odwołuje się do CDN — `assets/css/app.css` (Tailwind zbudowany lokalnie), `assets/vendor/vue.global.prod.js`, `assets/fonts/inter-*.woff2`; sprawdzone w przeglądarce (lista żądań tylko do `localhost`) i przez HTTP (kody 200, poprawne typy MIME).
 - **Pamięć podręczna (Etap 7):** `assets/**` → `Cache-Control: public, max-age=31536000, immutable`, strony i API → `no-store` (sprawdzone przez HTTP); agregaty pulpitu i statystyki zadań liczone raz na 5 minut na rolę i konto, unieważniane przy każdym zapisie.
 - **Cron odnowień:** `php cron/renewals.php` na danych demo — 6 certyfikatów w marginesie, 1 nowe zadanie (Microsoft 365), 0 przypomnień do wysłania; wynik w `logs/renewals.log`.
-- **Dane demo (`scripts/seed-demo-data.php`):** 4 płatników (NovaTech z poprawnym NIP-em), 5 użytkowników certyfikatów, 2 aktywne i 1 wyłączone konto personelu demo + 3 prawdziwe konta (1 ADMIN), 12 certyfikatów firmowych (10 aktywnych, 2 w archiwum, 1 łańcuch odnowień) i 5 prywatnych, 7 zadań (todo 3, in_progress 2, done 1, abandoned 1), 4 zaproszenia, 4 szablony, 1 załącznik, 54 zdarzenia, 4 pozycje menedżera osobistego.
-- **Panel firmowy (sprawdzony w przeglądarce):** ADMIN — 10 certyfikatów, 3 płatników, archiwum (2 certyfikaty), konta; OPERATOR (Tomasz Wróbel) — 4 certyfikaty, 2 osoby, 2 płatników, a API zwraca 403 dla archiwum, kont, archiwizacji i zapisu bez tokenu CSRF. Oba panele renderują się bez ostrzeżeń PHP.
+- **Dane demo (`scripts/seed-demo-data.php`, sprawdzone 2026-09-18 na osobnej bazie):** 3 płatników (NovaTech z poprawnym NIP-em), 5 użytkowników certyfikatów, 2 aktywne i 1 wyłączone konto personelu demo, 12 certyfikatów (10 aktywnych, 2 w archiwum, 1 łańcuch odnowień), 7 zadań (todo 3, in_progress 2, done 1, abandoned 1), 4 zaproszenia, 4 szablony, 1 załącznik, 48 zdarzeń. `scripts/cleanup-demo-data.php` usuwa komplet.
+- **Panel (sprawdzony w przeglądarce):** ADMIN — 10 certyfikatów, 3 płatników, archiwum (2 certyfikaty), konta; OPERATOR (Tomasz Wróbel) — 4 certyfikaty, 2 osoby, 2 płatników, a API zwraca 403 dla archiwum, kont, archiwizacji i zapisu bez tokenu CSRF. Panel renderuje się bez ostrzeżeń PHP.
 - **Strefa czasowa:** PHP i MySQL liczą w `Europe/Warsaw` (§5.4); cron znajduje zaplanowaną płatność.
-- **HTTP:** `/`, `/login.php`, `assets/js/*` → 200; `/register.php` → 302 na `login.php?registration_closed=1`; panele → 302 do logowania; `api/*.php` bez sesji → 401; katalogi wewnętrzne (w tym `storage/`, `classes/`, `config/`, `tests/`), `.git/` → 403.
+- **HTTP:** `/`, `/login.php`, `assets/js/*` → 200; `/register.php` → 302 na `login.php?registration_closed=1`; pulpit → 302 do logowania; `api/*.php` bez sesji → 401; katalogi wewnętrzne (w tym `storage/`, `classes/`, `config/`, `tests/`), `.git/` → 403; `dashboard-personal.php` i `api/add_subscription.php` → 404 (Etap 8).
 - **Raporty i wyszukiwarka (sprawdzone w przeglądarce):** ADMIN — karta Jana Kowalskiego (oś czasu 7 zdarzeń z filtrem), karta NovaTech (2 osoby, 4 bieżące certyfikaty, harmonogram, koszt roczny 1819 PLN), harmonogram organizacji (10 certyfikatów), wyszukiwanie „nova” (5 certyfikatów, 2 osoby, 1 płatnik), dziennik 57 zdarzeń; OPERATOR (Tomasz Wróbel) — karta NovaTech w swoim zakresie (1 osoba, 2 certyfikaty), 403 dla dziennika zdarzeń. Odpowiedzi API kart i wyszukiwarki poniżej 50 ms.
 - **Wymiana danych (sprawdzona w przeglądarce):** ADMIN — eksport płatników przez HTTP (nagłówki `Content-Disposition`, CSV z BOM i średnikiem), podgląd importu pliku z trzema wierszami (istniejący płatnik → pominięty, poprawny NIP → nowy, błędny NIP → błąd przy polu, nierozpoznana kolumna oznaczona), analiza wiadomości EML na danych demo (nadawca → Jan Kowalski, certyfikat po numerze seryjnym, płatnik po NIP-ie, otwarte zaproszenie, załącznik CSV rozpoznany jako „Użytkownicy certyfikatów”) i podgląd importu tego załącznika. Po podglądach baza pozostała bez zmian (4 płatników, 58 zdarzeń) — podgląd wycofuje transakcję.
-- **Git:** Etap 0 = `f9ec9df`, Etap 1 = `cef8e72`, Etap 2 = `6ba9729`, Etap 3 = `1578adf`, Etap 4 = `a0b0b2f`, Etap 5 — gałąź `etap-5-wymiana-danych` scalona na `master`; remote `origin` = github.com/llumiiss/diploma (nic nie jest wypychane automatycznie).
+- **Git:** Etap 0 = `f9ec9df`, Etap 1 = `cef8e72`, Etap 2 = `6ba9729`, Etap 3 = `1578adf`, Etap 4 = `a0b0b2f`, Etap 5 = `a26fb16`, Etap 6 = `7764780`, Etap 7 = `fbc2237`, Etap 8 — gałąź `etap-8-rozdzielenie-aplikacji` scalona na `master`; remote `origin` = github.com/llumiiss/diploma (nic nie jest wypychane automatycznie).
+- **Aplikacja prywatna:** `C:\laragon\www\menedzer_subskrypcji`, własne repozytorium git (pierwszy commit 2026-09-18), własna baza `menedzer_subskrypcji`, 44 testy, PHPStan bez uwag. Obie aplikacje nie mają wspólnych tabel ani odnośników.
 
 ---
 
@@ -544,6 +547,38 @@ Commit: `fbc2237`, gałąź `etap-7-ux-wydajnosc`, scalona na `master` 2026-09-1
 **Plan z §7 jest wykonany w całości (Etapy 0–7).** Dalej zostaje część pisemna (§9), zrzuty ekranu do rozdziału z dokumentacją użytkownika i ustalenie terminu z promotorem (decyzja D6). Kod wchodzi w tryb utrzymania: poprawki i drobne uzupełnienia, nowy zakres tylko po uzgodnieniu.
 
 **Świadomie nie zrobione:** skeleton loadery i cache agregatów z nagłówkami dla zasobów statycznych (Etap 7); przemianowanie kolumny `annual_cost` na `period_cost` (zmiana schematu bez korzyści dla obrony); testy przeglądarkowe w Selenium/Playwright — scenariusz E2E idzie przez API, bo to ta sama ścieżka, którą wykonuje panel.
+
+---
+
+### Etap 8 — rozdzielenie aplikacji (2026-09-18)
+
+Zmiana decyzji D1: zamiast zamrożonego dodatku panel prywatny stał się osobnym programem, a ewidencja
+firmowa przestała cokolwiek o nim wiedzieć. Powód: jedna aplikacja opisywała dwie różne dziedziny —
+certyfikaty firmowe z rolami, płatnikami i zaproszeniami oraz prywatne subskrypcje jednej osoby.
+Wspólne były tylko tabela `certificates` z kolumną `scope` i konta, co mieszało dane osobowe
+pracowników z prywatnymi rachunkami i utrudniało opis pracy.
+
+| Obszar | Co zrobiono | Pliki |
+|---|---|---|
+| Nowa aplikacja | „Menedżer Subskrypcji” w katalogu `menedzer_subskrypcji`: własna baza (`users`, `login_otps`, `subscriptions`, `subscription_payments`), otwarta rejestracja, logowanie kodem z poczty, pulpit z kosztem miesięcznym i rocznym, podział na kategorie, filtry, dodawanie i edycja, „Opłacone” z historią płatności, ustawienia konta z wyprzedzeniem przypomnień, cron `reminders.php`, 44 testy, PHPStan bez uwag | osobne repozytorium `menedzer_subskrypcji` |
+| Przeniesienie danych | `scripts/import-from-certisub.php` w nowej aplikacji czyta tę bazę (nic w niej nie zmienia): certyfikaty o zakresie `personal` stają się subskrypcjami (typ → kategoria, cykl `annual`/`multi_year` → roczny), a wpisy z `manager_subskrypcji` o tej samej nazwie scalają się z nimi zamiast tworzyć duplikaty (Netflix, Spotify, PlayStation i iCloud były w obu listach) | `menedzer_subskrypcji/scripts/import-from-certisub.php` |
+| Migracja bazy firmowej | `split_personal_app`: usuwa certyfikaty o zakresie `personal` z ich historią, płatników używanych wyłącznie przez nie (`Budżet domowy`), tabelę `manager_subskrypcji`, kolumnę `certificates.scope` z indeksem i typy STREAMING, MUSIC, GAMING, FITNESS, CLOUD_STORAGE ze słownika | `classes/Migrations/SplitPersonalAppMigration.php`, `classes/MigrationRunner.php`, `database/schema.sql` |
+| Kod bez zakresu | zniknęły `dashboard-personal.php`, `includes/personal_dashboard_app.php`, `classes/Api/PersonalManagerController.php`, `api/add_subscription.php`, `classes/ManagerSubscriptionManager.php`, `classes/PayerManager.php`, `cron/send_reminders.php` oraz martwe po nich metody (`CertificateManager::getAllCertificates`, `UserManager::getAllUsers`); parametr `$scope` zniknął z `CertificateHelper` i `CertificateManager`, a warunek `scope = 'corporate'` ze wszystkich zapytań usług; `PayerService::notPersonalOnly()` przestał być potrzebny | `classes/*`, `classes/Service/*` |
+| Interfejs | strona główna opisuje jedną aplikację (jeden przycisk logowania, sekcja „wybierz asystenta” usunięta, nowe teksty w pięciu językach), nagłówek panelu bez przełącznika, `AuthManager` wraca po zalogowaniu wyłącznie na `dashboard.php`, oś czasu i dziennik bez rozróżniania zakresu | `index.php`, `includes/dashboard_app.php`, `assets/js/components.js`, `assets/js/views/events.js`, `lang/*.php` |
+| Testy i dokumentacja | −3 testy panelu prywatnego (153/153 z integracją), pomocnicze klasy testowe bez kolumny `scope`; README, CLAUDE.md, mapa i instrukcja opisują jedną dziedzinę | `tests/*`, `README.md`, `CLAUDE.md`, `docs/*` |
+
+Weryfikacja: kopia bazy przed migracją (`mysqldump`), migracja i drugi przebieg bez zmian, porównanie
+`information_schema` ze świeżą instalacją (130 kolumn, 58 pozycji indeksów, 20 kluczy obcych);
+153/153 testów z integracją; PHPStan bez uwag; `composer cs` bez uwag; `node --check` wszystkich
+plików JS; kontrola kluczy tłumaczeń (tylko znane prefiksy budowane dynamicznie); `seed-demo-data.php`
+i `cleanup-demo-data.php` sprawdzone na osobnej bazie; w przeglądarce strona główna i panel (pulpit,
+płatnicy, raporty, dziennik) bez błędów w konsoli, `dashboard-personal.php` i `api/add_subscription.php`
+zwracają 404. Dane prywatne (6 subskrypcji) przeniesione do nowej aplikacji i sprawdzone w jej panelu
+przed usunięciem z bazy firmowej.
+
+**Świadomie nie zrobione:** przemianowanie kluczy `corporate.*` w plikach językowych (etykiety panelu
+są poprawne, a zmiana ruszyłaby pięć plików bez zysku dla użytkownika) oraz `docs/AGENT_HANDOFF.md`,
+który zostaje jako dokument historyczny z adnotacją o stanie sprzed Etapu 1.
 
 ---
 

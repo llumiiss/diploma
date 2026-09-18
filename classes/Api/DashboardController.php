@@ -52,9 +52,9 @@ final class DashboardController
             $manager = new CertificateManager($this->db);
 
             return [
-                'stats'           => $manager->getStatusStats('corporate', $ownerId),
-                'payment_summary' => $manager->getPaymentSummary('corporate', $ownerId),
-                'renewal_summary' => $manager->getRenewalSummary('corporate', $ownerId),
+                'stats'           => $manager->getStatusStats($ownerId),
+                'payment_summary' => $manager->getPaymentSummary($ownerId),
+                'renewal_summary' => $manager->getRenewalSummary($ownerId),
             ];
         });
 

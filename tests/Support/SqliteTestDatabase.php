@@ -45,7 +45,6 @@ final class SqliteTestDatabase
                 user_id INTEGER NOT NULL,
                 payer_id INTEGER NOT NULL DEFAULT 1,
                 name TEXT NOT NULL,
-                scope TEXT NOT NULL DEFAULT "corporate",
                 expiry_date TEXT NOT NULL
             )'
         );
@@ -66,8 +65,8 @@ final class SqliteTestDatabase
     public static function seedCertificate(PDO $db, int $userId, string $name = 'SSL Wildcard'): int
     {
         $stmt = $db->prepare(
-            'INSERT INTO certificates (user_id, payer_id, name, scope, expiry_date)
-             VALUES (:user_id, 1, :name, "corporate", "2030-01-01")'
+            'INSERT INTO certificates (user_id, payer_id, name, expiry_date)
+             VALUES (:user_id, 1, :name, "2030-01-01")'
         );
         $stmt->execute(['user_id' => $userId, 'name' => $name]);
 

@@ -41,7 +41,6 @@ final class RenewalScannerTest extends IntegrationTestCase
         $this->db->exec("UPDATE certificates SET renewal_lead_days = 60 WHERE id = {$longLead}");
         $outside = $this->insertCertificate($owner->id, $payerId, ['expiry_date' => $this->day(45)]);
         $archived = $this->insertCertificate($owner->id, $payerId, ['expiry_date' => $this->day(5), 'archived_at' => date('Y-m-d H:i:s')]);
-        $personal = $this->insertCertificate($owner->id, $payerId, ['expiry_date' => $this->day(5), 'scope' => 'personal']);
         $handled = $this->insertCertificate($owner->id, $payerId, ['expiry_date' => $this->day(10)]);
         $this->db->exec(
             "INSERT INTO renewal_tasks (certificate_id, status, priority, due_date, closed_at)
@@ -57,7 +56,7 @@ final class RenewalScannerTest extends IntegrationTestCase
         $this->assertSame('warning', $this->openTask($longLead)['priority']);
         $this->assertSame($owner->id, (int) $this->openTask($warning)['assigned_user_id']);
         $this->assertSame($this->day(20), $this->openTask($warning)['due_date']);
-        foreach ([$outside, $archived, $personal, $handled] as $skipped) {
+        foreach ([$outside, $archived, $handled] as $skipped) {
             $this->assertFalse($this->openTask($skipped));
         }
 

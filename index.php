@@ -1,23 +1,15 @@
 <?php
 require __DIR__ . '/bootstrap.php';
 $langQ = \App\Translator::init()->querySuffix();
-$loginCorporate = 'login.php?redirect=' . urlencode('dashboard.php' . $langQ);
-$loginPersonal = 'login.php?redirect=' . urlencode('dashboard-personal.php' . $langQ);
+$loginUrl = 'login.php?redirect=' . urlencode('dashboard.php' . $langQ);
 
-$corporateTrack = [
+$trackedTypes = [
+    ['icon' => '✍️', 'label' => __('landing.track.signature')],
     ['icon' => '🔒', 'label' => __('landing.track.ssl')],
     ['icon' => '☁️', 'label' => __('landing.track.saas')],
     ['icon' => '🌐', 'label' => __('landing.track.domain')],
     ['icon' => '🛠️', 'label' => __('landing.track.cloud')],
     ['icon' => '✍️', 'label' => __('landing.track.signing')],
-];
-$personalTrack = [
-    ['icon' => '🎬', 'label' => __('landing.track.netflix')],
-    ['icon' => '🎵', 'label' => __('landing.track.spotify')],
-    ['icon' => '✨', 'label' => __('landing.track.disney')],
-    ['icon' => '📺', 'label' => __('landing.track.hbo')],
-    ['icon' => '☁️', 'label' => __('landing.track.icloud')],
-    ['icon' => '🎮', 'label' => __('landing.track.psplus')],
 ];
 $featureCards = [
     ['icon' => '📊', 'color' => 'brand', 'title' => __('landing.features.f1.title'), 'desc' => __('landing.features.f1.desc')],
@@ -57,18 +49,13 @@ $featureIconBg = [
         <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
             <a href="#track" class="hover:text-brand-600 transition"><?= htmlspecialchars(__('landing.nav.track')) ?></a>
             <a href="#how-it-works" class="hover:text-brand-600 transition"><?= htmlspecialchars(__('landing.nav.how')) ?></a>
-            <a href="#choose" class="hover:text-brand-600 transition"><?= htmlspecialchars(__('landing.nav.choose')) ?></a>
             <a href="#features" class="hover:text-brand-600 transition"><?= htmlspecialchars(__('landing.nav.features')) ?></a>
         </nav>
         <div class="flex items-center gap-2">
             <?php $variant = 'light'; require __DIR__ . '/includes/lang_switcher.php'; ?>
-            <a href="<?= htmlspecialchars($loginCorporate) ?>"
+            <a href="<?= htmlspecialchars($loginUrl) ?>"
                class="hidden sm:inline-flex px-4 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-lg hover:bg-brand-700 transition shadow-sm">
-                <?= htmlspecialchars(__('landing.nav.corporate')) ?>
-            </a>
-            <a href="<?= htmlspecialchars($loginPersonal) ?>"
-               class="hidden sm:inline-flex px-4 py-2.5 bg-violet-600 text-white text-sm font-semibold rounded-lg hover:bg-violet-700 transition shadow-sm">
-                <?= htmlspecialchars(__('landing.nav.personal')) ?>
+                <?= htmlspecialchars(__('landing.nav.login')) ?>
             </a>
         </div>
     </div>
@@ -90,13 +77,9 @@ $featureIconBg = [
                 <?= htmlspecialchars(__('landing.hero.subtitle')) ?>
             </p>
             <div class="flex flex-col sm:flex-row gap-4">
-                <a href="<?= htmlspecialchars($loginCorporate) ?>"
+                <a href="<?= htmlspecialchars($loginUrl) ?>"
                    class="inline-flex items-center justify-center px-8 py-3.5 bg-white text-brand-900 font-semibold rounded-lg hover:bg-brand-50 transition shadow-lg">
-                    🏢 <?= htmlspecialchars(__('landing.hero.corporate')) ?>
-                </a>
-                <a href="<?= htmlspecialchars($loginPersonal) ?>"
-                   class="inline-flex items-center justify-center px-8 py-3.5 bg-violet-500 text-white font-semibold rounded-lg hover:bg-violet-400 transition shadow-lg border border-violet-400">
-                    🎬 <?= htmlspecialchars(__('landing.hero.personal')) ?>
+                    🏢 <?= htmlspecialchars(__('landing.hero.login')) ?>
                 </a>
             </div>
         </div>
@@ -122,29 +105,13 @@ $featureIconBg = [
             <p class="text-slate-600 max-w-xl mx-auto"><?= htmlspecialchars(__('landing.track.subtitle')) ?></p>
         </div>
 
-        <div class="grid lg:grid-cols-2 gap-10">
-            <div>
-                <p class="text-xs font-bold text-brand-600 uppercase tracking-widest mb-4 text-center lg:text-left"><?= htmlspecialchars(__('landing.track.corporate')) ?></p>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <?php foreach ($corporateTrack as $item): ?>
-                        <div class="flex flex-col items-center text-center p-5 rounded-2xl bg-brand-50 border border-brand-100 hover:border-brand-300 hover:shadow-md transition">
-                            <span class="text-4xl mb-3"><?= $item['icon'] ?></span>
-                            <span class="text-sm font-semibold text-slate-800 leading-tight"><?= htmlspecialchars($item['label']) ?></span>
-                        </div>
-                    <?php endforeach; ?>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <?php foreach ($trackedTypes as $item): ?>
+                <div class="flex flex-col items-center text-center p-5 rounded-2xl bg-brand-50 border border-brand-100 hover:border-brand-300 hover:shadow-md transition">
+                    <span class="text-4xl mb-3"><?= $item['icon'] ?></span>
+                    <span class="text-sm font-semibold text-slate-800 leading-tight"><?= htmlspecialchars($item['label']) ?></span>
                 </div>
-            </div>
-            <div>
-                <p class="text-xs font-bold text-violet-600 uppercase tracking-widest mb-4 text-center lg:text-left"><?= htmlspecialchars(__('landing.track.personal')) ?></p>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <?php foreach ($personalTrack as $item): ?>
-                        <div class="flex flex-col items-center text-center p-5 rounded-2xl bg-violet-50 border border-violet-100 hover:border-violet-300 hover:shadow-md transition">
-                            <span class="text-4xl mb-3"><?= $item['icon'] ?></span>
-                            <span class="text-sm font-semibold text-slate-800 leading-tight"><?= htmlspecialchars($item['label']) ?></span>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
+            <?php endforeach; ?>
         </div>
     </div>
 </section>
@@ -188,7 +155,7 @@ $featureIconBg = [
                     <h3 class="font-bold text-slate-900"><?= htmlspecialchars(__('landing.how.step1.title')) ?></h3>
                 </div>
                 <form class="space-y-4" method="get" action="login.php">
-                    <input type="hidden" name="redirect" value="dashboard-personal.php<?= htmlspecialchars($langQ) ?>">
+                    <input type="hidden" name="redirect" value="dashboard.php<?= htmlspecialchars($langQ) ?>">
                     <input type="email" name="email"
                            placeholder="<?= htmlspecialchars(__('landing.how.email_placeholder')) ?>"
                            class="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
@@ -198,30 +165,6 @@ $featureIconBg = [
                     </button>
                 </form>
             </div>
-        </div>
-    </div>
-</section>
-
-<!-- Choose assistant -->
-<section id="choose" class="py-16 md:py-20 bg-white">
-    <div class="max-w-6xl mx-auto px-6">
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-bold text-brand-900 mb-3"><?= htmlspecialchars(__('landing.choose.title')) ?></h2>
-            <p class="text-slate-600"><?= htmlspecialchars(__('landing.choose.subtitle')) ?></p>
-        </div>
-        <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <a href="<?= htmlspecialchars($loginCorporate) ?>" class="group block p-8 rounded-2xl border-2 border-brand-200 hover:border-brand-500 hover:shadow-lg transition bg-brand-50/50">
-                <div class="text-4xl mb-4">🏢</div>
-                <h3 class="text-xl font-bold text-brand-900 mb-2"><?= htmlspecialchars(__('landing.choose.corporate.title')) ?></h3>
-                <p class="text-slate-600 text-sm leading-relaxed mb-6"><?= htmlspecialchars(__('landing.choose.corporate.desc')) ?></p>
-                <span class="inline-flex items-center text-brand-600 font-semibold text-sm group-hover:underline"><?= htmlspecialchars(__('landing.choose.corporate.cta')) ?></span>
-            </a>
-            <a href="<?= htmlspecialchars($loginPersonal) ?>" class="group block p-8 rounded-2xl border-2 border-violet-200 hover:border-violet-500 hover:shadow-lg transition bg-violet-50/50">
-                <div class="text-4xl mb-4">🎬</div>
-                <h3 class="text-xl font-bold text-violet-900 mb-2"><?= htmlspecialchars(__('landing.choose.personal.title')) ?></h3>
-                <p class="text-slate-600 text-sm leading-relaxed mb-6"><?= htmlspecialchars(__('landing.choose.personal.desc')) ?></p>
-                <span class="inline-flex items-center text-violet-600 font-semibold text-sm group-hover:underline"><?= htmlspecialchars(__('landing.choose.personal.cta')) ?></span>
-            </a>
         </div>
     </div>
 </section>
@@ -250,14 +193,10 @@ $featureIconBg = [
     <div class="max-w-4xl mx-auto px-6 text-center">
         <h2 class="text-3xl font-bold text-brand-900 mb-4"><?= htmlspecialchars(__('landing.cta.title')) ?></h2>
         <p class="text-slate-600 mb-8"><?= htmlspecialchars(__('landing.cta.subtitle')) ?></p>
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="<?= htmlspecialchars($loginCorporate) ?>"
+        <div class="flex justify-center">
+            <a href="<?= htmlspecialchars($loginUrl) ?>"
                class="inline-flex px-8 py-4 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition shadow-lg">
-                <?= htmlspecialchars(__('landing.cta.corporate')) ?>
-            </a>
-            <a href="<?= htmlspecialchars($loginPersonal) ?>"
-               class="inline-flex px-8 py-4 bg-violet-600 text-white font-semibold rounded-xl hover:bg-violet-700 transition shadow-lg">
-                <?= htmlspecialchars(__('landing.cta.personal')) ?>
+                <?= htmlspecialchars(__('landing.cta.login')) ?>
             </a>
         </div>
     </div>

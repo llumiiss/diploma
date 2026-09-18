@@ -36,7 +36,7 @@ final class AccountService
         $stmt = $this->db->query(
             "SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at, u.deactivated_at,
                     (SELECT COUNT(*) FROM certificates c
-                      WHERE c.user_id = u.id AND c.archived_at IS NULL AND c.scope = 'corporate') AS certificate_count,
+                      WHERE c.user_id = u.id AND c.archived_at IS NULL) AS certificate_count,
                     (SELECT COUNT(*) FROM renewal_tasks t
                       WHERE t.assigned_user_id = u.id AND t.status IN ('todo', 'in_progress')) AS open_task_count,
                     (SELECT MAX(o.used_at) FROM login_otps o WHERE o.user_id = u.id) AS last_login_at
@@ -181,12 +181,12 @@ final class AccountService
 
         return Transaction::run($this->db, function () use ($actor, $from, $to, $fromId, $toId): array {
             $stmt = $this->db->prepare(
-                "SELECT id, beneficiary_id, payer_id FROM certificates WHERE user_id = :from AND scope = 'corporate'"
+                'SELECT id, beneficiary_id, payer_id FROM certificates WHERE user_id = :from'
             );
             $stmt->execute(['from' => $fromId]);
             $certificates = $stmt->fetchAll();
 
-            $this->db->prepare("UPDATE certificates SET user_id = :to WHERE user_id = :from AND scope = 'corporate'")
+            $this->db->prepare('UPDATE certificates SET user_id = :to WHERE user_id = :from')
                 ->execute(['to' => $toId, 'from' => $fromId]);
 
             foreach ($certificates as $certificate) {
@@ -229,7 +229,7 @@ final class AccountService
         $stmt = $this->db->prepare(
             "SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at, u.deactivated_at,
                     (SELECT COUNT(*) FROM certificates c
-                      WHERE c.user_id = u.id AND c.archived_at IS NULL AND c.scope = 'corporate') AS certificate_count,
+                      WHERE c.user_id = u.id AND c.archived_at IS NULL) AS certificate_count,
                     (SELECT COUNT(*) FROM renewal_tasks t
                       WHERE t.assigned_user_id = u.id AND t.status IN ('todo', 'in_progress')) AS open_task_count,
                     (SELECT MAX(o.used_at) FROM login_otps o WHERE o.user_id = u.id) AS last_login_at

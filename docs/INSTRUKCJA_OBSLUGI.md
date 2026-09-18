@@ -20,11 +20,10 @@ Adresy:
 
 | Adres | Co to |
 |---|---|
-| `/` | strona główna (landing) z wyborem asystenta |
+| `/` | strona główna (landing) |
 | `/login.php` | logowanie kodem e-mail (OTP) |
 | `/register.php` | **rejestracja wyłączona** — przekierowuje do logowania z informacją, że konta zakłada administrator (decyzja D3) |
-| `/dashboard.php` | **panel firmowy** — ewidencja certyfikatów, użytkowników certyfikatów i płatników |
-| `/dashboard-personal.php` | **panel prywatny** — moduł dodatkowy (streaming, muzyka, gry…), zamrożony |
+| `/dashboard.php` | **panel** — ewidencja certyfikatów, użytkowników certyfikatów i płatników |
 | `/logout.php` | wylogowanie |
 
 Katalogi wewnętrzne (`classes/`, `config/`, `scripts/`, `storage/`, `logs/`, `.git/`…) zwracają **403** — to celowe zabezpieczenie. Wywołanie API bez zalogowania (`/api/certificates.php`) zwraca **401**.
@@ -53,7 +52,7 @@ Konta na danych demo:
 
 | E-mail | Rola | Uwaga |
 |---|---|---|
-| `mobi.litosh@gmail.com` | ADMIN | Twoje konto do demonstracji — opiekun 2 aktywnych certyfikatów firmowych i 5 pozycji prywatnych |
+| `mobi.litosh@gmail.com` | ADMIN | Twoje konto do demonstracji — opiekun 2 aktywnych certyfikatów |
 | dwa wcześniej założone konta testowe | OPERATOR | konta istniejące przed Etapem 0 |
 | `ewa.pawlak@example.com` | MANAGER | konto demo personelu — opiekunka 4 certyfikatów |
 | `tomasz.wrobel@example.com` | OPERATOR | konto demo personelu — opiekun 4 certyfikatów |
@@ -93,7 +92,7 @@ Warte pokazania jako element bezpieczeństwa:
 
 ## 4. Panel firmowy
 
-Układ: nagłówek (asystent, przełącznik panelu prywatnego, język, konto, wylogowanie), menu po lewej, nad widokiem **wyszukiwarka globalna**, widok w środku. Adres widoku jest w pasku adresu (np. `dashboard.php#/payers`, a karta płatnika `dashboard.php#/payers/22`), więc odświeżenie strony zostawia Cię w tym samym miejscu. Kliknięcie wiersza otwiera **panel szczegółów** z prawej strony.
+Układ: nagłówek (nazwa aplikacji, język, konto, wylogowanie), menu po lewej, nad widokiem **wyszukiwarka globalna**, widok w środku. Adres widoku jest w pasku adresu (np. `dashboard.php#/payers`, a karta płatnika `dashboard.php#/payers/22`), więc odświeżenie strony zostawia Cię w tym samym miejscu. Kliknięcie wiersza otwiera **panel szczegółów** z prawej strony.
 
 ### Wyszukiwarka globalna
 
@@ -198,7 +197,6 @@ Lista z NIP-em, osobą kontaktową, miejscowością, liczbą osób i certyfikat�
 
 - **NIP** jest sprawdzany sumą kontrolną (można wpisać go z kreskami lub z prefiksem PL) i musi być unikalny. Przy próbie dodania istniejącego NIP-u formularz pokazuje nazwę istniejącego płatnika i odnośnik do niego — operator, który tego płatnika nie widzi, dostaje komunikat bez szczegółów.
 - Płatnika z aktywnymi certyfikatami lub osobami **nie da się zarchiwizować** (komunikat podaje liczby).
-- Płatnik „Budżet domowy” z panelu prywatnego nie pojawia się w ewidencji firmowej.
 
 ### Raporty — perspektywy Użytkownika, Płatnika i Administratora
 
@@ -278,18 +276,17 @@ Zabezpieczenia: nie można wyłączyć własnego konta ani odebrać roli lub wy�
 
 ---
 
-## 5. Panel prywatny
+## 5. Subskrypcje prywatne — osobna aplikacja
 
-Ten sam układ co dawniej, inne dane i inne progi alertów. Uwaga do pracy: to **moduł dodatkowy**, poza zakresem tematu (decyzja D1 — zamrożony, nierozwijany; nie dostał nowego interfejsu z Etapu 2).
+Do Etapu 7 ta aplikacja miała drugi panel (Netflix, Spotify, siłownia…). Od 18.09.2026 jest to
+**osobny program**: „Menedżer Subskrypcji” w katalogu `menedzer_subskrypcji`, z własną bazą, własnymi
+kontami i własnym interfejsem (`http://localhost/menedzer_subskrypcji/`). Jego instrukcja jest
+w `menedzer_subskrypcji/docs/INSTRUKCJA.md`.
 
-| | Panel firmowy | Panel prywatny |
-|---|---|---|
-| Progi alertów | 30 dni ostrzeżenie, 7 dni krytyczne | 15 dni ostrzeżenie, 3 dni krytyczne |
-| Karta kosztów | Zobowiązanie roczne | Wydatki miesięczne (**262,98 PLN**) |
-| Typy | certyfikaty kwalifikowane, pieczęcie, SSL, podpis kodu, domeny, SaaS, wsparcie chmurowe | streaming, muzyka, gry, fitness, chmura |
-| Dane demo | 10 bieżących certyfikatów + 2 w archiwum | 5 pozycji, 109,99 PLN do zapłaty |
-
-Modal „Dodaj subskrypcję do menedżera” zapisuje przez API z walidacją daty kalendarzem.
+Po rozdzieleniu w tej aplikacji nie ma już kolumny `certificates.scope`, tabeli `manager_subskrypcji`
+ani typów subskrypcji prywatnych — ewidencja opisuje wyłącznie certyfikaty firmowe. Dane prywatne
+przeniósł jednorazowo skrypt `menedzer_subskrypcji/scripts/import-from-certisub.php` (czyta starą bazę,
+nic w niej nie zmienia).
 
 ---
 
@@ -332,15 +329,8 @@ Uruchamiaj raz dziennie (np. o 7:00 — Harmonogram zadań Windows albo crontab)
 
 Zaraz po `seed-demo-data.php --force` skaner znajdzie 6 certyfikatów w marginesie i założy 1 nowe zadanie; przypomnień do wysłania nie będzie (najbliższe wypada za 2 dni). Wynik trafia do `logs/renewals.log` i do historii zdarzeń. Drugie uruchomienie tego samego dnia niczego nie zdubluje.
 
-### Menedżer osobisty (moduł dodatkowy)
-
-```bash
-php cron/send_reminders.php
-```
-
-Szuka płatności z menedżera osobistego zaplanowanych **dokładnie za 3 dni** i wysyła wiadomość właścicielowi (po seedzie: 1 pozycja, Netflix Standard). Wynik w `logs/reminders.log`. Moduł jest zamrożony (D1) — skrypt zostaje w dotychczasowej postaci.
-
-Oba skrypty działają tylko z wiersza poleceń — z przeglądarki zwracają 403.
+Skrypt działa tylko z wiersza poleceń — z przeglądarki zwraca 403. Przypomnienia o płatnościach
+prywatnych przeszły razem z panelem do osobnej aplikacji (`menedzer_subskrypcji/cron/reminders.php`).
 
 ### Poczta bez serwera SMTP
 
@@ -354,7 +344,7 @@ W **HeidiSQL** (Laragon → Database → baza `assistent_subscriptions`) — mat
 
 | Tabela | Co zawiera na danych demo |
 |---|---|
-| `certificates` | 12 firmowych (10 bieżących, 2 w archiwum) + 5 prywatnych; numery seryjne, wystawcy, daty ważności, wymagany czas odnowienia |
+| `certificates` | 12 pozycji (10 bieżących, 2 w archiwum); numery seryjne, wystawcy, daty ważności, wymagany czas odnowienia |
 | `beneficiaries` | 5 użytkowników certyfikatów powiązanych z płatnikami; `created_by_user_id` — kto wprowadził rekord |
 | `payers` | 4 płatników z NIP-em, adresem i kontaktem; `created_by_user_id` |
 | `users` | konta personelu z rolą; `deactivated_at` — konto wyłączone przez administratora |
@@ -407,13 +397,12 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 |---|---|
 | `php scripts/migrate.php` | migracje bazy (idempotentne) — po każdej aktualizacji |
 | `php scripts/migrate.php --fresh` | **usuwa wszystkie tabele** i instaluje schemat od zera — tylko na nowej lub testowej bazie |
-| `php scripts/seed-demo-data.php [--force] [--owner=e-mail]` | dane demo: certyfikaty, użytkownicy certyfikatów, płatnicy, konta demo, archiwum, zadania, zaproszenia, historia, panel prywatny |
+| `php scripts/seed-demo-data.php [--force] [--owner=e-mail]` | dane demo: certyfikaty, użytkownicy certyfikatów, płatnicy, konta demo, archiwum, zadania, zaproszenia, historia |
 | `php scripts/cleanup-demo-data.php` | usuwa **wszystkie** dane biznesowe oraz konta `@example.com`; zostawia prawdziwe konta i szablony |
 | `php scripts/set-role.php --list` / `<e-mail> <rola>` | lista kont / nadanie roli (awaryjnie — zwykle robi to ADMIN w panelu) |
 | `php scripts/test-mail.php adres@example.com` | test konfiguracji poczty |
 | `php cron/renewals.php` | skaner odnowień i zaległe przypomnienia o zaproszeniach (codziennie) |
-| `php cron/send_reminders.php` | przypomnienia o płatnościach menedżera osobistego |
-| `composer test` | 156 testów (w tym scenariusz E2E przez API); 81 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
+| `composer test` | 153 testy (w tym scenariusz E2E przez API); 81 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
 | `npm install && npm run css` | przebudowanie arkusza stylów `assets/css/app.css` po zmianie klas Tailwinda (potrzebne tylko przy zmianach w interfejsie) |
 | `composer stan` | analiza statyczna (PHPStan) |
 

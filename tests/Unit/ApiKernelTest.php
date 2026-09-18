@@ -4,18 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use App\Api\PersonalManagerController;
 use App\Http\ApiKernel;
 use App\Http\Request;
-use App\ManagerSubscriptionManager;
 use App\Service\Actor;
 use App\Service\ServiceException;
 use App\Session;
-use PDO;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Wspólna obsługa endpointów JSON — zastępuje nieuruchamiany wcześniej AddSubscriptionApiTest (§5 pkt 21).
+ * Wspólna obsługa endpointów JSON: metoda, CSRF, sesja i mapowanie błędów na kody HTTP.
  */
 final class ApiKernelTest extends TestCase
 {
@@ -95,48 +92,5 @@ final class ApiKernelTest extends TestCase
 
         $this->assertSame(500, $response->status);
         $this->assertStringNotContainsString('SQLSTATE', (string) $response->payload['message']);
-    }
-
-    public function testPersonalManagerRejectsImpossibleDate(): void
-    {
-        $db = new PDO('sqlite::memory:');
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $controller = new PersonalManagerController(new ManagerSubscriptionManager($db));
-
-        $response = $this->kernel()->handle(new Request('POST', [], [
-            'nazwa_uslugi'             => 'Netflix',
-            'koszt_pln'                => '43,00',
-            'data_nastepnej_platnosci' => '2026-02-31',
-        ]), $controller);
-
-        $this->assertSame(422, $response->status);
-        $this->assertObjectHasProperty('data_nastepnej_platnosci', $response->payload['errors']);
-    }
-
-    public function testPersonalManagerSavesValidSubscription(): void
-    {
-        $db = new PDO('sqlite::memory:');
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        $db->exec(
-            'CREATE TABLE manager_subskrypcji (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, nazwa_uslugi TEXT NOT NULL,
-                mail_subskrypcji TEXT NULL, username_konta TEXT NULL, koszt_pln REAL NOT NULL,
-                data_nastepnej_platnosci TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )'
-        );
-        $controller = new PersonalManagerController(new ManagerSubscriptionManager($db));
-
-        $response = $this->kernel()->handle(new Request('POST', [], [
-            'nazwa_uslugi'             => 'Spotify',
-            'mail_subskrypcji'         => 'Ja@Example.com',
-            'koszt_pln'                => '23,99',
-            'data_nastepnej_platnosci' => '2026-10-01',
-        ]), $controller);
-
-        $this->assertSame(200, $response->status);
-        $this->assertSame('Spotify', $response->payload['subscription']['nazwa_uslugi']);
-        $this->assertSame('ja@example.com', $response->payload['subscription']['mail_subskrypcji']);
-        $this->assertSame(7, (int) $response->payload['subscription']['user_id']);
     }
 }

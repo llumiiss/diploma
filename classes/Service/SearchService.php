@@ -102,7 +102,7 @@ final class SearchService
                 INNER JOIN users u ON u.id = c.user_id
                 INNER JOIN payers p ON p.id = c.payer_id
                 LEFT JOIN beneficiaries b ON b.id = c.beneficiary_id
-                WHERE c.scope = 'corporate'{$archived} AND {$visibility}
+                WHERE 1 = 1{$archived} AND {$visibility}
                 HAVING m_name OR m_serial_number OR m_issuer OR m_beneficiary OR m_payer OR m_owner";
         $params += [
             'c_name'    => $like,
@@ -174,12 +174,12 @@ final class SearchService
                        ({$phone} LIKE :b_phone) AS m_phone,
                        (p.company_name LIKE :b_payer) AS m_payer,
                        EXISTS (SELECT 1 FROM certificates mc
-                               WHERE mc.beneficiary_id = b.id AND mc.scope = 'corporate' AND mc.archived_at IS NULL
+                               WHERE mc.beneficiary_id = b.id AND mc.archived_at IS NULL
                                  AND (mc.name LIKE :b_cert1 OR mc.serial_number LIKE :b_cert2) AND {$matchVisibility}) AS m_certificate,
                        (SELECT COUNT(*) FROM certificates cc
-                        WHERE cc.beneficiary_id = b.id AND cc.scope = 'corporate' AND cc.archived_at IS NULL AND {$countVisibility}) AS certificate_count,
+                        WHERE cc.beneficiary_id = b.id AND cc.archived_at IS NULL AND {$countVisibility}) AS certificate_count,
                        (SELECT MIN(ec.expiry_date) FROM certificates ec
-                        WHERE ec.beneficiary_id = b.id AND ec.scope = 'corporate' AND ec.archived_at IS NULL AND {$expiryVisibility}) AS next_expiry
+                        WHERE ec.beneficiary_id = b.id AND ec.archived_at IS NULL AND {$expiryVisibility}) AS next_expiry
                 FROM beneficiaries b
                 LEFT JOIN payers p ON p.id = b.payer_id
                 WHERE {$visibility}{$archived}
@@ -239,15 +239,15 @@ final class SearchService
                                       OR CONCAT_WS(' ', mb.last_name, mb.first_name) LIKE :p_person2)
                                  AND {$personVisibility}) AS m_beneficiary,
                        EXISTS (SELECT 1 FROM certificates mc
-                               WHERE mc.payer_id = p.id AND mc.scope = 'corporate' AND mc.archived_at IS NULL
+                               WHERE mc.payer_id = p.id AND mc.archived_at IS NULL
                                  AND (mc.name LIKE :p_cert1 OR mc.serial_number LIKE :p_cert2) AND {$certificateVisibility}) AS m_certificate,
                        (SELECT COUNT(*) FROM beneficiaries cb
                         WHERE cb.payer_id = p.id AND cb.archived_at IS NULL AND {$personCountVisibility}) AS beneficiary_count,
                        (SELECT COUNT(*) FROM certificates cc
-                        WHERE cc.payer_id = p.id AND cc.scope = 'corporate' AND cc.archived_at IS NULL AND {$certificateCountVisibility}) AS certificate_count
+                        WHERE cc.payer_id = p.id AND cc.archived_at IS NULL AND {$certificateCountVisibility}) AS certificate_count
                 FROM payers p
-                WHERE {$visibility}{$archived} AND " . PayerService::notPersonalOnly('p') . '
-                HAVING m_name OR m_tax_id OR m_contact OR m_city OR m_beneficiary OR m_certificate';
+                WHERE {$visibility}{$archived}
+                HAVING m_name OR m_tax_id OR m_contact OR m_city OR m_beneficiary OR m_certificate";
         $params += $personParams + $certificateParams + $personCountParams + $certificateCountParams + [
             'p_name'    => $like,
             'p_tax'     => $digitsLike,
