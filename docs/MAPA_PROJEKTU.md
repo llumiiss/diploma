@@ -580,6 +580,11 @@ przed usunięciem z bazy firmowej.
 są poprawne, a zmiana ruszyłaby pięć plików bez zysku dla użytkownika) oraz `docs/AGENT_HANDOFF.md`,
 który zostaje jako dokument historyczny z adnotacją o stanie sprzed Etapu 1.
 
+Commit: `51662d7`, gałąź `etap-8-rozdzielenie-aplikacji`, scalona na `master` 2026-09-18 (fast-forward).
+Aplikacja prywatna ma własne repozytorium (`menedzer_subskrypcji`, pierwszy commit `4b44479`).
+
+**Plan z §7 jest wykonany w całości (Etapy 0–8).**
+
 ---
 
 ## Załącznik A — Oficjalny opis pracy (dosłownie, przekazany 2026-09-16)
