@@ -5,42 +5,45 @@ declare(strict_types=1);
 /**
  * Local mail overrides — copy to mail.local.php (gitignored).
  *
+ * === OAUTH2 (wymagane dla wiadomości weryfikującej konto) ===
+ * Wysyłka przez SMTP z autoryzacją OAuth2 (XOAUTH2) — w konfiguracji nie ma hasła do skrzynki.
+ *
+ * Gmail / Google Workspace, krok po kroku:
+ *   1. https://console.cloud.google.com → nowy projekt.
+ *   2. „APIs & Services” → „Enabled APIs” → włącz „Gmail API”.
+ *   3. „OAuth consent screen” → typ „External”, dodaj siebie w „Test users”.
+ *   4. „Credentials” → „Create credentials” → „OAuth client ID” → typ „Desktop app”.
+ *      Zapisz Client ID i Client secret.
+ *   5. W katalogu projektu: php scripts/oauth2-token.php
+ *      Skrypt wypisze adres zgody, a po wklejeniu kodu zwróci refresh_token.
+ *   6. Wpisz wartości poniżej i ustaw 'driver' => 'oauth2'.
+ *
+ * 'driver' => 'oauth2',
+ * 'from_email' => 'twoj@gmail.com',
+ * 'oauth2' => [
+ *     'provider'      => 'google',
+ *     'user_email'    => 'twoj@gmail.com',
+ *     'client_id'     => '....apps.googleusercontent.com',
+ *     'client_secret' => '...',
+ *     'refresh_token' => '1//...',
+ * ],
+ *
+ * Microsoft 365: 'provider' => 'microsoft', 'host' => 'smtp.office365.com',
+ * 'tenant_id' => '<id katalogu>', reszta tak samo (rejestracja aplikacji w Entra ID,
+ * uprawnienie delegowane SMTP.Send + offline_access).
+ *
  * === TESTING (Mailtrap Sandbox) ===
- * Mail goes to https://mailtrap.io → Email Testing → your inbox.
- * It will NOT arrive in Gmail/Outlook.
+ * Mail goes to https://mailtrap.io → Email Testing → your inbox. NOT to Gmail/Outlook.
  *
  * 'driver' => 'sandbox',
- * 'smtp' => [
- *     'host'     => 'sandbox.smtp.mailtrap.io',
- *     'port'     => 2525,
- *     'username' => '...',
- *     'password' => '...',
- * ],
+ * 'smtp' => ['host' => 'sandbox.smtp.mailtrap.io', 'port' => 2525, 'username' => '...', 'password' => '...'],
  *
- * === REAL EMAIL (Gmail example) ===
- * 1. Google Account → Security → 2FA → App passwords
- * 2. Use that 16-char password below (not your Gmail password)
- *
+ * === REAL EMAIL WITH A PASSWORD (Gmail app password) ===
  * 'driver' => 'smtp',
- * 'from_email' => 'twoj@gmail.com',
- * 'dev_log_codes' => false,
- * 'show_sandbox_notice' => false,
- * 'smtp' => [
- *     'host'     => 'smtp.gmail.com',
- *     'port'     => 587,
- *     'username' => 'twoj@gmail.com',
- *     'password' => 'xxxx xxxx xxxx xxxx',
- *     'smtp_secure' => 'tls',
- * ],
+ * 'smtp' => ['host' => 'smtp.gmail.com', 'port' => 587, 'username' => 'twoj@gmail.com', 'password' => 'xxxx xxxx xxxx xxxx'],
  *
- * === Mailtrap Email Sending (real delivery) ===
- * 'driver' => 'smtp',
- * 'smtp' => [
- *     'host'     => 'live.smtp.mailtrap.io',
- *     'port'     => 587,
- *     'username' => '...',
- *     'password' => '...',
- * ],
+ * === DEMO WITHOUT SMTP ===
+ * 'driver' => 'log',        // treść wiadomości (z linkiem) trafia do logs/mail.log
  */
 return [
     'driver' => 'sandbox',
@@ -48,5 +51,11 @@ return [
     'smtp' => [
         'username' => 'your_mailtrap_username',
         'password' => 'your_mailtrap_password',
+    ],
+    'oauth2' => [
+        'user_email'    => '',
+        'client_id'     => '',
+        'client_secret' => '',
+        'refresh_token' => '',
     ],
 ];

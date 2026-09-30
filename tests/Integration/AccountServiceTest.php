@@ -10,7 +10,7 @@ use App\Service\AccountService;
 use App\Service\ServiceException;
 use App\UserManager;
 use Tests\Support\IntegrationTestCase;
-use Tests\Support\RecordingOtpMailer;
+use Tests\Support\RecordingAuthMailer;
 
 final class AccountServiceTest extends IntegrationTestCase
 {
@@ -81,19 +81,24 @@ final class AccountServiceTest extends IntegrationTestCase
         $admin = $this->createActor(Rbac::ADMIN);
         $operator = $this->createActor(Rbac::OPERATOR, 'odchodzi@example.com');
         $service = new AccountService($this->db);
-        $mail = new RecordingOtpMailer();
+        $mail = new RecordingAuthMailer();
         $auth = new AuthManager($this->db, new UserManager($this->db), $mail);
 
-        $auth->requestOtp('odchodzi@example.com');
+        // Niewykorzystany link „ustaw hasło” czeka w skrzynce osoby, która odchodzi.
+        $auth->requestPasswordSetLink('odchodzi@example.com');
         $this->assertCount(1, $mail->sent);
+        $token = $mail->lastToken('password');
 
         $service->deactivate($admin, $operator->id);
 
+        // Wyłączenie konta unieważnia link od razu — nie da się nim ustawić hasła ani wejść do systemu.
         $this->assertSame(0, (int) $this->db->query(
-            "SELECT COUNT(*) FROM login_otps WHERE user_id = {$operator->id} AND used_at IS NULL"
+            "SELECT COUNT(*) FROM email_verifications WHERE user_id = {$operator->id} AND used_at IS NULL"
         )->fetchColumn());
-        $result = $auth->requestOtp('odchodzi@example.com');
-        $this->assertFalse($result['sent']);
+        $this->assertSame(
+            'auth.error.link_used',
+            $auth->setPasswordWithToken($token, 'NoweHaslo123', 'NoweHaslo123')['error']
+        );
         $this->assertCount(1, $mail->sent);
 
         $auth->login($operator->id);

@@ -36,7 +36,7 @@ final class MailConfig
     {
         $driver = strtolower((string) (self::all()['driver'] ?? 'sandbox'));
 
-        return in_array($driver, ['sandbox', 'smtp', 'log'], true) ? $driver : 'sandbox';
+        return in_array($driver, ['sandbox', 'smtp', 'oauth2', 'log'], true) ? $driver : 'sandbox';
     }
 
     public static function isSandbox(): bool
@@ -49,9 +49,37 @@ final class MailConfig
         return self::driver() === 'smtp';
     }
 
+    /**
+     * Wysyłka z autoryzacją OAuth2 (XOAUTH2) zamiast hasła do skrzynki.
+     */
+    public static function isOauth2(): bool
+    {
+        return self::driver() === 'oauth2';
+    }
+
+    /**
+     * Blok „oauth2” konfiguracji: provider, client_id, client_secret, refresh_token, user_email.
+     *
+     * @return array<string, mixed>
+     */
+    public static function oauth2(): array
+    {
+        $oauth2 = self::all()['oauth2'] ?? [];
+
+        return is_array($oauth2) ? $oauth2 : [];
+    }
+
+    /**
+     * Wysyłka „na prawdziwy adres” — SMTP z hasłem albo SMTP z OAuth2.
+     */
+    public static function isRealDelivery(): bool
+    {
+        return self::isProductionSmtp() || self::isOauth2();
+    }
+
     public static function shouldLogOtpCodes(): bool
     {
-        if (self::isProductionSmtp()) {
+        if (self::isRealDelivery()) {
             return false;
         }
 

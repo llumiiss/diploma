@@ -119,7 +119,8 @@ Konto MySQL z `config/database.php` musi mieć uprawnienia do tworzenia i usuwan
 
 ```
 assistent_subscription/
-├── index.php, login.php, register.php, logout.php   # wejście, logowanie (OTP e-mail), wylogowanie
+├── index.php, login.php, register.php, logout.php   # wejście, logowanie (e-mail + hasło), rejestracja, wylogowanie
+├── verify-email.php, set-password.php               # potwierdzenie adresu i ustawienie hasła linkiem z wiadomości
 ├── dashboard.php                                     # punkt wejścia panelu (Vue)
 ├── api/                     # cienkie endpointy JSON — logika w classes/Api
 ├── classes/
@@ -138,7 +139,7 @@ assistent_subscription/
 └── tests/                   # PHPUnit — testy jednostkowe i integracyjne
 ```
 
-**Model danych:** `certificates`, `beneficiaries` (użytkownicy certyfikatów), `payers`, `users` (konta personelu), `renewal_tasks` (zadania ToDo), `email_templates` + `attachments` + `email_template_attachments`, `invitations` + `invitation_attachments`, `events` (historia/oś czasu), `settings` (progi odnowienia), `login_otps`. Szczegóły: `docs/MAPA_PROJEKTU.md` §2.2.
+**Model danych:** `certificates`, `beneficiaries` (użytkownicy certyfikatów), `payers`, `users` (konta personelu), `renewal_tasks` (zadania ToDo), `email_templates` + `attachments` + `email_template_attachments`, `invitations` + `invitation_attachments`, `events` (historia/oś czasu), `settings` (progi odnowienia), `email_verifications` (jednorazowe tokeny z wiadomości e-mail), `login_attempts` (limit prób logowania), `login_otps` (historia logowań sprzed Etapu 9). Szczegóły: `docs/MAPA_PROJEKTU.md` §2.2.
 
 ## API i kluczowe funkcje
 
@@ -164,7 +165,7 @@ Wszystkie endpointy zwracają JSON, wymagają aktywnej sesji oraz (dla zapisów)
 
 **Kluczowe funkcje aplikacji:**
 
-- Logowanie jednorazowym kodem e-mail (OTP) z ochroną CSRF; konta zakładane, dezaktywowane i przypisywane wyłącznie przez ADMIN-a
+- Logowanie adresem e-mail i hasłem (`password_hash()`), adres potwierdzany jednorazowym linkiem z wiadomości wysyłanej przez SMTP z autoryzacją OAuth2; ochrona CSRF, limit prób logowania; konta dezaktywowane i przypisywane przez ADMIN-a (rejestracja publiczna jest przełącznikiem w `config/auth.php`)
 - Uprawnienia oparte o role z zakresem danych operatora (operator widzi tylko własne/przypisane certyfikaty i powiązane osoby/płatników)
 - Cały cykl życia odnowienia: skanowanie → priorytetyzowane zadania ToDo → zaproszenie e-mail z szablonu i załącznikami → przypomnienia → odnowienie albo porzucenie → statystyki zadań
 - Raporty w trzech perspektywach z opisu pracy (użytkownik certyfikatu, płatnik, administrator), harmonogram wygaśnięć, globalna wyszukiwarka z powodem dopasowania, dziennik zdarzeń

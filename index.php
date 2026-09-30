@@ -164,6 +164,14 @@ $featureIconBg = [
                         <?= htmlspecialchars(__('landing.how.sign_in')) ?>
                     </button>
                 </form>
+                <?php if (App\Auth\AuthConfig::selfRegistrationEnabled()): ?>
+                    <p class="text-center mt-4 text-sm text-slate-500">
+                        <?= htmlspecialchars(__('auth.no_account')) ?>
+                        <a href="register.php<?= htmlspecialchars($langQ) ?>" class="text-brand-600 font-medium hover:text-brand-700 transition">
+                            <?= htmlspecialchars(__('auth.register_link')) ?>
+                        </a>
+                    </p>
+                <?php endif; ?>
             </div>
         </div>
     </div>

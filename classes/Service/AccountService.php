@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Auth\VerificationTokens;
 use App\Rbac;
 use PDO;
 
@@ -39,7 +40,7 @@ final class AccountService
                       WHERE c.user_id = u.id AND c.archived_at IS NULL) AS certificate_count,
                     (SELECT COUNT(*) FROM renewal_tasks t
                       WHERE t.assigned_user_id = u.id AND t.status IN ('todo', 'in_progress')) AS open_task_count,
-                    (SELECT MAX(o.used_at) FROM login_otps o WHERE o.user_id = u.id) AS last_login_at
+                    u.last_login_at
              FROM users u
              ORDER BY u.deactivated_at IS NOT NULL, u.last_name, u.first_name"
         );
@@ -128,9 +129,9 @@ final class AccountService
 
         Transaction::run($this->db, function () use ($actor, $id, $account): void {
             $this->db->prepare('UPDATE users SET deactivated_at = NOW() WHERE id = :id')->execute(['id' => $id]);
-            // Niewykorzystane kody logowania przestają działać od razu.
-            $this->db->prepare('UPDATE login_otps SET used_at = NOW() WHERE user_id = :id AND used_at IS NULL')
-                ->execute(['id' => $id]);
+            // Niewykorzystane linki z wiadomości (potwierdzenie adresu, ustawienie hasła)
+            // przestają działać od razu — inaczej wyłączone konto dałoby się jeszcze przejąć.
+            (new VerificationTokens($this->db))->invalidateForUser($id);
             $this->events->log('user', $id, 'account_deactivated', $actor->id, [], [
                 'name'         => $account['name'],
                 'certificates' => $account['certificate_count'],
@@ -232,7 +233,7 @@ final class AccountService
                       WHERE c.user_id = u.id AND c.archived_at IS NULL) AS certificate_count,
                     (SELECT COUNT(*) FROM renewal_tasks t
                       WHERE t.assigned_user_id = u.id AND t.status IN ('todo', 'in_progress')) AS open_task_count,
-                    (SELECT MAX(o.used_at) FROM login_otps o WHERE o.user_id = u.id) AS last_login_at
+                    u.last_login_at
              FROM users u WHERE u.id = :id LIMIT 1"
         );
         $stmt->execute(['id' => $id]);

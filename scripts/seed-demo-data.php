@@ -11,6 +11,10 @@ declare(strict_types=1);
  *   php scripts/seed-demo-data.php                      # tylko na pustej bazie
  *   php scripts/seed-demo-data.php --force              # odtwórz dane demo od zera
  *   php scripts/seed-demo-data.php --owner=ja@firma.pl  # konto opiekuna części rekordów
+ *   php scripts/seed-demo-data.php --password=Tajne123   # hasło kont demo (domyślnie Demo2026!haslo)
+ *
+ * Konta demo mają ustawione hasło i potwierdzony adres e-mail, więc można się nimi zalogować
+ * od razu — to hasło jest jawne i służy wyłącznie do pokazu na danych @example.com.
  *
  * Dane demo są rozpoznawalne: płatnicy mają nazwy z listy poniżej (razem z nimi znikają ich
  * certyfikaty, użytkownicy certyfikatów, zadania, zaproszenia i historia), a konta personelu
@@ -24,6 +28,7 @@ if (PHP_SAPI !== 'cli') {
 
 require dirname(__DIR__) . '/bootstrap.php';
 
+use App\Auth\PasswordPolicy;
 use App\CertificateHelper;
 use App\Database;
 use App\Migrations\SchemaInspector;
@@ -33,10 +38,20 @@ $args = array_slice($argv ?? [], 1);
 $force = in_array('--force', $args, true);
 
 $ownerEmail = '';
+$demoPassword = 'Demo2026!haslo';
 foreach ($args as $arg) {
     if (str_starts_with($arg, '--owner=')) {
         $ownerEmail = substr($arg, strlen('--owner='));
     }
+    if (str_starts_with($arg, '--password=')) {
+        $demoPassword = substr($arg, strlen('--password='));
+    }
+}
+
+$passwordError = PasswordPolicy::validate($demoPassword);
+if ($passwordError !== null) {
+    fwrite(STDERR, 'Hasło kont demo nie spełnia wymagań (' . $passwordError . ').' . PHP_EOL);
+    exit(1);
 }
 
 $db = Database::getInstance()->getConnection();
@@ -344,10 +359,18 @@ foreach ($demoPayers as $key => $payer) {
 // ── Konta personelu demo ──────────────────────────────────────────────────────
 
 $staffIds = ['owner' => $ownerId];
-$insertUser = $db->prepare('INSERT INTO users (first_name, last_name, role, email) VALUES (:first, :last, :role, :email)');
+// Konta demo są od razu gotowe do logowania: hasło ustawione, adres potwierdzony (Etap 9).
+$insertUser = $db->prepare(
+    'INSERT INTO users (first_name, last_name, role, email, password_hash, email_verified_at)
+     VALUES (:first, :last, :role, :email, :password_hash, NOW())'
+);
+$demoPasswordHash = PasswordPolicy::hash($demoPassword);
 
 foreach ($demoStaff as $key => $staff) {
-    $insertUser->execute(['first' => $staff[0], 'last' => $staff[1], 'role' => $staff[3], 'email' => $staff[2]]);
+    $insertUser->execute([
+        'first' => $staff[0], 'last' => $staff[1], 'role' => $staff[3], 'email' => $staff[2],
+        'password_hash' => $demoPasswordHash,
+    ]);
     $staffIds[$key] = (int) $db->lastInsertId();
     $logEvent('user', $staffIds[$key], 'account_created', $at(-1000), $ownerId, [], [
         'name' => $staff[0] . ' ' . $staff[1], 'email' => $staff[2], 'role' => $staff[3],
@@ -356,7 +379,10 @@ foreach ($demoStaff as $key => $staff) {
 
 $deactivateUser = $db->prepare('UPDATE users SET deactivated_at = :at WHERE id = :id');
 foreach ($demoInactiveStaff as $staff) {
-    $insertUser->execute(['first' => $staff[0], 'last' => $staff[1], 'role' => $staff[3], 'email' => $staff[2]]);
+    $insertUser->execute([
+        'first' => $staff[0], 'last' => $staff[1], 'role' => $staff[3], 'email' => $staff[2],
+        'password_hash' => $demoPasswordHash,
+    ]);
     $inactiveId = (int) $db->lastInsertId();
     $deactivateUser->execute(['at' => $at(-$staff[4], '17:00:00'), 'id' => $inactiveId]);
     $logEvent('user', $inactiveId, 'account_created', $at(-1000), $ownerId, [], [
@@ -653,6 +679,7 @@ $grouped = static function (string $sql) use ($db): string {
 echo "\nDane demonstracyjne gotowe.\n";
 printf("  Płatnicy:                         %d\n", count($payerIds));
 printf("  Konta personelu demo:             %d aktywne + %d wyłączone (@example.com)\n", count($demoStaff), count($demoInactiveStaff));
+printf("  Hasło kont demo:                  %s\n", $demoPassword);
 printf("  Użytkownicy certyfikatów:         %d\n", count($beneficiaryIds));
 printf(
     "  Certyfikaty:                      %d aktywnych + %d w archiwum\n",

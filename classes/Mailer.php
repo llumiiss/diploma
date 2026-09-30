@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Mail\OAuth2TokenProvider;
 use PHPMailer\PHPMailer\Exception as PhpMailerException;
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -50,23 +51,18 @@ final class Mailer
             $mail->addAddress($toEmail);
         }
 
-        $smtp = $this->config['smtp'] ?? [];
-        if (!empty($smtp['enabled'])) {
-            $mail->isSMTP();
-            $mail->Host = (string) ($smtp['host'] ?? '');
-            $mail->Port = (int) ($smtp['port'] ?? 587);
-            $mail->SMTPAuth = (bool) ($smtp['auth'] ?? true);
-            $mail->Username = (string) ($smtp['username'] ?? '');
-            $mail->Password = (string) ($smtp['password'] ?? '');
-
-            $secure = strtolower((string) ($smtp['smtp_secure'] ?? 'tls'));
-            if ($secure === 'tls') {
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            } elseif ($secure === 'ssl') {
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            } else {
-                $mail->SMTPSecure = '';
-                $mail->SMTPAutoTLS = false;
+        if (MailConfig::isOauth2()) {
+            $this->configureOauth2($mail);
+        } else {
+            $smtp = $this->config['smtp'] ?? [];
+            if (is_array($smtp) && !empty($smtp['enabled'])) {
+                $mail->isSMTP();
+                $mail->Host = (string) ($smtp['host'] ?? '');
+                $mail->Port = (int) ($smtp['port'] ?? 587);
+                $mail->SMTPAuth = (bool) ($smtp['auth'] ?? true);
+                $mail->Username = (string) ($smtp['username'] ?? '');
+                $mail->Password = (string) ($smtp['password'] ?? '');
+                $this->applyEncryption($mail, (string) ($smtp['smtp_secure'] ?? 'tls'));
             }
         }
 
@@ -79,6 +75,39 @@ final class Mailer
         $mail->AltBody = $textBody ?? strip_tags($htmlBody);
 
         $mail->send();
+    }
+
+    /**
+     * Sterownik „oauth2”: SMTP bez hasła do skrzynki. PHPMailer pyta dostawcę tokenów
+     * o ciąg XOAUTH2 (klasa OAuth2TokenProvider), a ten wymienia refresh_token na
+     * krótkotrwały access_token. Nazwa użytkownika SMTP to adres skrzynki wysyłającej.
+     */
+    private function configureOauth2(PHPMailer $mail): void
+    {
+        $oauth2 = MailConfig::oauth2();
+
+        $mail->isSMTP();
+        $mail->Host = (string) ($oauth2['host'] ?? 'smtp.gmail.com');
+        $mail->Port = (int) ($oauth2['port'] ?? 587);
+        $mail->SMTPAuth = true;
+        $mail->AuthType = 'XOAUTH2';
+        $mail->Username = (string) ($oauth2['user_email'] ?? '');
+        $mail->setOAuth(new OAuth2TokenProvider($oauth2));
+        $this->applyEncryption($mail, (string) ($oauth2['smtp_secure'] ?? 'tls'));
+    }
+
+    private function applyEncryption(PHPMailer $mail, string $mode): void
+    {
+        $secure = strtolower($mode);
+
+        if ($secure === 'tls') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        } elseif ($secure === 'ssl') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        } else {
+            $mail->SMTPSecure = '';
+            $mail->SMTPAutoTLS = false;
+        }
     }
 
     /**
