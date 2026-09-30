@@ -82,6 +82,32 @@ Od Etapu 9 logowanie działa klasycznie: **adres e-mail i hasło**. Adres trzeba
 linkiem z wiadomości, a wiadomości wychodzą przez SMTP z autoryzacją **OAuth2** (bez hasła do
 skrzynki w konfiguracji).
 
+### Pierwsze logowanie (hasła startowe)
+
+Po przejściu na logowanie hasłem konta z wcześniejszej wersji nie miały hasła. Hasła startowe
+są już ustawione:
+
+| Konto | Hasło |
+|---|---|
+| `mobi.litosh@gmail.com` (ADMIN) | w pliku **`config/pierwsze-haslo.local.txt`** |
+| konta demo `@example.com` (`ewa.pawlak` — MANAGER, `tomasz.wrobel` — OPERATOR) | `Demo2026!haslo` |
+
+Plik `config/pierwsze-haslo.local.txt` jest w `.gitignore`, więc hasło administratora nie trafia do
+repozytorium ani na GitHub — dlatego nie ma go w tej instrukcji. Otwórz plik, zaloguj się na
+http://localhost/assistent_subscription/login.php, a potem zmień hasło na swoje: ekran logowania →
+**Nie pamiętasz hasła?** → link przychodzi e-mailem (przy sterowniku `sandbox` do skrzynki Mailtrap,
+`php scripts/mailtrap-inbox.php --link`). Po zmianie hasła plik możesz usunąć.
+
+Hasło można też ustawić z wiersza poleceń — **z katalogu projektu**, nie z `C:\laragon\www`
+(inaczej PHP zgłasza „Could not open input file”):
+
+```
+cd C:\laragon\www\assistent_subscription
+php scripts/set-password.php --list
+php scripts/set-password.php --email=mobi.litosh@gmail.com --password='nowe haslo'
+php scripts/set-password.php --email=mobi.litosh@gmail.com --send-link
+```
+
 ### Rejestracja nowego konta
 
 1. `/register.php` → imię, nazwisko, e-mail, hasło (dwa razy) → **Załóż konto**.
