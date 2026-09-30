@@ -1,137 +1,177 @@
-# CertiSub Assistant — README
+# CertiSub Assistant
 
-Engineering thesis project: a LAMP web application for managing certificates (qualified signatures and seals, SSL, code signing, domains, SaaS) together with their users (beneficiaries) and payers — renewal tasks, invitations, reminders and history.
+Praca inżynierska (Uniwersytet Śląski) — webowa aplikacja LAMP do ewidencji **certyfikatów** (m.in. kwalifikowanych podpisów i pieczęci, certyfikatów SSL, code signing, domen, usług SaaS) wraz z ich **użytkownikami (beneficjentami)** i **płatnikami**, obejmująca cały proces odnowienia: skanowanie terminów, zadania ToDo, zaproszenia e-mail z szablonami i załącznikami, przypomnienia, archiwizację, historię zdarzeń, raporty oraz wymianę danych (CSV/XML/EML).
 
-- Project map, requirements, plan and changelog: [`docs/MAPA_PROJEKTU.md`](docs/MAPA_PROJEKTU.md)
-- User manual and demo script (Polish): [`docs/INSTRUKCJA_OBSLUGI.md`](docs/INSTRUKCJA_OBSLUGI.md)
+## Cel projektu i tło akademickie
 
-## Requirements
+Zgodnie z oficjalnym opisem pracy dyplomowej, celem systemu jest wspieranie administratora w nadzorze nad certyfikatami wymagającymi cyklicznego odnowienia. Aplikacja wiąże ze sobą trzy typy informacji — **certyfikat** (dane usługi: numer seryjny, daty ważności i wygaśnięcia, wymagany margines odnowienia), **użytkownika certyfikatu** (dane osobowe beneficjenta) i **płatnika** (podmiot rozliczający usługę) — i na tej podstawie udostępnia raportowanie w trzech perspektywach:
 
-- PHP 8.1+ (developed on 8.3)
-- MySQL 8 / MariaDB 10.5+
-- Node.js only to rebuild the stylesheet after UI changes (`npm run css`) — the built `assets/css/app.css` is committed, so the app runs without it
-- A writable `storage/` directory (attachments and the aggregate cache); without write access the app still works, it just recomputes the dashboard numbers on every request
-- Apache with `mod_rewrite` and `AllowOverride All` (e.g. Laragon) — the root `.htaccess` blocks internal directories
-- Composer (`composer install`)
+- **Użytkownik certyfikatu** — daty odnowienia, szczegóły certyfikatu, historia zdarzeń.
+- **Płatnik** — lista certyfikatów, terminy wygaśnięcia, powiązane osoby, historia.
+- **Administrator** — zarządzanie całym systemem niezależnie od perspektyw.
 
-## Installation
+System w sposób cykliczny skanuje bazę danych, wyszukuje certyfikaty zbliżające się do terminu odnowienia w założonym marginesie czasowym, tworzy priorytetyzowaną listę zadań „ToDo”, wysyła zaproszenia do odnowienia e-mailem (szablon + załączniki) i zarządza przypomnieniami — a każdy krok tego procesu zapisywany jest w historii zdarzeń. Dostęp do systemu jest oparty o hierarchię kont z podziałem na role (ADMIN > MANAGER > OPERATOR), a dane podlegają archiwizacji zamiast trwałego usuwania. Dodatkowo aplikacja umożliwia eksport danych do CSV/XML oraz import z plików CSV/XML/EML.
 
-### New database
+Choć opis pracy wskazywał wstępnie Javę ze Spring jako narzędzie realizacji, po analizie dostępnych opcji (studium wykonalności) do budowy warstwy webowej wybrano **PHP** w architekturze **LAMP**, zgodnie z częścią opisu dopuszczającą tę technologię dla jądra aplikacji bazodanowej.
+
+Pełna dokumentacja procesu powstawania projektu — oficjalny opis pracy, macierz wymagań, model danych, plan etapów i dziennik zmian — znajduje się w [`docs/MAPA_PROJEKTU.md`](docs/MAPA_PROJEKTU.md). Instrukcja obsługi i scenariusz demonstracyjny: [`docs/INSTRUKCJA_OBSLUGI.md`](docs/INSTRUKCJA_OBSLUGI.md).
+
+## Stack technologiczny
+
+- **Backend:** PHP 8.1+ (rozwijane na 8.3), architektura bez frameworka — własna warstwa usług (`App\Service`) i kontroler HTTP (`App\Http\ApiKernel`), PDO z natywnymi zapytaniami przygotowanymi (prepared statements)
+- **Baza danych:** MySQL 8 / MariaDB 10.5+ (silnik InnoDB, `utf8mb4`)
+- **Frontend:** Vue 3 bez kroku budowania (ładowany bezpośrednio, bez CDN — biblioteka wendorowana w repozytorium), Tailwind CSS 3 budowany lokalnie (`npm run css`), czcionka Inter dołączona do repozytorium — aplikacja działa również bez dostępu do internetu (intranet)
+- **Poczta:** PHPMailer (SMTP/Sandbox Mailtrap lub Gmail) albo sterownik `log` zapisujący wiadomości do pliku na potrzeby demo
+- **Serwer WWW:** Apache z `mod_rewrite` i `AllowOverride All` (np. Laragon) — `.htaccess` blokuje katalogi wewnętrzne
+- **Jakość i testy:** PHPUnit 11 (testy jednostkowe + integracyjne na osobnej bazie), PHPStan (poziom 5), PHP-CS-Fixer (@PSR12)
+- **i18n:** PL (domyślny), EN, ES, DE, UK
+
+## Instrukcja uruchomienia
+
+### Wymagania wstępne
+
+- PHP 8.1+ z rozszerzeniami PDO/MySQL
+- MySQL 8 lub MariaDB 10.5+
+- Composer
+- Apache z `mod_rewrite` i `AllowOverride All` (np. środowisko Laragon) — projekt zakłada, że katalog aplikacji jest jednocześnie webroot
+- Node.js — opcjonalnie, tylko do przebudowy arkusza stylów po zmianach w klasach Tailwind (zbudowany `assets/css/app.css` jest już w repozytorium)
+
+### Instalacja zależności
 
 ```powershell
 composer install
+```
+
+### Konfiguracja
+
+- `config/database.php` — dane połączenia z MySQL (`host`, `dbname`, `username`, `password`, `charset`); domyślnie `localhost` / `assistent_subscriptions` / `root` bez hasła (typowe dla Laragon)
+- `config/mail.local.php` — konfiguracja poczty, **plik nieśledzony przez git** (sekrety); utworzyć na podstawie wzorca:
+
+```powershell
+copy config\mail.local.php.example config\mail.local.php
+```
+
+  - sterownik `sandbox` — wiadomości trafiają wyłącznie na [mailtrap.io](https://mailtrap.io) (bezpieczne do testów)
+  - sterownik `smtp` — rzeczywista wysyłka (hasło aplikacji Gmail albo Mailtrap Email Sending)
+  - sterownik `log` — wiadomości zapisywane do `logs/mail.log`, bez wysyłki (wygodne na intranecie bez serwera SMTP)
+
+### Baza danych
+
+Nowa baza:
+
+```powershell
 php scripts\migrate.php --fresh
 ```
 
-`--fresh` **drops all tables**, imports `database/schema.sql` and runs the migrations (they add the default e-mail templates). Use it only on a new or throwaway database.
+`--fresh` **usuwa wszystkie tabele**, importuje `database/schema.sql` i uruchamia migracje (m.in. domyślne szablony wiadomości) — używać wyłącznie na nowej lub tymczasowej bazie.
 
-Alternatively import `database/schema.sql` in HeidiSQL / phpMyAdmin, then run `php scripts\migrate.php`.
-
-### Existing database
+Istniejąca baza (np. po aktualizacji kodu):
 
 ```powershell
 php scripts\migrate.php
 ```
 
-Migrations are idempotent — run them after every update. The `database/migration_*.sql` snippets cover only the first two historical migrations; use `migrate.php` for everything else.
+Migracje są idempotentne — bezpiecznie uruchamiać je po każdej aktualizacji.
 
-### Demo data
+### Dane demonstracyjne (opcjonalnie)
 
 ```powershell
 php scripts\seed-demo-data.php
 ```
 
-Fills the panel: certificates in all priorities, beneficiaries, payers, an archive with a renewal chain, ToDo tasks in every status, invitations with an attachment and event history. Re-create with `--force`; remove with `php scripts\cleanup-demo-data.php`.
+Wypełnia panel certyfikatami we wszystkich priorytetach, beneficjentami, płatnikami, archiwum z łańcuchem odnowień, zadaniami ToDo w każdym statusie, zaproszeniami z załącznikiem i historią zdarzeń. Ponowne uruchomienie z `--force` odtwarza dane od nowa; `php scripts\cleanup-demo-data.php` usuwa wszystkie dane biznesowe.
 
-### Accounts and roles
+### Pierwsze konto administratora
 
-Public registration is disabled — an ADMIN creates staff accounts in **Management → Accounts & roles**. To make the first administrator (e.g. right after installation):
+Rejestracja publiczna jest wyłączona — konta zakłada ADMIN w panelu (Zarządzanie → Konta i role). Aby nadać pierwszej osobie rolę ADMIN:
 
 ```powershell
 php scripts\set-role.php you@example.com ADMIN
 ```
 
-Hierarchy: ADMIN > MANAGER > OPERATOR. An OPERATOR works on the certificates they own or have a renewal task for, and on the people and payers linked to them or entered by them; MANAGER and ADMIN see the whole organisation; archiving needs MANAGER; accounts need ADMIN.
+### Uruchomienie aplikacji
 
-### Mail (OTP codes)
+Po skopiowaniu katalogu do webroot serwera (np. `C:\laragon\www\assistent_subscription`) i uruchomieniu usług Apache + MySQL:
 
-1. Copy `config/mail.local.php.example` → `config/mail.local.php`
-2. **Mailtrap Sandbox** (`driver => sandbox`) — mail appears only at [mailtrap.io](https://mailtrap.io), **not** in Gmail/Outlook
-3. **Real delivery** — set `driver => smtp` with a Gmail app password or Mailtrap Email Sending (`live.smtp.mailtrap.io`)
+- Strona główna: `http://localhost/assistent_subscription/`
+- Panel: `http://localhost/assistent_subscription/dashboard.php`
 
-```powershell
-php scripts\test-mail.php you@example.com
-```
-
-### Tests
+### Zadanie cykliczne (cron)
 
 ```powershell
-composer test
-$env:RUN_INTEGRATION_TESTS=1; composer test   # + MySQL integration tests
-composer stan
+php cron\renewals.php
 ```
 
-Integration tests create a throwaway database `assistent_subscriptions_test` (from `database/schema.sql` + migrations) on every run and never touch the application database. The MySQL user from `config/database.php` needs permission to create and drop that database.
+Skaner odnowień (zakłada zadania ToDo) oraz wysyłka zaległych przypomnień o zaproszeniach — uruchamiać codziennie (np. Harmonogram zadań Windows: program = pełna ścieżka do `php.exe`, argument = pełna ścieżka do skryptu). Wynik zapisywany do `logs/renewals.log`.
 
-## URLs
-
-- Landing: http://localhost/assistent_subscription/
-- Dashboard: http://localhost/assistent_subscription/dashboard.php
-
-Private subscriptions (Netflix, Spotify, the gym…) are **a separate application** since 2026-09-18:
-`menedzer_subskrypcji`, with its own database and accounts. The two share no tables and do not link
-to each other.
-
-## Cron
-
-Run daily (CLI only):
+### Testy i statyczna analiza
 
 ```powershell
-php cron\renewals.php         # renewal scanner (opens ToDo tasks) + due invitation reminders
+composer test                                    # PHPUnit — testy jednostkowe
+$env:RUN_INTEGRATION_TESTS=1; composer test      # + testy integracyjne (tymczasowa baza assistent_subscriptions_test)
+composer stan                                    # PHPStan (poziom 5)
+composer cs                                      # PHP-CS-Fixer (tryb dry-run)
 ```
 
-Windows Task Scheduler: program = full path to `php.exe`, argument = full path to the script. Results go to `logs/renewals.log`.
+Konto MySQL z `config/database.php` musi mieć uprawnienia do tworzenia i usuwania bazy testowej.
 
-Without an SMTP server set `'driver' => 'log'` in `config/mail.local.php` — messages are written to `logs/mail.log` (demo/intranet only).
-
-## Project structure
+## Struktura katalogów i kluczowe moduły
 
 ```
 assistent_subscription/
-├── index.php, login.php, register.php (redirect), logout.php
-├── dashboard.php
-├── api/                     # JSON endpoints — one line each, logic in classes/Api
-├── assets/                  # css (Tailwind build), js (Vue components), fonts, vendor (Vue runtime)
-├── classes/                 # AuthManager, Rbac, CertificateHelper, …
-│   ├── Service/             # business rules: validation, permissions, data scope, event history
-│   ├── Exchange/            # CSV, XML and EML formats: readers, writers, column aliases
-│   ├── Http/                # ApiKernel (CSRF, auth, JSON errors), Request, Response
-│   ├── Api/                 # endpoint controllers
-│   └── Migrations/          # idempotent schema migrations
-├── includes/                # dashboard shell, shared head, language switcher
-├── cron/                    # renewals.php (scanner + invitation reminders)
-├── database/schema.sql      # fresh install (same structure as a migrated database)
+├── index.php, login.php, register.php, logout.php   # wejście, logowanie (OTP e-mail), wylogowanie
+├── dashboard.php                                     # punkt wejścia panelu (Vue)
+├── api/                     # cienkie endpointy JSON — logika w classes/Api
+├── classes/
+│   ├── Service/             # reguły biznesowe: walidacja, uprawnienia (Rbac), zakres danych operatora, historia zdarzeń
+│   ├── Http/                # ApiKernel (CSRF, sesja, mapowanie wyjątków na kody HTTP), Request, Response
+│   ├── Api/                 # kontrolery obsługujące poszczególne endpointy
+│   ├── Exchange/             # formaty wymiany danych: czytniki/zapisy CSV i XML, parser EML, aliasy kolumn
+│   └── Migrations/           # idempotentne migracje schematu bazy
+├── includes/                # powłoka panelu, wspólny <head>, przełącznik języka
+├── assets/                  # css (build Tailwind), js (komponenty Vue bez kroku budowania), fonty, vendor
+├── cron/                    # renewals.php — skaner odnowień + przypomnienia o zaproszeniach
+├── database/schema.sql      # pełny schemat do świeżej instalacji
 ├── scripts/                 # migrate, seed-demo-data, cleanup-demo-data, set-role, test-mail
-├── storage/                 # attachments/ (uploaded files) and cache/ (dashboard aggregates) — not served over HTTP
-├── docs/                    # project map, user manual, thesis drafts
-└── tests/                   # PHPUnit (unit + integration)
+├── storage/                 # attachments/ (załączniki) i cache/ (agregaty pulpitu) — niedostępne przez HTTP
+├── docs/                    # mapa projektu, instrukcja obsługi, materiały pracy dyplomowej
+└── tests/                   # PHPUnit — testy jednostkowe i integracyjne
 ```
 
-## Data model
+**Model danych:** `certificates`, `beneficiaries` (użytkownicy certyfikatów), `payers`, `users` (konta personelu), `renewal_tasks` (zadania ToDo), `email_templates` + `attachments` + `email_template_attachments`, `invitations` + `invitation_attachments`, `events` (historia/oś czasu), `settings` (progi odnowienia), `login_otps`. Szczegóły: `docs/MAPA_PROJEKTU.md` §2.2.
 
-`certificates`, `beneficiaries`, `payers`, `users`, `renewal_tasks`, `email_templates`, `attachments`, `invitations`, `events` (+ join tables), `settings`, `login_otps`. Details: `docs/MAPA_PROJEKTU.md` §2.2.
+## API i kluczowe funkcje
 
-## Features (current)
+Wszystkie endpointy zwracają JSON, wymagają aktywnej sesji oraz (dla zapisów) nagłówka `X-CSRF-TOKEN`; kontrola dostępu egzekwowana jest po stronie API zgodnie z hierarchią ról ADMIN > MANAGER > OPERATOR (`App\Rbac`).
 
-- Passwordless e-mail OTP login, CSRF protection; accounts created, deactivated and reassigned by an ADMIN
-- Role-based permissions enforced by the API (ADMIN > MANAGER > OPERATOR) with a least-privilege data scope for operators
-- Records of certificates, certificate users (beneficiaries) and payers: add, edit, archive and restore with validation (calendar dates, Polish NIP checksum, unique serial per issuer)
-- Details panels with relations, renewal chain and event history; archive screen
-- Renewal process: daily scanner opening prioritised ToDo tasks, task statuses and assignment, certificate renewal (new record, old one archived), e-mail invitations from PL/EN templates with attachments, invitation register with manual and automatic reminders, admin settings for thresholds, task statistics by status
-- Reports (perspectives from the thesis description): certificate user card and payer card with renewal dates, delivery path (tasks), invitations and a filterable timeline; expiry schedule by month; printable
-- Global search (Ctrl+K) across certificates, certificate users and payers including relations and match reasons; admin event log with filters and paging
-- No CDN: Tailwind CSS is built locally, Vue and the Inter font ship with the repository, so the app works on an intranet without internet access
-- Content skeletons instead of blank screens, cached dashboard aggregates (keyed by role and owner, invalidated on every write) and long-lived cache headers for versioned assets
-- Data exchange: CSV/XML export of lists, report cards, the expiry schedule and the event log; CSV/XML import of payers, certificate users and certificates with a row-by-row preview (the preview runs the real writes and rolls them back); EML import that matches a message to the registry (sender, certificates by serial number, payers by tax ID, open invitations) and imports its CSV/XML attachments
-- Dashboard: KPIs, priority renewals, payments, ToDo view, search and filters
-- i18n: PL (default), EN, ES, DE, UK
+| Endpoint | Zakres odpowiedzialności |
+|---|---|
+| `api/certificates.php` | CRUD certyfikatów, walidacja (m.in. suma kontrolna NIP, unikalny numer seryjny u wystawcy), odnowienie (nowy rekord + archiwizacja starego) |
+| `api/beneficiaries.php` | CRUD użytkowników certyfikatów (beneficjentów) |
+| `api/payers.php` | CRUD płatników wraz z kosztem rocznym |
+| `api/tasks.php` | Lista ToDo, zmiana statusu, przydział (MANAGER+), porzucenie z powodem |
+| `api/invitations.php` | Wysyłka zaproszeń e-mail z szablonu, rejestr, ponowienie, przypomnienia |
+| `api/templates.php` | Szablony wiadomości (PL/EN) i biblioteka załączników (ADMIN) |
+| `api/reports.php` | Karty raportowe (perspektywa użytkownika certyfikatu / płatnika), harmonogram wygaśnięć |
+| `api/search.php` | Wyszukiwarka globalna (Ctrl+K) po certyfikatach, osobach i płatnikach wraz z powiązaniami |
+| `api/events.php` | Oś czasu rekordu oraz dziennik zdarzeń administratora |
+| `api/export.php` | Eksport list, kart raportowych, harmonogramu i dziennika zdarzeń do CSV/XML |
+| `api/import.php` | Import płatników/osób/certyfikatów z CSV/XML oraz wiadomości e-mail (EML) z podglądem wiersz po wierszu przed zapisem (ADMIN) |
+| `api/accounts.php`, `api/delete_account.php` | Konta personelu, role, dezaktywacja/usunięcie (ADMIN) |
+| `api/settings.php` | Progi i parametry procesu odnowienia (ADMIN) |
+| `api/dashboard.php` | Zagregowane KPI pulpitu (cache’owane per rola/właściciel) |
+| `api/attachments.php` | Biblioteka plików dla szablonów i zaproszeń |
+
+**Kluczowe funkcje aplikacji:**
+
+- Logowanie jednorazowym kodem e-mail (OTP) z ochroną CSRF; konta zakładane, dezaktywowane i przypisywane wyłącznie przez ADMIN-a
+- Uprawnienia oparte o role z zakresem danych operatora (operator widzi tylko własne/przypisane certyfikaty i powiązane osoby/płatników)
+- Cały cykl życia odnowienia: skanowanie → priorytetyzowane zadania ToDo → zaproszenie e-mail z szablonu i załącznikami → przypomnienia → odnowienie albo porzucenie → statystyki zadań
+- Raporty w trzech perspektywach z opisu pracy (użytkownik certyfikatu, płatnik, administrator), harmonogram wygaśnięć, globalna wyszukiwarka z powodem dopasowania, dziennik zdarzeń
+- Wymiana danych: eksport CSV/XML, import CSV/XML z transakcyjnym podglądem każdego wiersza (podgląd wykonuje rzeczywiste zapisy i wycofuje je), import wiadomości e-mail (EML) dopasowywanych do rejestru
+- Frontend bez CDN i bez internetu: Tailwind budowany lokalnie, Vue i czcionka Inter w repozytorium
+- Szkielety treści zamiast pustych ekranów, cache agregatów pulpitu unieważniany przy każdym zapisie, nagłówki cache dla zasobów statycznych
+
+## Uwaga dotycząca powiązanego projektu
+
+Moduł prywatnych subskrypcji (Netflix, Spotify, siłownia itp.) **nie jest już częścią tej aplikacji** — od 2026-09-18 stanowi osobny, niezależny projekt „Menedżer Subskrypcji” z własną bazą danych, kontami i interfejsem. Oba projekty nie mają żadnych wspólnych tabel ani powiązań.
