@@ -10,6 +10,18 @@ use PHPMailer\PHPMailer\PHPMailer;
 
 final class Mailer
 {
+    /** Przerwa przed jedynym ponowieniem wysyłki odrzuconej przez limit (2 s). */
+    private const RATE_LIMIT_RETRY_DELAY_US = 2_000_000;
+
+    /** Fragmenty odpowiedzi SMTP oznaczające „za szybko, zwolnij”. */
+    private const RATE_LIMIT_SIGNATURES = [
+        'too many emails per second',
+        'too many messages',
+        'rate limit',
+        'try again later',
+        '4.7.28',
+    ];
+
     /** @var array<string, mixed> */
     private array $config;
 
@@ -74,7 +86,65 @@ final class Mailer
         $mail->Body = $htmlBody;
         $mail->AltBody = $textBody ?? strip_tags($htmlBody);
 
-        $mail->send();
+        try {
+            $mail->send();
+        } catch (PhpMailerException $e) {
+            // Serwer przyjmuje ograniczoną liczbę wiadomości na sekundę (Mailtrap w darmowym
+            // planie: jedną; podobnie zachowują się Gmail i Outlook przy szybkiej serii).
+            // W takiej sytuacji odczekujemy chwilę i próbujemy raz jeszcze — inaczej druga
+            // wiadomość wysłana w tej samej sekundzie (np. przypomnienia z crona albo link
+            // do hasła zaraz po rejestracji) przepadałaby bez powodu.
+            // Ponawiamy TYLKO ten błąd: serwer odrzucił wiadomość przed przyjęciem,
+            // więc nie grozi to wysłaniem duplikatu.
+            if (!self::isRateLimited($mail->ErrorInfo)) {
+                throw self::describe($mail, $e);
+            }
+
+            // Po odmowie w środku rozmowy SMTP połączenie zostaje otwarte w połowie transakcji
+            // (kolejne MAIL FROM dostałoby „503 nested MAIL command”), więc zamykamy je
+            // i druga próba nawiązuje połączenie od nowa.
+            $mail->smtpClose();
+            usleep(self::RATE_LIMIT_RETRY_DELAY_US);
+
+            try {
+                $mail->send();
+            } catch (PhpMailerException $retry) {
+                throw self::describe($mail, $retry);
+            }
+        }
+    }
+
+    /**
+     * Wyjątek z pełną odpowiedzią serwera. PHPMailer w komunikacie wyjątku podaje tylko
+     * ogólne „data not accepted”, a powód (kod i opis SMTP) trzyma w ErrorInfo — bez tego
+     * w logu nie byłoby widać, czy to limit, odrzucony nadawca, czy błędne hasło.
+     */
+    private static function describe(PHPMailer $mail, PhpMailerException $exception): PhpMailerException
+    {
+        $info = trim($mail->ErrorInfo);
+
+        if ($info === '' || $info === $exception->getMessage()) {
+            return $exception;
+        }
+
+        return new PhpMailerException($info, (int) $exception->getCode(), $exception);
+    }
+
+    /**
+     * Czy serwer odrzucił wiadomość z powodu limitu liczby wiadomości w czasie.
+     * Rozpoznajemy po treści odpowiedzi SMTP, bo kody są różne u różnych dostawców.
+     */
+    public static function isRateLimited(string $smtpError): bool
+    {
+        $error = strtolower($smtpError);
+
+        foreach (self::RATE_LIMIT_SIGNATURES as $signature) {
+            if (str_contains($error, $signature)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

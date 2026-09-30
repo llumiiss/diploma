@@ -432,6 +432,25 @@ final class AuthManagerTest extends TestCase
         );
     }
 
+    public function testOldPasswordStopsWorkingAfterAReset(): void
+    {
+        $db = SqliteTestDatabase::create();
+        SqliteTestDatabase::seedUser($db, 'reset@example.com', 'Jan', 'Kowalski', 'StareHaslo123');
+        $auth = $this->auth($db);
+        $auth->requestPasswordSetLink('reset@example.com');
+
+        $this->assertTrue(
+            $auth->setPasswordWithToken($this->mail->lastToken('password'), 'NoweHaslo2026', 'NoweHaslo2026')['ok']
+        );
+        $auth->logout();
+
+        $this->assertSame(
+            'auth.error.invalid_credentials',
+            $auth->attemptLogin('reset@example.com', 'StareHaslo123')['error']
+        );
+        $this->assertTrue($auth->attemptLogin('reset@example.com', 'NoweHaslo2026')['ok']);
+    }
+
     public function testPasswordLinkForUnknownEmailLooksTheSameAndSendsNothing(): void
     {
         $db = SqliteTestDatabase::create();
