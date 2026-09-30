@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Auth\PasswordPolicy;
 use App\Rbac;
 use App\Service\Actor;
 use App\Session;
@@ -37,10 +38,18 @@ abstract class IntegrationTestCase extends TestCase
         ++$sequence;
         $email = $email !== '' ? $email : strtolower($role) . $sequence . '@example.com';
 
+        // Konto gotowe do pracy: hasło ustawione i adres potwierdzony (Etap 9).
         $stmt = $this->db->prepare(
-            'INSERT INTO users (first_name, last_name, role, email) VALUES (:first, :last, :role, :email)'
+            'INSERT INTO users (first_name, last_name, role, email, password_hash, email_verified_at)
+             VALUES (:first, :last, :role, :email, :password_hash, NOW())'
         );
-        $stmt->execute(['first' => ucfirst(strtolower($role)), 'last' => 'Tester' . $sequence, 'role' => $role, 'email' => $email]);
+        $stmt->execute([
+            'first'         => ucfirst(strtolower($role)),
+            'last'          => 'Tester' . $sequence,
+            'role'          => $role,
+            'email'         => $email,
+            'password_hash' => PasswordPolicy::hash('TesteroweHaslo123'),
+        ]);
 
         return new Actor((int) $this->db->lastInsertId(), $role, ucfirst(strtolower($role)), 'Tester' . $sequence, $email);
     }

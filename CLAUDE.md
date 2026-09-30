@@ -7,7 +7,7 @@ University thesis project (author: Maksym Litosh, Uniwersytet Śląski). A PHP 8
 
 **The app has no personal/private side any more.** Etap 8 (2026-09-18) moved it out to a separate application in `C:\laragon\www\menedzer_subskrypcji` ("Menedżer Subskrypcji") with its own database, accounts and UI. The two share nothing and must not link to each other — if a request sounds like "private subscriptions", "Netflix", "the personal panel", it belongs in that repository, not this one.
 
-Status (2026-09-18): **all stages of the plan (Etapy 0–8) are done** — security, data model, records CRUD + RBAC, renewal process, reports, data exchange, quality work (no CDN, OTP limit in the DB, E2E scenario), UX/performance (content skeletons, cached KPI aggregates, cache headers) and the split of the two applications. All 19 functional requirements of the thesis description are covered. What remains is the written thesis (map §9) and the schedule with the promoter (decision D6); keep the code in maintenance mode — small fixes, no new scope without asking.
+Status (2026-09-30): **all stages of the plan (Etapy 0–8) are done, plus Etap 9 — password login with e-mail verification (see below)** — security, data model, records CRUD + RBAC, renewal process, reports, data exchange, quality work (no CDN, OTP limit in the DB, E2E scenario), UX/performance (content skeletons, cached KPI aggregates, cache headers) and the split of the two applications. All 19 functional requirements of the thesis description are covered. What remains is the written thesis (map §9) and the schedule with the promoter (decision D6); keep the code in maintenance mode — small fixes, no new scope without asking.
 
 ## Environment (Windows + Laragon — tools are NOT on the default PATH)
 - PHP 8.3.30: `C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe`
@@ -20,7 +20,7 @@ Status (2026-09-18): **all stages of the plan (Etapy 0–8) are done** — secur
 
 ## Commands
 ```
-composer test                                    # PHPUnit 11 — 153 tests; the 81 integration tests skip without the flag below
+composer test                                    # PHPUnit 11 — 183 tests; the 81 integration tests skip without the flag below
 $env:RUN_INTEGRATION_TESTS=1; composer test      # + integration tests on a throwaway DB assistent_subscriptions_test (recreated each run)
 composer stan                                    # PHPStan level 5 (see phpstan.neon)
 composer cs                                      # PHP-CS-Fixer dry-run (diff only)
@@ -28,6 +28,10 @@ php scripts/migrate.php                          # idempotent DB migrations (nee
 php scripts/seed-demo-data.php --force           # demo data (replaces previous demo data)
 php scripts/cleanup-demo-data.php                # wipes ALL business data + @example.com accounts
 php scripts/set-role.php --list                  # list accounts and their roles (emergency tool; ADMIN normally uses the Accounts screen)
+php scripts/set-password.php --list              # account state: has a password? address confirmed? last login
+php scripts/set-password.php --email=a@b.pl --send-link       # e-mail a one-time "set password" link
+php scripts/set-password.php --email=a@b.pl --password='...'  # set a password directly (emergency)
+php scripts/oauth2-token.php --client-id=... --client-secret=...   # one-off: OAuth2 refresh token for mail
 php scripts/test-mail.php you@example.com        # mail smoke test
 php cron/renewals.php                            # daily: renewal scanner + due invitation reminders (logs/renewals.log)
 npm install && npm run css                       # rebuild assets/css/app.css after changing Tailwind classes (the built file is committed)
@@ -35,7 +39,10 @@ npm install && npm run css                       # rebuild assets/css/app.css af
 Mail driver `log` (in `config/mail.local.php`) writes messages to `logs/mail.log` instead of sending — use it for demos; never let an agent send real invitations while testing (tests use `Tests\Support\RecordingInvitationMailer`).
 **Never run `php scripts/migrate.php --fresh` against the user's database** — it drops every table. Take a `mysqldump` of `assistent_subscriptions` before applying a new schema migration.
 
-Quality baseline (2026-09-18, after Etap 8): 153/153 tests pass with integration enabled; PHPStan reports no errors (the one known note lived in `cron/send_reminders.php`, deleted with the personal module). `composer cs` is clean (0 of 135 files) — `.gitattributes` keeps the working tree on LF, so keep it that way and run `composer cs-fix` in its own commit when it reports something.
+Quality baseline (2026-09-30, after Etap 9): 183/183 tests pass with integration enabled, PHPStan reports no errors, the `password_auth` migration is applied to `assistent_subscriptions` and `information_schema` of the app DB matches the test DB built from `schema.sql` (147 columns / 85 index entries / 21 foreign keys); the whole auth flow was also checked over HTTP on Apache (register → block before confirmation → verification link → sign-in → dashboard → logout → rate limit → CSRF → 403 on internal paths); PHPStan reports no errors (the one known note lived in `cron/send_reminders.php`, deleted with the personal module). `composer cs` is clean (0 of 135 files) — `.gitattributes` keeps the working tree on LF, so keep it that way and run `composer cs-fix` in its own commit when it reports something.
+
+## Authentication (Etap 9, 2026-09-30)
+Email + password with e-mail verification; mail goes over SMTP with OAuth2 (XOAUTH2). `AuthManager` drives `register` -> `verifyEmail` -> `attemptLogin`, plus `requestPasswordSetLink` / `setPasswordWithToken` (admin-created accounts and "forgot password"). Helpers: `classes/Auth/` (`PasswordPolicy`, `VerificationTokens`, `LoginThrottle`) and `classes/Mail/OAuth2TokenProvider` (implements PHPMailer's `OAuthTokenProvider`, refresh-token grant, token cache in `storage/cache/oauth2`, no new Composer packages). Rules to keep: passwords only as `password_hash()` digests; one message for wrong password and unknown e-mail; registration on a taken address changes nothing and sends nothing; tokens stored as SHA-256, single-use, with an expiry; links built with `AppUrl` (config first, never a bare `Host` header). Public registration is a switch in `config/auth.php` (decision D3). The OTP flow is gone from the code; `login_otps` stays as history.
 
 ## Architecture (Etap 2)
 - **Services** `classes/Service/*Service.php` hold business rules: validation (`Validator`), permission checks (`Actor::authorize()` → `Rbac::can()`), data scope (`Visibility`, decision D8), history (`EventLogger` → `events`), transactions (`Transaction::run`). They take a `PDO` and an `Actor`, never read the session — so they are testable and reusable from CLI/import.
@@ -50,7 +57,7 @@ Quality baseline (2026-09-18, after Etap 8): 153/153 tests pass with integration
 
 ## Data model (details in `docs/MAPA_PROJEKTU.md` §2.2)
 - Etap 8 removed `certificates.scope`, the table `manager_subskrypcji` and the personal certificate types (STREAMING, MUSIC, GAMING, FITNESS, CLOUD_STORAGE) — one database, one domain. Before that, no schema changes since Etap 3.
-- `certificates` (formerly `subscriptions`; type column `certificate_type`), `beneficiaries`, `payers`, `users` (staff accounts, owners of records via `certificates.user_id`; `deactivated_at`), `renewal_tasks` (todo / in_progress / done / abandoned, at most one open task per certificate), `email_templates` + `attachments` + `email_template_attachments`, `invitations` + `invitation_attachments`, `events` (timeline — no foreign keys on purpose), `settings` (admin overrides of renewal thresholds), `login_otps`.
+- `certificates` (formerly `subscriptions`; type column `certificate_type`), `beneficiaries`, `payers`, `users` (staff accounts, owners of records via `certificates.user_id`; `deactivated_at`), `renewal_tasks` (todo / in_progress / done / abandoned, at most one open task per certificate), `email_templates` + `attachments` + `email_template_attachments`, `invitations` + `invitation_attachments`, `events` (timeline — no foreign keys on purpose), `settings` (admin overrides of renewal thresholds), `login_otps` (sign-in history from before Etap 9), `users.password_hash` / `email_verified_at` / `last_login_at`, `email_verifications` (single-use EMAIL_VERIFY and PASSWORD_SET tokens, stored as SHA-256 only), `login_attempts` (login rate limit).
 - `payers.created_by_user_id` / `beneficiaries.created_by_user_id` record who entered the row (OPERATOR scope, D8).
 - Archive, don't delete: `archived_at` on certificates, beneficiaries and payers. Every "current" read query must filter `archived_at IS NULL`; archived records are read-only.
 - Schema changes go through `App\MigrationRunner` as idempotent migrations (pattern: `classes/Migrations/*Migration.php` with `SchemaInspector` checks) **and** into `database/schema.sql`, which must stay structurally identical to a migrated database (compare `information_schema` of the app DB and the test DB). `schema.sql` may contain semicolons only at statement ends — the `--fresh` importer splits on them.

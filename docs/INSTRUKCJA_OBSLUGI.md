@@ -76,17 +76,84 @@ To **osoby, których dotyczą certyfikaty** — nie są to konta logowania. Każ
 
 ---
 
-## 3. Logowanie (bez hasła, kodem OTP)
+## 3. Rejestracja i logowanie (e-mail + hasło, adres potwierdzany linkiem)
 
-1. `/login.php` → podaj e-mail → **Wyślij kod**.
-2. Aplikacja wysyła 6-cyfrowy kod. Konfiguracja to `driver = sandbox`, więc **kod trafia do skrzynki Mailtrap** (mailtrap.io → Email Testing → Inboxes), a **nie** na prawdziwego Gmaila.
-3. Gdyby SMTP nie zadziałał, włączone `dev_log_codes` zapisuje kod do `logs/otp.log` i logowanie i tak przejdzie — to awaryjne wyjście na pokazie.
-4. Wpisz kod → trafiasz do panelu. Kod jest ważny 10 minut, ma limit 5 prób i jednorazowe użycie.
+Od Etapu 9 logowanie działa klasycznie: **adres e-mail i hasło**. Adres trzeba raz potwierdzić
+linkiem z wiadomości, a wiadomości wychodzą przez SMTP z autoryzacją **OAuth2** (bez hasła do
+skrzynki w konfiguracji).
 
-Warte pokazania jako element bezpieczeństwa:
+### Rejestracja nowego konta
 
-- przy nieistniejącym **albo wyłączonym** koncie komunikat brzmi „jeśli konto istnieje, wysłaliśmy kod” — system nie zdradza, które adresy są w bazie;
-- gdy administrator wyłączy konto zalogowanej osoby, jej sesja kończy się przy następnym kliknięciu.
+1. `/register.php` → imię, nazwisko, e-mail, hasło (dwa razy) → **Załóż konto**.
+2. Konto powstaje od razu, ale jest **nieaktywne**: w bazie `users.email_verified_at` jest `NULL`,
+   a próba logowania kończy się komunikatem „Adres e-mail nie został potwierdzony”.
+3. Na podany adres idzie wiadomość z linkiem `verify-email.php?token=…`. Link jest **jednorazowy**
+   i ważny **24 godziny**.
+4. Po kliknięciu linku strona przekierowuje na logowanie z komunikatem „Adres e-mail potwierdzony”.
+5. Od tej pory logujesz się e-mailem i hasłem.
+
+Rejestrację publiczną można wyłączyć w `config/auth.php` (`'self_registration' => false`) — wtedy
+`/register.php` przekierowuje na logowanie, a konta zakłada administrator (decyzja D3).
+
+### Konto założone przez administratora
+
+Konto z panelu „Konta” nie ma hasła. Zaraz po utworzeniu system wysyła na jego adres wiadomość
+z linkiem `set-password.php?token=…` (ważny **2 godziny**). Osoba sama wybiera hasło — administrator
+go nie zna i nie widzi. Wiadomość można wysłać ponownie przyciskiem **Wyślij link do hasła**
+w wierszu konta.
+
+### Zapomniane hasło
+
+`/login.php` → **Nie pamiętasz hasła?** → adres e-mail → wiadomość z tym samym linkiem
+`set-password.php`. Zapisanie nowego hasła unieważnia wszystkie pozostałe linki tej osoby.
+
+### Co warto pokazać jako element bezpieczeństwa
+
+- **hasła nie są przechowywane**: w kolumnie `users.password_hash` jest skrót z `password_hash()`
+  (bcrypt z losową solą) — pokaż `SELECT email, LEFT(password_hash, 7) FROM users;`
+  i to, że dwa takie same hasła dają różne skróty;
+- **komunikaty nie zdradzają kont**: złe hasło i nieistniejący adres dają identyczny komunikat
+  „Nieprawidłowy e-mail lub hasło”, a rejestracja na zajęty adres wygląda tak samo jak udana
+  (właściciel konta nie dostaje wtedy żadnej wiadomości i nic mu się nie zmienia);
+- **limit prób**: 5 nieudanych logowań na adres i 20 na adres IP w 15 minut → komunikat
+  o blokadzie; udane logowanie zeruje licznik (tabela `login_attempts`);
+- **tokeny w bazie są zahaszowane**: `email_verifications.token_hash` to SHA-256 — kopia bazy
+  nie pozwala użyć cudzego linku; link działa raz (`used_at`) i ma termin (`expires_at`);
+- **wyłączenie konta działa natychmiast**: sesja kończy się przy następnym żądaniu, a niewykorzystane
+  linki z wiadomości przestają działać;
+- pomyłka w haśle na stronie „Ustawienie hasła” **nie spala linku** — można poprawić bez proszenia
+  o nową wiadomość.
+
+### Wysyłka przez OAuth2 — konfiguracja (jednorazowo)
+
+1. [console.cloud.google.com](https://console.cloud.google.com) → nowy projekt → włącz **Gmail API**.
+2. „OAuth consent screen”: typ **External**, dodaj swój adres w **Test users**.
+3. „Credentials” → **OAuth client ID** → typ **Desktop app** → zapisz *Client ID* i *Client secret*.
+4. `php scripts/oauth2-token.php --client-id=… --client-secret=…` — skrypt wypisze adres zgody,
+   nasłuchuje na `http://127.0.0.1:8765`, a po zatwierdzeniu wypisuje **refresh_token**.
+5. Wklej wartości do `config/mail.local.php`:
+
+```php
+'driver' => 'oauth2',
+'from_email' => 'twoj@gmail.com',
+'oauth2' => [
+    'provider'      => 'google',
+    'user_email'    => 'twoj@gmail.com',
+    'client_id'     => '….apps.googleusercontent.com',
+    'client_secret' => '…',
+    'refresh_token' => '1//…',
+],
+```
+
+6. Sprawdzenie: `php scripts/test-mail.php twoj@adres.pl`.
+
+Aplikacja sama wymienia `refresh_token` na krótkotrwały `access_token` (ważny ok. godziny) i trzyma
+go w `storage/cache/oauth2` — katalog jest niedostępny z przeglądarki. Microsoft 365 działa tak samo
+po ustawieniu `'provider' => 'microsoft'`, `'host' => 'smtp.office365.com'` i `tenant_id`.
+
+**Na pokaz bez konfiguracji OAuth2**: `'driver' => 'log'` zapisuje całe wiadomości (razem z linkami)
+do `logs/mail.log` — wystarczy skopiować link z pliku do przeglądarki. Sterownik `sandbox` kieruje
+wiadomości do skrzynki Mailtrap (mailtrap.io → Email Testing → Inboxes), a nie na prawdziwy adres.
 
 ---
 
@@ -334,7 +401,7 @@ prywatnych przeszły razem z panelem do osobnej aplikacji (`menedzer_subskrypcji
 
 ### Poczta bez serwera SMTP
 
-W `config/mail.local.php` można ustawić `'driver' => 'log'`: wiadomości (także z nazwami załączników) trafiają wtedy do `logs/mail.log` zamiast do odbiorców. To wygodne na pokaz bez internetu albo w sieci wewnętrznej — ale nie w produkcji, bo do pliku trafiają też kody logowania.
+W `config/mail.local.php` można ustawić `'driver' => 'log'`: wiadomości (także z nazwami załączników) trafiają wtedy do `logs/mail.log` zamiast do odbiorców. To wygodne na pokaz bez internetu albo w sieci wewnętrznej — ale nie w produkcji, bo do pliku trafiają też linki potwierdzające adres i linki do ustawienia hasła.
 
 ---
 
@@ -397,12 +464,16 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 |---|---|
 | `php scripts/migrate.php` | migracje bazy (idempotentne) — po każdej aktualizacji |
 | `php scripts/migrate.php --fresh` | **usuwa wszystkie tabele** i instaluje schemat od zera — tylko na nowej lub testowej bazie |
-| `php scripts/seed-demo-data.php [--force] [--owner=e-mail]` | dane demo: certyfikaty, użytkownicy certyfikatów, płatnicy, konta demo, archiwum, zadania, zaproszenia, historia |
+| `php scripts/seed-demo-data.php [--force] [--owner=e-mail] [--password=…]` | dane demo: certyfikaty, użytkownicy certyfikatów, płatnicy, konta demo (hasło `Demo2026!haslo`, adres potwierdzony), archiwum, zadania, zaproszenia, historia |
 | `php scripts/cleanup-demo-data.php` | usuwa **wszystkie** dane biznesowe oraz konta `@example.com`; zostawia prawdziwe konta i szablony |
 | `php scripts/set-role.php --list` / `<e-mail> <rola>` | lista kont / nadanie roli (awaryjnie — zwykle robi to ADMIN w panelu) |
+| `php scripts/set-password.php --list` | stan kont: czy mają hasło, czy adres jest potwierdzony, kiedy ostatnio się logowały |
+| `php scripts/set-password.php --email=… --send-link` | wysyła wiadomość z linkiem „ustaw hasło” |
+| `php scripts/set-password.php --email=… --password='…'` | ustawia hasło wprost (awaryjnie, np. pierwsze konto ADMIN po migracji) |
+| `php scripts/oauth2-token.php --client-id=… --client-secret=…` | zdobywa `refresh_token` do wysyłki poczty przez OAuth2 (jednorazowo) |
 | `php scripts/test-mail.php adres@example.com` | test konfiguracji poczty |
 | `php cron/renewals.php` | skaner odnowień i zaległe przypomnienia o zaproszeniach (codziennie) |
-| `composer test` | 153 testy (w tym scenariusz E2E przez API); 81 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
+| `composer test` | 183 testy (w tym scenariusz E2E przez API); 81 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
 | `npm install && npm run css` | przebudowanie arkusza stylów `assets/css/app.css` po zmianie klas Tailwinda (potrzebne tylko przy zmianach w interfejsie) |
 | `composer stan` | analiza statyczna (PHPStan) |
 

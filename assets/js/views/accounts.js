@@ -61,6 +61,17 @@
             async reactivate(account) {
                 await this.post({ action: 'reactivate', id: account.id }, 'account.reactivated');
             },
+            async sendPasswordLink(account) {
+                const ok = await CertiSub.confirm({
+                    title: t('account.send_password_link_title'),
+                    message: t('account.send_password_link_confirm', { name: account.name, email: account.email }),
+                    confirmLabel: t('account.send_password_link'),
+                });
+                if (!ok) {
+                    return;
+                }
+                await this.post({ action: 'send_password_link', id: account.id }, 'account.password_link_sent');
+            },
             async post(body, messageKey) {
                 try {
                     await api.post(endpoints.accounts, body);
@@ -118,6 +129,7 @@
                                 <td class="td text-right whitespace-nowrap">
                                     <button type="button" class="btn-ghost" @click="edit(account)">{{ t('common.edit') }}</button>
                                     <button v-if="account.certificate_count > 0 || account.open_task_count > 0" type="button" class="btn-ghost" @click="transfer(account)">{{ t('account.transfer') }}</button>
+                                    <button v-if="account.active" type="button" class="btn-ghost" @click="sendPasswordLink(account)">{{ t('account.send_password_link') }}</button>
                                     <button v-if="account.active && !isSelf(account)" type="button" class="btn-ghost text-red-600" @click="deactivate(account)">{{ t('account.deactivate') }}</button>
                                     <button v-if="!account.active" type="button" class="btn-ghost text-emerald-700" @click="reactivate(account)">{{ t('account.reactivate') }}</button>
                                 </td>

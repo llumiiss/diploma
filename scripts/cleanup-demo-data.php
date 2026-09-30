@@ -33,6 +33,7 @@ $steps = [
     'certificates'              => 'DELETE FROM certificates',
     'beneficiaries'             => 'DELETE FROM beneficiaries',
     'payers'                    => 'DELETE FROM payers',
+    'demo login attempts'       => "DELETE FROM login_attempts WHERE email LIKE '%@example.com'",
     'demo users (@example.com)' => "DELETE FROM users WHERE email LIKE '%@example.com'",
 ];
 

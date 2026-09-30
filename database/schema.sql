@@ -31,6 +31,8 @@ DROP TABLE IF EXISTS renewal_tasks;
 DROP TABLE IF EXISTS certificates;
 DROP TABLE IF EXISTS subscriptions;
 DROP TABLE IF EXISTS beneficiaries;
+DROP TABLE IF EXISTS login_attempts;
+DROP TABLE IF EXISTS email_verifications;
 DROP TABLE IF EXISTS login_otps;
 DROP TABLE IF EXISTS manager_subskrypcji;
 DROP TABLE IF EXISTS payers;
@@ -38,16 +40,23 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS schema_migrations;
 
 -- Konta systemowe (personel) z hierarchią ról ADMIN > MANAGER > OPERATOR.
--- Konta zakłada ADMIN (decyzja D3). deactivated_at blokuje logowanie bez usuwania historii.
+-- Konta zakłada ADMIN (decyzja D3) albo osoba sama przez rejestrację, jeśli jest włączona.
+-- password_hash NULL = konto bez hasła (ustawia je linkiem z wiadomości).
+-- email_verified_at NULL = adres niepotwierdzony, logowanie zablokowane.
+-- deactivated_at blokuje logowanie bez usuwania historii.
 CREATE TABLE users (
-    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    first_name      VARCHAR(100) NOT NULL,
-    last_name       VARCHAR(100) NOT NULL,
-    role            ENUM('ADMIN', 'MANAGER', 'OPERATOR') NOT NULL DEFAULT 'OPERATOR',
-    email           VARCHAR(255) NULL,
-    deactivated_at  DATETIME NULL,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_users_email (email)
+    id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    first_name        VARCHAR(100) NOT NULL,
+    last_name         VARCHAR(100) NOT NULL,
+    role              ENUM('ADMIN', 'MANAGER', 'OPERATOR') NOT NULL DEFAULT 'OPERATOR',
+    email             VARCHAR(255) NULL,
+    password_hash     VARCHAR(255) NULL,
+    email_verified_at DATETIME NULL,
+    last_login_at     DATETIME NULL,
+    deactivated_at    DATETIME NULL,
+    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_users_email (email),
+    KEY idx_users_verified (email_verified_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Płatnicy — podmioty opłacające usługi certyfikacyjne.
@@ -74,7 +83,8 @@ CREATE TABLE payers (
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Jednorazowe kody logowania (OTP)
+-- Jednorazowe kody logowania (OTP) — historia logowań sprzed Etapu 9.
+-- Aplikacja loguje hasłem, ta tabela nie jest już używana przy logowaniu.
 CREATE TABLE login_otps (
     id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id    INT UNSIGNED NOT NULL,
@@ -91,6 +101,39 @@ CREATE TABLE login_otps (
     INDEX idx_login_otps_email_expires (email, expires_at),
     INDEX idx_login_otps_email_created (email, created_at),
     INDEX idx_login_otps_ip_created (request_ip, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Jednorazowe tokeny z wiadomości e-mail: potwierdzenie adresu (EMAIL_VERIFY)
+-- i ustawienie albo reset hasła (PASSWORD_SET). W bazie jest tylko skrót SHA-256 tokenu,
+-- wersję jawną zna wyłącznie odbiorca wiadomości.
+CREATE TABLE email_verifications (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id    INT UNSIGNED NOT NULL,
+    email      VARCHAR(255) NOT NULL,
+    purpose    ENUM('EMAIL_VERIFY', 'PASSWORD_SET') NOT NULL DEFAULT 'EMAIL_VERIFY',
+    token_hash CHAR(64) NOT NULL,
+    request_ip VARCHAR(45) NULL,
+    expires_at DATETIME NOT NULL,
+    used_at    DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY uq_email_verifications_token (token_hash),
+    INDEX idx_email_verifications_email_created (email, created_at),
+    INDEX idx_email_verifications_ip_created (request_ip, created_at),
+    CONSTRAINT fk_email_verifications_user
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Próby logowania — podstawa limitu chroniącego przed zgadywaniem haseł.
+-- Bez klucza obcego: zapisujemy też próby na adresy, których nie ma w users.
+CREATE TABLE login_attempts (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    email      VARCHAR(255) NOT NULL,
+    request_ip VARCHAR(45) NULL,
+    successful TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    INDEX idx_login_attempts_email_created (email, created_at),
+    INDEX idx_login_attempts_ip_created (request_ip, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Użytkownicy certyfikatów (beneficjenci) — dane osobowe, powiązanie z płatnikiem

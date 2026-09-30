@@ -11,6 +11,8 @@ parameters:
         - login.php
         - logout.php
         - register.php
+        - verify-email.php
+        - set-password.php
         - dashboard.php
     excludePaths:
         - vendor

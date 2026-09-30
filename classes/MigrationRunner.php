@@ -7,6 +7,7 @@ namespace App;
 use App\Migrations\AccountsAndOwnershipMigration;
 use App\Migrations\CertificatesModelMigration;
 use App\Migrations\OtpRateLimitMigration;
+use App\Migrations\PasswordAuthMigration;
 use App\Migrations\RenewalProcessMigration;
 use App\Migrations\SchemaInspector;
 use App\Migrations\SplitPersonalAppMigration;
@@ -144,6 +145,10 @@ final class MigrationRunner
             // Etap 8: panel prywatny wyprowadzony do osobnej aplikacji — baza opisuje tylko ewidencję firmową.
             'split_personal_app' => static function (PDO $db): void {
                 SplitPersonalAppMigration::up($db);
+            },
+            // Etap 9: logowanie hasłem z potwierdzeniem adresu e-mail (zamiast kodów jednorazowych).
+            'password_auth' => static function (PDO $db): void {
+                PasswordAuthMigration::up($db);
             },
         ];
     }

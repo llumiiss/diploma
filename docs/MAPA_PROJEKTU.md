@@ -340,14 +340,16 @@ Szkic: `docs/Szkic pracy Litosh.pdf` (treść w `docs/generate_thesis_pdfs.py`).
 
 | Wymagany element | Szkic | Stan | Uwagi |
 |---|---|---|---|
-| Wstęp | rozdz. 1 | 🟡 | przepisać pod certyfikaty (dziś: subskrypcje i „zmęczenie subskrypcjami”) |
-| Ogólna charakterystyka problemu | 1.1–1.4 | 🟡 | j.w. |
-| Analiza istniejących rozwiązań | rozdz. 2 | 🟡 | dziś: Excel, aplikacje mobilne, ITSM, portale; dodać narzędzia do zarządzania cyklem życia certyfikatów (np. Keyfactor, DigiCert CertCentral) i portale polskich dostawców certyfikatów kwalifikowanych (np. Certum, KIR, EuroCert) |
-| Studium wykonalności (Java/Spring vs PHP) | brak osobnego punktu (jest tylko 5.1) | 🟡 | osobny podrozdział z kryteriami: dostępność na standardowym hostingu, koszt, wdrożenie, kompetencje |
-| Projekt ogólny i techniczny | rozdz. 3–5 | 🟡 | `docs/thesis_part1.md` rozdz. 2 nieaktualny — pisać po etapie 1 |
+| Wstęp | rozdz. 1 | ✅ | przepisane 2026-09-30 pod certyfikaty (beneficjent/płatnik); segment prywatny opisany jako pierwotna koncepcja wydzielona decyzją D1 |
+| Ogólna charakterystyka problemu | 1.1–1.4 | ✅ | j.w. |
+| Analiza istniejących rozwiązań | rozdz. 2 | ✅ | 2026-09-30: tabela porównawcza zastąpiona narzędziami Cert. LCM (Keyfactor Command, DigiCert Trust Lifecycle Manager, Sectigo) i polskimi centrami certyfikacji (Certum, KIR Szafir, EuroCert) |
+| Studium wykonalności (Java/Spring vs PHP) | 2.5 (nowy podrozdział) | ✅ | dodane 2026-09-30: kryteria — dostępność na hostingu, koszt, złożoność uruchomienia, kompetencje autora; wniosek PHP/LAMP |
+| Założenia projektowe (rozdz. 3) | 3.1–3.5 | ✅ | napisane 2026-09-30: cel i zakres (z wyjaśnieniem D1), F1–F19 jako wymagania funkcjonalne, N1–N6 jako niefunkcjonalne, role ADMIN/MANAGER/OPERATOR z D8, architektura warstwowa i proces odnowień; logowanie opisane jako hasło + weryfikacja e-mail (stan kodu po Etapie 9), nie OTP |
+| Projekt bazy danych (rozdz. 4) | 4.1–4.4 | ✅ | napisane 2026-09-30: model pojęciowy (11 encji), miejsce na diagram ERD (`figure_placeholder`, autor wkleja sam), struktura tabel `users/payers/beneficiaries/certificates/renewal_tasks/email_templates/attachments/invitations/events` z `database/schema.sql`, integralność (PDO, FK RESTRICT/SET NULL/CASCADE, archiwizacja, unikalne klucze, hashowanie haseł i tokenów, limity w bazie, migracje idempotentne) |
+| Projekt i implementacja aplikacji webowej (rozdz. 5) | brak | ❌ | do napisania: technologie, backend PHP, frontend Vue/Tailwind, dashboard i formularze, logowanie hasłem + e-mail; `docs/thesis_part1.md` rozdz. 2 nieaktualny |
 | **Dokumentacja użytkownika** | brak w spisie treści | 🟡 | szkic powstał jako `docs/INSTRUKCJA_OBSLUGI.md` (2026-09-16) — do rozdziału dodać zrzuty ekranu i podział na role |
 | Opis testów | rozdz. 7 | ❌ | są tylko tytuły |
-| Zakończenie, podsumowanie, kierunki rozwoju | rozdz. 8 | ❌ | w spisie są bibliografia i spisy, brak podsumowania i kierunków rozwoju |
+| Zakończenie, podsumowanie, kierunki rozwoju | rozdz. 8 | ❌ | w spisie są bibliografia i spisy, brak podsumowania i kierunków rozwoju; tu wymienić aplikację prywatną „Menedżer Subskrypcji” jako powiązany projekt |
 
 Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane osobowe beneficjentów.
 
@@ -355,7 +357,7 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 
 ## 10. Stan środowiska (zweryfikowany 2026-09-18)
 
-- **Testy:** 153 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 72 zaliczone + 81 pominiętych), w tym scenariusz E2E przez warstwę API i testy cache. Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
+- **Testy:** 183 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 102 zaliczone + 81 pominiętych), w tym scenariusz E2E przez warstwę API i testy cache. Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
 - **PHPStan (poziom 5):** bez uwag — jedyna znana uwaga dotyczyła `cron/send_reminders.php`, usuniętego razem z panelem prywatnym (Etap 8); analizowane są także pliki wejściowe z katalogu głównego.
 - **PHP-CS-Fixer:** `composer cs` bez uwag (0 ze 135 plików) po normalizacji końców linii i poprawkach stylu w Etapie 6 (§5 pkt 19).
 - **Baza `assistent_subscriptions`:** 14 tabel, migracje `login_otp`, `certificates_model`, `accounts_and_ownership`, `renewal_process`, `otp_rate_limit`, `split_personal_app`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 130 kolumn, 58 pozycji indeksów, 20 kluczy obcych).
@@ -584,6 +586,134 @@ Commit: `51662d7`, gałąź `etap-8-rozdzielenie-aplikacji`, scalona na `master`
 Aplikacja prywatna ma własne repozytorium (`menedzer_subskrypcji`, pierwszy commit `4b44479`).
 
 **Plan z §7 jest wykonany w całości (Etapy 0–8).**
+
+---
+
+### Etap 9 — logowanie hasłem z potwierdzeniem adresu e-mail (2026-09-30)
+
+Zmiana schematu uwierzytelniania na życzenie autora: z logowania bezhasłowego (jednorazowy kod OTP
+w e-mailu) na **e-mail + hasło z potwierdzeniem adresu linkiem**, przy wysyłce wiadomości przez
+SMTP z autoryzacją **OAuth2 (XOAUTH2)** zamiast hasła do skrzynki.
+
+**Model danych** (`PasswordAuthMigration`, migracja `password_auth`, idempotentna):
+- `users.password_hash` (NULL = konto bez hasła), `users.email_verified_at` (NULL = konto nieaktywne),
+  `users.last_login_at` (wcześniej liczone z `login_otps`), indeks `idx_users_verified`;
+- nowa tabela `email_verifications`: jednorazowe tokeny `EMAIL_VERIFY` i `PASSWORD_SET` — w bazie
+  wyłącznie skrót SHA-256 (`token_hash`, klucz unikalny), `expires_at`, `used_at`, `request_ip`, FK CASCADE;
+- nowa tabela `login_attempts`: historia prób logowania jako podstawa limitu (bez FK — zapisujemy
+  też próby na adresy, których nie ma w `users`);
+- konta sprzed migracji zostają potwierdzone (odbierały kody na ten adres), ale **bez hasła** —
+  ustawiają je linkiem z wiadomości albo `scripts/set-password.php`;
+- `login_otps` zostaje jako historia logowań sprzed zmiany; aplikacja z niej nie korzysta.
+
+**Kod**: `classes/Auth/` (`PasswordPolicy` — min. 10 znaków wg NIST SP 800-63B, `VerificationTokens` —
+wystawianie/zużywanie tokenów, `LoginThrottle` — 5 prób na adres i 20 na IP w 15 minut),
+`classes/Mail/OAuth2TokenProvider` (implementuje `PHPMailer\PHPMailer\OAuthTokenProvider`: wymiana
+`refresh_token` → `access_token`, cache w `storage/cache/oauth2`, bez nowych zależności Composera),
+`AuthManager` przepisany (`register`, `verifyEmail`, `resendVerification`, `attemptLogin`,
+`requestPasswordSetLink`, `setPasswordWithToken`), `AuthMailer` + `EmailService` (wiadomości HTML
+z przyciskiem), `AppUrl` (bezwzględne linki z konfiguracji, nie z nagłówka `Host`),
+`config/auth.php` (przełącznik rejestracji publicznej — D3 do wyboru), nowe strony `register.php`,
+`verify-email.php`, `set-password.php`, przebudowane `login.php` i wspólna oprawa `includes/auth_layout.php`,
+akcja API `accounts.send_password_link` + przycisk w widoku „Konta”.
+
+**Bezpieczeństwo**: hasła tylko jako skrót `password_hash()` z automatycznym przeliczeniem przy
+zmianie kosztu; jednakowy komunikat dla złego hasła i nieznanego adresu (plus porównanie na
+sztucznym skrócie, żeby czas odpowiedzi nie zdradzał istnienia konta); rejestracja na zajęty adres
+nie rusza cudzego konta i nie wysyła wiadomości; limity wysyłek (3/adres, 10/IP na 15 minut) i prób
+logowania liczone w bazie; tokeny jednorazowe, zahaszowane, z terminem ważności; wyłączenie konta
+unieważnia jego tokeny; pomyłka w haśle nie zużywa linku „ustaw hasło”.
+
+**Poprawki wykryte podczas sprawdzania na działającej aplikacji**:
+- druga rejestracja na adres, którego jeszcze nie potwierdzono, wysyła link ponownie (wcześniej
+  odpowiedź była neutralna i nic nie wychodziło, więc po nieudanej wysyłce adres był zablokowany);
+  dane konta z pierwszej rejestracji nie są nadpisywane;
+- odmowa z powodu niepotwierdzonego adresu albo wyłączonego konta **nie liczy się** do limitu prób —
+  hasło było poprawne, więc to nie zgadywanie (wcześniej kilka prób przed potwierdzeniem blokowało konto);
+- ustawienie nowego hasła zeruje licznik nieudanych prób, bo tak brzmi komunikat o blokadzie.
+
+**Jakość**: 183/183 testy zielone z włączonymi integracyjnymi (nowe: `AuthManagerTest` — 27
+przypadków, `PasswordPolicyTest`, `OAuth2TokenProviderTest`, rozszerzony `MailConfigTest`),
+PHPStan level 5 bez błędów, PHP-CS-Fixer 0/146. Migracja `password_auth` wykonana na bazie
+`assistent_subscriptions` (kopia przed migracją: `mysqldump`, 14 tabel); porównanie
+`information_schema` bazy aplikacji z bazą testową zbudowaną z `database/schema.sql` + migracje:
+**147 kolumn / 85 wpisów indeksów / 21 kluczy obcych — identyczne**. `last_login_at` przeniesione
+z `login_otps` (2 konta z historią logowań).
+
+**Sprawdzenie na działającej aplikacji (Apache + MySQL, konta testowe usunięte po testach)**:
+rejestracja przez formularz → blokada logowania przed potwierdzeniem → link potwierdzający (302 na
+`login.php?verified=1`) → ten sam link drugi raz „już użyty” → logowanie (302 na pulpit) → pulpit i
+`api/dashboard.php` z sesją → wylogowanie → 5 nieudanych prób i blokada na szóstej → jednakowy
+komunikat dla nieistniejącego adresu → POST bez tokenu CSRF odrzucony → `set-password.php`: złe
+hasło nie zużywa linku, poprawne loguje od razu, link jednorazowy → ADMIN zakłada konto przez
+`api/accounts.php` i wychodzi link „ustaw hasło” (`password_link_sent: true`), ponowna wysyłka
+unieważnia poprzedni token → `config/auth.php`, `storage/cache/oauth2`, `classes/`, `logs/` zwracają
+403 po HTTP.
+
+**Zostaje do zrobienia przez autora**: konta sprzed migracji nie mają hasła — ustawić je
+(`php scripts/set-password.php --email=… --send-link` albo `--password='…'`) oraz uzupełnić dane
+OAuth2 w `config/mail.local.php` (`php scripts/oauth2-token.php`), jeśli wiadomości mają wychodzić
+na prawdziwe adresy; teraz sterownik to `sandbox` (Mailtrap).
+
+### Część pisemna — poprawki rozdz. 1–2 i nowy rozdz. 3 (2026-09-30)
+
+Na wyraźną prośbę autora poprawiono `docs/generate_thesis_pdfs.py` (źródło
+`docs/Szkic pracy Litosh.pdf`) i zregenerowano oba PDF-y (`docs/` i `Downloads/`):
+
+- **Rozdz. 1–2 poprawione pod Załącznik A** (§ poniżej): usunięto ramowanie „subskrypcje
+  prywatne / zmęczenie subskrypcjami” jako rdzeń projektu; 1.2 i 3.1 opisują to teraz jako
+  pierwotną koncepcję wydzieloną decyzją D1 do osobnej aplikacji „Menedżer Subskrypcji”;
+  2.2 — tabela porównawcza zastąpiona narzędziami klasy Cert. LCM (Keyfactor, DigiCert,
+  Sectigo) i polskimi centrami certyfikacji kwalifikowanej (Certum, KIR Szafir, EuroCert)
+  zamiast aplikacji mobilnych do budżetu domowego.
+- **Nowy podrozdział 2.5 „Studium wykonalności: PHP/LAMP a Java/Spring Boot”** — Załącznik A
+  wprost wymaga studium wykonalności przed wyborem technologii („Przewiduje się że
+  narzędziem realizacji będzie Java i Spring… po studium wykonalności zostanie wyłonione
+  narzędzie programistyczne”); dawne 2.5 „Wnioski” przesunięte na 2.6.
+- **Rozdział 3 „Założenia projektowe aplikacji” napisany w całości** (3.1–3.5): cel i zakres
+  (z wyjaśnieniem D1), wymagania funkcjonalne wprost z macierzy F1–F19 (§3.1), niefunkcjonalne
+  z N1–N6 (§3.2), role ADMIN/MANAGER/OPERATOR z zakresem D8, architektura warstwowa
+  (prezentacja/HTTP/usługi/dane) i przebieg procesu odnowień.
+- ToC rozdziału 6 zmieniony z „Moduł powiadomień i menedżera subskrypcji” na „Moduł zadań,
+  zaproszeń i przypomnień e-mail” (6.1–6.4) — stara nazwa opisywała funkcję, która od Etapu 8
+  jest osobną aplikacją.
+- Naprawiono błąd w generatorze: własna tabela wielokomórkowa (`multi_cell` w pętli) w 2.5
+  gubiła wyrównanie wierszy przy przełamaniu strony; zastąpiona bezpieczną listą
+  podpunktów (ten sam wzorzec co reszta dokumentu).
+- Stan części pisemnej wg §9: z ok. 25% (rozdz. 1–2 z 8) do ok. 40% (rozdz. 1–3 z 8,
+  licząc podrozdziałami). Pozostają rozdziały 4–8 (baza danych, implementacja, moduł
+  zadań/zaproszeń, testy, zakończenie) — nie napisane, bo wymagają zrzutów ekranu i
+  szczegółów implementacyjnych z kodu, których nie dotyczyła ta prośba.
+
+### Część pisemna — logowanie hasłem zamiast OTP i nowy rozdz. 4 (2026-09-30, później tego samego dnia)
+
+Autor poprosił o dociągnięcie do 40% bez zdjęć (z miejscem na wklejenie własnych
+zrzutów ekranu). Przy okazji ujawniła się niespójność: rozdz. 1–3 opisywały logowanie
+kodem OTP (zgodnie z `CLAUDE.md` i Załącznikiem A), a kod ma od Etapu 9 (niescalony,
+opisany wyżej w tym dzienniku) logowanie hasłem z weryfikacją e-mail. Zapytany, autor
+wybrał opisanie **stanu aktualnego kodu** (hasło + e-mail), a nie stanu z Załącznika A:
+
+- Wszystkie wzmianki o „logowaniu OTP / bez hasła / passwordless” w `docs/Szkic pracy
+  Litosh.pdf` zastąpiono opisem logowania hasłem (polityka NIST SP 800-63B) z
+  jednorazowym, haszowanym tokenem e-mail do potwierdzenia adresu i ustawienia hasła
+  (1.4, 2.3.4, tabela 2.2, 3.2, 3.4, ToC 5.5 i 7.3). **Nie dotyczy** `docs/założenia i
+  daty Litosh.pdf` — to osobny, wcześniej zatwierdzony dokument, którego treści ta
+  prośba nie obejmowała.
+- Przy okazji poprawiono 2.3.3: dashboard opisany jako Vue.js z CDN — nieaktualne od
+  Etapu 6 (frontend bez CDN, Vue w repozytorium).
+- Dodano metodę `ThesisPDF.figure_placeholder()` — szare obramowanie z podpisem
+  „[miejsce na rysunek — …]”, automatycznie łamie stronę, jeśli nie ma miejsca. Autor
+  wklei zrzuty/diagramy sam.
+- **Rozdział 4 „Projekt bazy danych” napisany w całości** (4.1–4.4): model pojęciowy
+  (11 encji i ich relacje), 4.2 z placeholderem na diagram ERD, struktura tabel
+  `users/payers/beneficiaries/certificates/renewal_tasks/email_templates/attachments/
+  invitations/events` opisana wprost z `database/schema.sql` (typy, klucze unikalne,
+  klucze obce z regułami `ON DELETE`), integralność i bezpieczeństwo (PDO, wybór
+  RESTRICT/SET NULL/CASCADE, archiwizacja, unikalne klucze jako reguły biznesowe w
+  bazie, hashowanie haseł i tokenów, limity w bazie, migracje idempotentne).
+- Stan części pisemnej wg §9: rozdz. 1–4 z 8 napisane (ok. 51% licząc podrozdziałami,
+  ponad prośbę „do 40%” — rozdział 4 to spójna całość, nie zatrzymano się w połowie).
+  Pozostają rozdziały 5–8.
 
 ---
 
