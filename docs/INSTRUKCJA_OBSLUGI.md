@@ -151,9 +151,35 @@ Aplikacja sama wymienia `refresh_token` na krótkotrwały `access_token` (ważny
 go w `storage/cache/oauth2` — katalog jest niedostępny z przeglądarki. Microsoft 365 działa tak samo
 po ustawieniu `'provider' => 'microsoft'`, `'host' => 'smtp.office365.com'` i `tenant_id`.
 
-**Na pokaz bez konfiguracji OAuth2**: `'driver' => 'log'` zapisuje całe wiadomości (razem z linkami)
-do `logs/mail.log` — wystarczy skopiować link z pliku do przeglądarki. Sterownik `sandbox` kieruje
-wiadomości do skrzynki Mailtrap (mailtrap.io → Email Testing → Inboxes), a nie na prawdziwy adres.
+### Co jest ustawione teraz: Mailtrap Sandbox
+
+`config/mail.local.php` (plik z sekretami, poza repozytorium) ma `'driver' => 'sandbox'`, więc
+wszystkie wiadomości aplikacji trafiają do skrzynki **Mailtrap „diploma”** — mailtrap.io → Email
+Testing → Inboxes. Do prawdziwych skrzynek (Gmail, Outlook) Sandbox **nie** dostarcza; taki jest
+sens piaskownicy i dlatego można nią bezpiecznie pokazywać rejestrację na dowolny adres.
+
+Link z wiadomości można wziąć bez otwierania przeglądarki:
+
+```
+php scripts/mailtrap-inbox.php                    # ostatnie wiadomości: kto, kiedy, temat
+php scripts/mailtrap-inbox.php --link             # link z najnowszej wiadomości
+php scripts/mailtrap-inbox.php --link=ktos@x.pl   # link z najnowszej wiadomości do tego adresu
+php scripts/mailtrap-inbox.php --show=<ID>        # treść wskazanej wiadomości
+```
+
+Na pokazie wygląda to tak: rejestracja w przeglądarce → `php scripts/mailtrap-inbox.php --link` →
+wklejenie adresu w przeglądarkę → konto potwierdzone → logowanie hasłem.
+
+**Ograniczenie darmowego planu Mailtrapa: jedna wiadomość na sekundę.** Druga wysłana zaraz po
+pierwszej wraca z odpowiedzią `550 5.7.0 Too many emails per second`. Aplikacja ponawia taką
+wysyłkę raz po dwóch sekundach (`App\Mailer`), ale przy serii wiadomości — na przykład
+przypomnieniach z crona — część i tak zostanie odrzucona. Każda nieudana wysyłka ląduje w
+`logs/mail-errors.log` razem z powodem, więc widać, czy to limit, złe hasło SMTP, czy coś innego.
+Skrzynka Sandbox trzyma 10 ostatnich wiadomości; starsze same z niej wypadają, a „Delete all”
+w Mailtrapie czyści ją od razu.
+
+**Bez internetu i bez SMTP**: `'driver' => 'log'` zapisuje całe wiadomości (razem z linkami) do
+`logs/mail.log` — wystarczy skopiować link z pliku do przeglądarki.
 
 ---
 
@@ -472,8 +498,9 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 | `php scripts/set-password.php --email=… --password='…'` | ustawia hasło wprost (awaryjnie, np. pierwsze konto ADMIN po migracji) |
 | `php scripts/oauth2-token.php --client-id=… --client-secret=…` | zdobywa `refresh_token` do wysyłki poczty przez OAuth2 (jednorazowo) |
 | `php scripts/test-mail.php adres@example.com` | test konfiguracji poczty |
+| `php scripts/mailtrap-inbox.php [--link[=adres]] [--show=ID]` | podgląd skrzynki Mailtrap z terminala: lista wiadomości, link z najnowszej, treść wskazanej |
 | `php cron/renewals.php` | skaner odnowień i zaległe przypomnienia o zaproszeniach (codziennie) |
-| `composer test` | 183 testy (w tym scenariusz E2E przez API); 81 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
+| `composer test` | 187 testów (w tym scenariusz E2E przez API); 81 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
 | `npm install && npm run css` | przebudowanie arkusza stylów `assets/css/app.css` po zmianie klas Tailwinda (potrzebne tylko przy zmianach w interfejsie) |
 | `composer stan` | analiza statyczna (PHPStan) |
 

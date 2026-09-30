@@ -357,7 +357,7 @@ Zalecane (nie wprost w opisie): krótki punkt o RODO — system przechowuje dane
 
 ## 10. Stan środowiska (zweryfikowany 2026-09-18)
 
-- **Testy:** 183 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 102 zaliczone + 81 pominiętych), w tym scenariusz E2E przez warstwę API i testy cache. Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
+- **Testy:** 187 — wszystkie zaliczone z `RUN_INTEGRATION_TESTS=1` (bez flagi 106 zaliczonych + 81 pominiętych), w tym scenariusz E2E przez warstwę API i testy cache. Testy integracyjne tworzą od zera osobną bazę `assistent_subscriptions_test` (schema.sql + migracje) i nie dotykają bazy aplikacji; wysyłkę poczty zastępuje w nich rejestrujący zamiennik. Przed Etapem 0 było 11 testów.
 - **PHPStan (poziom 5):** bez uwag — jedyna znana uwaga dotyczyła `cron/send_reminders.php`, usuniętego razem z panelem prywatnym (Etap 8); analizowane są także pliki wejściowe z katalogu głównego.
 - **PHP-CS-Fixer:** `composer cs` bez uwag (0 ze 135 plików) po normalizacji końców linii i poprawkach stylu w Etapie 6 (§5 pkt 19).
 - **Baza `assistent_subscriptions`:** 14 tabel, migracje `login_otp`, `certificates_model`, `accounts_and_ownership`, `renewal_process`, `otp_rate_limit`, `split_personal_app`. Struktura po migracji identyczna ze świeżą instalacją z `database/schema.sql` (porównanie `information_schema`: 130 kolumn, 58 pozycji indeksów, 20 kluczy obcych).
@@ -632,8 +632,9 @@ unieważnia jego tokeny; pomyłka w haśle nie zużywa linku „ustaw hasło”.
   hasło było poprawne, więc to nie zgadywanie (wcześniej kilka prób przed potwierdzeniem blokowało konto);
 - ustawienie nowego hasła zeruje licznik nieudanych prób, bo tak brzmi komunikat o blokadzie.
 
-**Jakość**: 183/183 testy zielone z włączonymi integracyjnymi (nowe: `AuthManagerTest` — 27
-przypadków, `PasswordPolicyTest`, `OAuth2TokenProviderTest`, rozszerzony `MailConfigTest`),
+**Jakość**: 187/187 testów zielonych z włączonymi integracyjnymi (nowe: `AuthManagerTest` — 30
+przypadków, `PasswordPolicyTest`, `OAuth2TokenProviderTest`, `MailerRateLimitTest`, rozszerzony
+`MailConfigTest`),
 PHPStan level 5 bez błędów, PHP-CS-Fixer 0/146. Migracja `password_auth` wykonana na bazie
 `assistent_subscriptions` (kopia przed migracją: `mysqldump`, 14 tabel); porównanie
 `information_schema` bazy aplikacji z bazą testową zbudowaną z `database/schema.sql` + migracje:
@@ -650,10 +651,30 @@ hasło nie zużywa linku, poprawne loguje od razu, link jednorazowy → ADMIN za
 unieważnia poprzedni token → `config/auth.php`, `storage/cache/oauth2`, `classes/`, `logs/` zwracają
 403 po HTTP.
 
+**Poczta w środowisku autora (2026-09-30)**: `config/mail.local.php` uzupełniony danymi skrzynki
+Mailtrap „diploma” (sterownik `sandbox`, dane pobrane z API Mailtrapa, plik jest poza repozytorium);
+`app_url` ustawiony na `http://localhost/assistent_subscription`, żeby linki w wiadomościach nie
+zależały od nagłówka `Host`. Nowy `scripts/mailtrap-inbox.php` czyta skrzynkę z terminala (lista
+wiadomości, link z najnowszej, treść wskazanej) — na pokazie zastępuje otwieranie mailtrap.io.
+Cały przepływ sprawdzony z prawdziwą wysyłką: rejestracja → link **wzięty ze skrzynki** →
+potwierdzenie → logowanie → „nie pamiętam hasła” → link ze skrzynki → nowe hasło → logowanie
+(stare hasło odrzucone); konta testowe usunięte z bazy.
+
+Przy okazji wyszły dwie rzeczy warte poprawy i poprawione:
+- darmowy plan Mailtrapa przyjmuje **jedną wiadomość na sekundę** (`550 5.7.0 Too many emails per
+  second`), więc druga wysyłka w tej samej sekundzie przepadała — `App\Mailer` rozpoznaje teraz tę
+  odmowę (i jej odpowiedniki u Gmaila i Outlooka), zamyka połączenie SMTP i ponawia wysyłkę raz po
+  dwóch sekundach; ponawiamy wyłącznie ten błąd, bo serwer odrzuca wiadomość przed przyjęciem,
+  więc nie grozi to duplikatem (test: `MailerRateLimitTest`);
+- nieudana wysyłka jest **zawsze** zapisywana w `logs/mail-errors.log` razem z odpowiedzią serwera
+  (`PHPMailer::ErrorInfo`, nie samo „data not accepted”). Wcześniej przepływy z neutralną
+  odpowiedzią („nie pamiętam hasła”, ponowna wysyłka linku) gubiły błąd po cichu, bo nie mogą go
+  pokazać użytkownikowi — administrator nie miał jak zauważyć awarii poczty.
+
 **Zostaje do zrobienia przez autora**: konta sprzed migracji nie mają hasła — ustawić je
-(`php scripts/set-password.php --email=… --send-link` albo `--password='…'`) oraz uzupełnić dane
-OAuth2 w `config/mail.local.php` (`php scripts/oauth2-token.php`), jeśli wiadomości mają wychodzić
-na prawdziwe adresy; teraz sterownik to `sandbox` (Mailtrap).
+(`php scripts/set-password.php --email=… --send-link` albo `--password='…'`); do wysyłki na
+prawdziwe adresy uzupełnić blok `oauth2` w `config/mail.local.php` (`php scripts/oauth2-token.php`)
+i przełączyć `driver` na `oauth2`.
 
 ### Część pisemna — poprawki rozdz. 1–2 i nowy rozdz. 3 (2026-09-30)
 

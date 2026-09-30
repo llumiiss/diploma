@@ -66,6 +66,12 @@ final class EmailService implements AuthMailer
 
             return true;
         } catch (\Throwable $e) {
+            // Nieudana wysyłka trafia do logu ZAWSZE. Część przepływów („nie pamiętam hasła”,
+            // ponowna wysyłka linku) odpowiada tak samo niezależnie od wyniku, żeby nie zdradzać
+            // istnienia konta — bez tego zapisu awaria poczty byłaby niewidoczna także dla
+            // administratora. W logu jest powód odmowy, ale nie ma linku.
+            $this->logFailure($toEmail, $subject, $e->getMessage());
+
             if (MailConfig::shouldLogOtpCodes()) {
                 $this->logLinkForDev($toEmail, $link, $e->getMessage());
 
@@ -116,21 +122,50 @@ final class EmailService implements AuthMailer
         return $this->mailer ??= new Mailer();
     }
 
+    /**
+     * Zapis awarii wysyłki: kto, co i dlaczego się nie udało — bez samego linku,
+     * bo link wpuszcza do systemu, a ten plik czyta się przy diagnozie poczty.
+     */
+    private function logFailure(string $toEmail, string $subject, string $error): void
+    {
+        $this->appendToLog('mail-errors.log', sprintf(
+            "[%s] mail_failed to=%s subject=%s driver=%s error=%s\n",
+            date('Y-m-d H:i:s'),
+            $toEmail,
+            $subject,
+            MailConfig::driver(),
+            self::oneLine($error)
+        ));
+    }
+
+    /**
+     * Awaryjne wyjście dla pracy lokalnej (dev_log_codes): link zapisany w pliku,
+     * gdy nie ma działającego SMTP. Nigdy w produkcji — plik wpuszcza do systemu.
+     */
     private function logLinkForDev(string $toEmail, string $link, string $error): void
     {
-        $logDir = dirname(__DIR__) . '/logs';
-        if (!is_dir($logDir)) {
-            @mkdir($logDir, 0755, true);
-        }
-
-        $line = sprintf(
+        $this->appendToLog('auth-links.log', sprintf(
             "[%s] mail_failed → %s link=%s error=%s\n",
             date('Y-m-d H:i:s'),
             $toEmail,
             $link,
-            $error
-        );
+            self::oneLine($error)
+        ));
+    }
 
-        @file_put_contents($logDir . '/auth-links.log', $line, FILE_APPEND | LOCK_EX);
+    private function appendToLog(string $file, string $line): void
+    {
+        $logDir = dirname(__DIR__) . '/logs';
+
+        if (!is_dir($logDir) && !@mkdir($logDir, 0755, true) && !is_dir($logDir)) {
+            return;
+        }
+
+        @file_put_contents($logDir . '/' . $file, $line, FILE_APPEND | LOCK_EX);
+    }
+
+    private static function oneLine(string $text): string
+    {
+        return trim((string) preg_replace('/\s+/', ' ', $text));
     }
 }

@@ -42,6 +42,19 @@ declare(strict_types=1);
  * 'driver' => 'smtp',
  * 'smtp' => ['host' => 'smtp.gmail.com', 'port' => 587, 'username' => 'twoj@gmail.com', 'password' => 'xxxx xxxx xxxx xxxx'],
  *
+ * === PODGLĄD SKRZYNKI MAILTRAP Z TERMINALA (opcjonalnie) ===
+ * Token API (mailtrap.io → Settings → API Tokens) pozwala czytać skrzynkę skryptem
+ * scripts/mailtrap-inbox.php — do wysyłki nie jest potrzebny, wystarczy SMTP wyżej.
+ *
+ * 'mailtrap' => [
+ *     'api_token'  => '...',
+ *     'account_id' => 0,        // widać w adresie: mailtrap.io/accounts/<account_id>/...
+ *     'inbox_id'   => 0,        // ...inboxes/<inbox_id>/messages
+ * ],
+ *
+ * Uwaga: darmowy plan przyjmuje jedną wiadomość na sekundę — serie wysyłek (przypomnienia
+ * z crona) będą częściowo odrzucane, powody znajdziesz w logs/mail-errors.log.
+ *
  * === DEMO WITHOUT SMTP ===
  * 'driver' => 'log',        // treść wiadomości (z linkiem) trafia do logs/mail.log
  */

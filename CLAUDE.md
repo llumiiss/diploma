@@ -20,7 +20,7 @@ Status (2026-09-30): **all stages of the plan (Etapy 0–8) are done, plus Etap 
 
 ## Commands
 ```
-composer test                                    # PHPUnit 11 — 183 tests; the 81 integration tests skip without the flag below
+composer test                                    # PHPUnit 11 — 187 tests; the 81 integration tests skip without the flag below
 $env:RUN_INTEGRATION_TESTS=1; composer test      # + integration tests on a throwaway DB assistent_subscriptions_test (recreated each run)
 composer stan                                    # PHPStan level 5 (see phpstan.neon)
 composer cs                                      # PHP-CS-Fixer dry-run (diff only)
@@ -33,13 +33,14 @@ php scripts/set-password.php --email=a@b.pl --send-link       # e-mail a one-tim
 php scripts/set-password.php --email=a@b.pl --password='...'  # set a password directly (emergency)
 php scripts/oauth2-token.php --client-id=... --client-secret=...   # one-off: OAuth2 refresh token for mail
 php scripts/test-mail.php you@example.com        # mail smoke test
+php scripts/mailtrap-inbox.php --link            # read the Mailtrap sandbox inbox from the terminal (needs the 'mailtrap' block in config/mail.local.php)
 php cron/renewals.php                            # daily: renewal scanner + due invitation reminders (logs/renewals.log)
 npm install && npm run css                       # rebuild assets/css/app.css after changing Tailwind classes (the built file is committed)
 ```
-Mail driver `log` (in `config/mail.local.php`) writes messages to `logs/mail.log` instead of sending — use it for demos; never let an agent send real invitations while testing (tests use `Tests\Support\RecordingInvitationMailer`).
+Mail: the author's `config/mail.local.php` (gitignored) is set to driver `sandbox` — everything goes to their Mailtrap inbox "diploma" and never to a real address; read it with `scripts/mailtrap-inbox.php`. The free Mailtrap plan accepts **one message per second** (`550 5.7.0 Too many emails per second`); `App\Mailer` retries such a rejection once after 2 s, and every failed send is logged with its SMTP reason to `logs/mail-errors.log`. Driver `log` writes messages to `logs/mail.log` instead of sending — use it for demos; never let an agent send real invitations while testing (tests use `Tests\Support\RecordingInvitationMailer`).
 **Never run `php scripts/migrate.php --fresh` against the user's database** — it drops every table. Take a `mysqldump` of `assistent_subscriptions` before applying a new schema migration.
 
-Quality baseline (2026-09-30, after Etap 9): 183/183 tests pass with integration enabled, PHPStan reports no errors, the `password_auth` migration is applied to `assistent_subscriptions` and `information_schema` of the app DB matches the test DB built from `schema.sql` (147 columns / 85 index entries / 21 foreign keys); the whole auth flow was also checked over HTTP on Apache (register → block before confirmation → verification link → sign-in → dashboard → logout → rate limit → CSRF → 403 on internal paths); PHPStan reports no errors (the one known note lived in `cron/send_reminders.php`, deleted with the personal module). `composer cs` is clean (0 of 135 files) — `.gitattributes` keeps the working tree on LF, so keep it that way and run `composer cs-fix` in its own commit when it reports something.
+Quality baseline (2026-09-30, after Etap 9): 187/187 tests pass with integration enabled, PHPStan level 5 reports no errors, `composer cs` is clean (0 of 148 files). The `password_auth` migration is applied to `assistent_subscriptions`, and `information_schema` of the app DB matches the test DB built from `schema.sql` + migrations (147 columns / 85 index entries / 21 foreign keys). The whole auth flow was also exercised over HTTP on Apache with real Mailtrap delivery: register → blocked before confirmation → link taken from the inbox → sign-in → dashboard → logout → login rate limit → CSRF → "forgot password" → new password → old password rejected; 403 on internal paths. `.gitattributes` keeps the working tree on LF, so keep it that way and run `composer cs-fix` in its own commit when it reports something.
 
 ## Authentication (Etap 9, 2026-09-30)
 Email + password with e-mail verification; mail goes over SMTP with OAuth2 (XOAUTH2). `AuthManager` drives `register` -> `verifyEmail` -> `attemptLogin`, plus `requestPasswordSetLink` / `setPasswordWithToken` (admin-created accounts and "forgot password"). Helpers: `classes/Auth/` (`PasswordPolicy`, `VerificationTokens`, `LoginThrottle`) and `classes/Mail/OAuth2TokenProvider` (implements PHPMailer's `OAuthTokenProvider`, refresh-token grant, token cache in `storage/cache/oauth2`, no new Composer packages). Rules to keep: passwords only as `password_hash()` digests; one message for wrong password and unknown e-mail; registration on a taken address changes nothing and sends nothing; tokens stored as SHA-256, single-use, with an expiry; links built with `AppUrl` (config first, never a bare `Host` header). Public registration is a switch in `config/auth.php` (decision D3). The OTP flow is gone from the code; `login_otps` stays as history.
