@@ -16,6 +16,12 @@ Choć opis pracy wskazywał wstępnie Javę ze Spring jako narzędzie realizacji
 
 Pełna dokumentacja procesu powstawania projektu — oficjalny opis pracy, macierz wymagań, model danych, plan etapów i dziennik zmian — znajduje się w [`docs/MAPA_PROJEKTU.md`](docs/MAPA_PROJEKTU.md). Instrukcja obsługi i scenariusz demonstracyjny: [`docs/INSTRUKCJA_OBSLUGI.md`](docs/INSTRUKCJA_OBSLUGI.md).
 
+## Wersja demonstracyjna (online)
+
+Aplikacja działa też jako publiczny link, bez uruchamiania czegokolwiek lokalnie — wystarczy przeglądarka na dowolnym urządzeniu. Instrukcja wdrożenia na darmowy hosting PHP+MySQL: [`docs/DEPLOY_INFINITYFREE.md`](docs/DEPLOY_INFINITYFREE.md).
+
+<!-- Po wdrożeniu: **Demo:** https://twoja-domena/ -->
+
 ## Stack technologiczny
 
 - **Backend:** PHP 8.1+ (rozwijane na 8.3), architektura bez frameworka — własna warstwa usług (`App\Service`) i kontroler HTTP (`App\Http\ApiKernel`), PDO z natywnymi zapytaniami przygotowanymi (prepared statements)

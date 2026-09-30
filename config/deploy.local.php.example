@@ -1,0 +1,16 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Sekrety dla jednorazowych narzędzi wdrożeniowych (deploy-migrate.php, deploy-cron.php)
+ * używanych na hostingu bez dostępu SSH/CLI. Skopiuj do deploy.local.php (gitignored)
+ * i wstaw własne, długie, losowe tokeny — bez nich nikt obcy nie uruchomi tych skryptów.
+ *
+ * Wygenerować token lokalnie:
+ *   php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+ */
+return [
+    'migrate_token' => 'CHANGE_ME',
+    'cron_token' => 'CHANGE_ME',
+];
