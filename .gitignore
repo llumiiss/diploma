@@ -2,6 +2,7 @@
 /logs/*.log
 !.gitkeep
 /config/mail.local.php
+/config/deploy.local.php
 /phpunit.xml
 .phpunit.result.cache
 
