@@ -118,7 +118,10 @@
                                     </div>
                                     <div class="text-xs text-slate-500">{{ account.email }}</div>
                                 </td>
-                                <td class="td"><span :class="['badge', badge.role(account.role)]">{{ labels.role(account.role) }}</span></td>
+                                <td class="td">
+                                    <span :class="['badge', badge.role(account.role)]">{{ labels.role(account.role) }}</span>
+                                    <div v-if="account.beneficiary_name" class="text-xs text-slate-500 mt-1">{{ t('account.linked_person') }}: {{ account.beneficiary_name }}</div>
+                                </td>
                                 <td class="td">
                                     <span v-if="account.active" class="badge bg-emerald-100 text-emerald-800">{{ t('account.active') }}</span>
                                     <span v-else class="badge bg-slate-200 text-slate-600" :title="format.dateTime(account.deactivated_at)">{{ t('account.inactive') }}</span>
@@ -156,7 +159,9 @@
                     last_name: account.last_name || '',
                     email: account.email || '',
                     role: account.role || 'OPERATOR',
+                    beneficiary_id: account.beneficiary_id ? String(account.beneficiary_id) : '',
                 },
+                store: CertiSub.store,
                 saving: false,
                 errors: {},
                 message: '',
@@ -166,6 +171,15 @@
             isEdit() {
                 return this.account !== null;
             },
+            isEmployee() {
+                return this.form.role === 'EMPLOYEE';
+            },
+            people() {
+                return this.store.beneficiaries.items;
+            },
+        },
+        mounted() {
+            CertiSub.data.beneficiaries();
         },
         methods: {
             async submit() {
@@ -206,6 +220,12 @@
                     <FormField class="sm:col-span-2" :label="t('field.role')" :error="errors.role" required>
                         <select v-model="form.role" :class="['input', errors.role ? 'input-error' : '']">
                             <option v-for="role in labels.roles" :key="role" :value="role">{{ labels.role(role) }} — {{ t('account.role_hint.' + role.toLowerCase()) }}</option>
+                        </select>
+                    </FormField>
+                    <FormField v-if="isEmployee" class="sm:col-span-2" :label="t('account.linked_person')" :error="errors.beneficiary_id" :hint="t('account.hint.linked_person')">
+                        <select v-model="form.beneficiary_id" :class="['input', errors.beneficiary_id ? 'input-error' : '']">
+                            <option value="">{{ t('account.no_linked_person') }}</option>
+                            <option v-for="person in people" :key="person.id" :value="String(person.id)">{{ person.last_name }} {{ person.first_name }}{{ person.payer_name ? ' — ' + person.payer_name : '' }}</option>
                         </select>
                     </FormField>
                 </form>

@@ -18,6 +18,15 @@ final class Actor
         public readonly string $firstName = '',
         public readonly string $lastName = '',
         public readonly string $email = '',
+        /** Użytkownik certyfikatu powiązany z kontem (rola EMPLOYEE widzi jego certyfikaty jako własne). */
+        public readonly ?int $beneficiaryId = null,
+        /**
+         * Filtr firm z ustawień konta (Etap 10): null = wszystkie firmy, lista = tylko wybrane.
+         * Zawęża listy i wskaźniki (Visibility::companyFilter), nie zmienia uprawnień do rekordów.
+         *
+         * @var list<int>|null
+         */
+        public readonly ?array $companyIds = null,
     ) {
     }
 
@@ -32,6 +41,25 @@ final class Actor
             (string) ($user['first_name'] ?? ''),
             (string) ($user['last_name'] ?? ''),
             (string) ($user['email'] ?? ''),
+            isset($user['beneficiary_id']) ? (int) $user['beneficiary_id'] : null,
+        );
+    }
+
+    /**
+     * To samo konto z innym filtrem firm.
+     *
+     * @param list<int>|null $companyIds
+     */
+    public function withCompanyFilter(?array $companyIds): self
+    {
+        return new self(
+            $this->id,
+            $this->role,
+            $this->firstName,
+            $this->lastName,
+            $this->email,
+            $this->beneficiaryId,
+            $companyIds,
         );
     }
 
@@ -58,9 +86,17 @@ final class Actor
         return Rbac::seesAllRecords($this->role);
     }
 
+    /**
+     * Zakres danych roli: all, own, technical albo personal (patrz App\Rbac).
+     */
+    public function scope(): string
+    {
+        return Rbac::scope($this->role);
+    }
+
     public function isAdmin(): bool
     {
-        return Rbac::atLeast($this->role, Rbac::ADMIN);
+        return Rbac::isAdmin($this->role);
     }
 
     public function fullName(): string

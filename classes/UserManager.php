@@ -50,7 +50,7 @@ final class UserManager
     {
         $stmt = $this->db->prepare(
             'SELECT id, first_name, last_name, role, email, password_hash, email_verified_at,
-                    last_login_at, deactivated_at
+                    last_login_at, deactivated_at, beneficiary_id
              FROM users WHERE id = :id LIMIT 1'
         );
         $stmt->execute(['id' => $id]);

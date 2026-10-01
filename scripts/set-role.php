@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Sets the role of an existing account (hierarchy: ADMIN > MANAGER > OPERATOR).
+ * Sets the role of an existing account (roles: ADMIN, DIRECTOR, MANAGER, ACCOUNTANT, IT, OPERATOR, EMPLOYEE).
  *
  *   php scripts/set-role.php admin@example.com ADMIN
  *   php scripts/set-role.php --list

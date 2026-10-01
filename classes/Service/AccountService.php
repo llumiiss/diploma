@@ -18,7 +18,7 @@ use PDO;
 final class AccountService
 {
     /** @var list<string> */
-    public const FIELDS = ['first_name', 'last_name', 'email', 'role'];
+    public const FIELDS = ['first_name', 'last_name', 'email', 'role', 'beneficiary_id'];
 
     private readonly EventLogger $events;
 
@@ -35,13 +35,15 @@ final class AccountService
         $actor->authorize('accounts.manage');
 
         $stmt = $this->db->query(
-            "SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at, u.deactivated_at,
+            "SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.beneficiary_id, u.created_at, u.deactivated_at,
+                    CONCAT_WS(' ', ub.first_name, ub.last_name) AS beneficiary_name,
                     (SELECT COUNT(*) FROM certificates c
                       WHERE c.user_id = u.id AND c.archived_at IS NULL) AS certificate_count,
                     (SELECT COUNT(*) FROM renewal_tasks t
                       WHERE t.assigned_user_id = u.id AND t.status IN ('todo', 'in_progress')) AS open_task_count,
                     u.last_login_at
              FROM users u
+             LEFT JOIN beneficiaries ub ON ub.id = u.beneficiary_id
              ORDER BY u.deactivated_at IS NOT NULL, u.last_name, u.first_name"
         );
 
@@ -59,7 +61,8 @@ final class AccountService
 
         $id = Transaction::run($this->db, function () use ($actor, $values): int {
             $stmt = $this->db->prepare(
-                'INSERT INTO users (first_name, last_name, email, role) VALUES (:first_name, :last_name, :email, :role)'
+                'INSERT INTO users (first_name, last_name, email, role, beneficiary_id)
+                 VALUES (:first_name, :last_name, :email, :role, :beneficiary_id)'
             );
             $stmt->execute($values);
             $id = (int) $this->db->lastInsertId();
@@ -68,6 +71,7 @@ final class AccountService
                 'name'  => trim($values['first_name'] . ' ' . $values['last_name']),
                 'email' => $values['email'],
                 'role'  => $values['role'],
+                'beneficiary_id' => $values['beneficiary_id'],
             ]);
 
             return $id;
@@ -98,7 +102,9 @@ final class AccountService
 
         Transaction::run($this->db, function () use ($actor, $id, $values, $changes): void {
             $stmt = $this->db->prepare(
-                'UPDATE users SET first_name = :first_name, last_name = :last_name, email = :email, role = :role WHERE id = :id'
+                'UPDATE users SET first_name = :first_name, last_name = :last_name, email = :email, role = :role,
+                        beneficiary_id = :beneficiary_id
+                 WHERE id = :id'
             );
             $stmt->execute($values + ['id' => $id]);
             $this->events->log('user', $id, isset($changes['role']) ? 'role_changed' : 'account_updated', $actor->id, [], [
@@ -228,13 +234,16 @@ final class AccountService
     public function get(int $id): array
     {
         $stmt = $this->db->prepare(
-            "SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at, u.deactivated_at,
+            "SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.beneficiary_id, u.created_at, u.deactivated_at,
+                    CONCAT_WS(' ', ub.first_name, ub.last_name) AS beneficiary_name,
                     (SELECT COUNT(*) FROM certificates c
                       WHERE c.user_id = u.id AND c.archived_at IS NULL) AS certificate_count,
                     (SELECT COUNT(*) FROM renewal_tasks t
                       WHERE t.assigned_user_id = u.id AND t.status IN ('todo', 'in_progress')) AS open_task_count,
                     u.last_login_at
-             FROM users u WHERE u.id = :id LIMIT 1"
+             FROM users u
+             LEFT JOIN beneficiaries ub ON ub.id = u.beneficiary_id
+             WHERE u.id = :id LIMIT 1"
         );
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
@@ -248,17 +257,25 @@ final class AccountService
 
     /**
      * @param array<string, mixed> $data
-     * @return array{first_name: string, last_name: string, email: string, role: string}
+     * @return array{first_name: string, last_name: string, email: string, role: string, beneficiary_id: ?int}
      */
     private function validate(array $data, ?int $exceptId): array
     {
         $v = new Validator($data);
         $values = [
-            'first_name' => (string) $v->string('first_name', true, 100),
-            'last_name'  => (string) $v->string('last_name', true, 100),
-            'email'      => (string) $v->email('email', true),
-            'role'       => (string) $v->enum('role', true, Rbac::roles()),
+            'first_name'     => (string) $v->string('first_name', true, 100),
+            'last_name'      => (string) $v->string('last_name', true, 100),
+            'email'          => (string) $v->email('email', true),
+            'role'           => (string) $v->enum('role', true, Rbac::roles()),
+            'beneficiary_id' => $v->id('beneficiary_id', false),
         ];
+
+        // Powiązanie z użytkownikiem certyfikatu ma sens tylko dla pracownika (zakres personal).
+        if ($values['role'] !== Rbac::EMPLOYEE) {
+            $values['beneficiary_id'] = null;
+        } elseif ($values['beneficiary_id'] !== null && !$this->isActiveBeneficiary($values['beneficiary_id'])) {
+            $v->addError('beneficiary_id', 'account.error.beneficiary_unavailable');
+        }
 
         if ($values['email'] !== '' && !isset($v->errors()['email'])) {
             $stmt = $this->db->prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(:email) AND id <> :id LIMIT 1');
@@ -271,6 +288,14 @@ final class AccountService
         $v->throwIfFailed();
 
         return $values;
+    }
+
+    private function isActiveBeneficiary(int $id): bool
+    {
+        $stmt = $this->db->prepare('SELECT 1 FROM beneficiaries WHERE id = :id AND archived_at IS NULL LIMIT 1');
+        $stmt->execute(['id' => $id]);
+
+        return $stmt->fetchColumn() !== false;
     }
 
     private function activeAdminCount(int $exceptId): int
@@ -290,6 +315,8 @@ final class AccountService
     private static function castRow(array $row): array
     {
         $row['id'] = (int) $row['id'];
+        $row['beneficiary_id'] = $row['beneficiary_id'] !== null ? (int) $row['beneficiary_id'] : null;
+        $row['beneficiary_name'] = $row['beneficiary_id'] !== null ? (string) $row['beneficiary_name'] : null;
         $row['certificate_count'] = (int) $row['certificate_count'];
         $row['open_task_count'] = (int) $row['open_task_count'];
         $row['name'] = trim($row['first_name'] . ' ' . $row['last_name']);
