@@ -315,7 +315,7 @@
                         {{ message }}
                         <button v-if="existing" type="button" class="block mt-2 font-semibold underline" @click="openExisting">{{ t('payer.open_existing') }}</button>
                     </div>
-                    <FormField class="md:col-span-2" :label="t('field.company_name')" :error="errors.company_name" required>
+                    <FormField class="md:col-span-2" :label="t('payer.company_name')" :error="errors.company_name" required>
                         <input v-model="form.company_name" type="text" maxlength="255" :class="['input', errors.company_name ? 'input-error' : '']">
                     </FormField>
                     <FormField :label="t('field.tax_id')" :error="errors.tax_id" :hint="t('payer.hint.tax_id')">

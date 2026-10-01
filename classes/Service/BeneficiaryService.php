@@ -259,12 +259,12 @@ final class BeneficiaryService
             'last_name'  => (string) $v->string('last_name', true, 100),
             'email'      => $v->email('email', false),
             'phone'      => $v->phone('phone'),
-            'payer_id'   => $v->id('payer_id', false),
+            'payer_id'   => $v->id('payer_id', true),
             'notes'      => $v->string('notes', false, 5000),
         ];
 
-        // Powiązanie z płatnikiem, którego konto nie widzi, jest dozwolone tylko wtedy,
-        // gdy istniało już wcześniej (edycja innych pól nie może go zerwać).
+        // Użytkownik certyfikatu nie istnieje bez firmy. Powiązanie z firmą, której konto nie widzi,
+        // jest dozwolone tylko wtedy, gdy istniało już wcześniej (edycja innych pól nie może go zerwać).
         $payerId = $values['payer_id'];
         $unchanged = $before !== null && $payerId !== null && $payerId === $before['payer_id'];
         if ($payerId !== null && !$unchanged && $this->payers->findActiveVisible($actor, $payerId) === null) {

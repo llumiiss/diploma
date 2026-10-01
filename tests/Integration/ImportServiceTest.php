@@ -116,12 +116,14 @@ final class ImportServiceTest extends IntegrationTestCase
             ]
         ));
 
-        $this->assertSame(['create', 'create', 'error', 'error', 'create'], array_column($result['rows'], 'status'));
+        $this->assertSame(['create', 'create', 'error', 'error', 'error'], array_column($result['rows'], 'status'));
         $this->assertSame('payer_name', $result['rows'][2]['errors'][0]['field']);
         $this->assertStringContainsString('Nieznana Firma', $result['rows'][2]['errors'][0]['message']);
         $this->assertSame('payer_name', $result['rows'][3]['errors'][0]['field']);
+        // Osoba nie istnieje bez firmy: wiersz bez firmy jest błędem, a nie zapisem z pustym płatnikiem.
+        $this->assertSame('payer_id', $result['rows'][4]['errors'][0]['field']);
         $payers = $this->db->query('SELECT last_name, payer_id FROM beneficiaries ORDER BY id')->fetchAll(\PDO::FETCH_KEY_PAIR);
-        $this->assertEquals(['Kowalski' => $nova, 'Wójcik' => $nova, 'Bez Płatnika' => null], $payers);
+        $this->assertEquals(['Kowalski' => $nova, 'Wójcik' => $nova], $payers);
     }
 
     public function testCertificatesAcceptLabelsPolishDatesAndReferencesAndMatchBySerial(): void
@@ -194,7 +196,8 @@ final class ImportServiceTest extends IntegrationTestCase
 
     public function testCsvAttachmentOfEmlMessageCanBeImported(): void
     {
-        $csv = self::csv(['Imię', 'Nazwisko', 'E-mail'], [['Anna', 'Nowak', 'anna.nowak@example.com']]);
+        $this->insertPayer(['company_name' => 'Partner Sp. z o.o.']);
+        $csv = self::csv(['Imię', 'Nazwisko', 'E-mail', 'Płatnik'], [['Anna', 'Nowak', 'anna.nowak@example.com', 'Partner Sp. z o.o.']]);
         $eml = "From: partner@example.com\r\nSubject: Lista osób\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"B\"\r\n\r\n"
             . "--B\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nW załączniku lista.\r\n"
             . "--B\r\nContent-Type: text/csv; name=\"osoby.csv\"\r\nContent-Disposition: attachment; filename=\"osoby.csv\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"

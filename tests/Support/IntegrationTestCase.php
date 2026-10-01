@@ -80,7 +80,7 @@ abstract class IntegrationTestCase extends TestCase
     /**
      * @param array<string, mixed> $overrides
      */
-    protected function insertBeneficiary(?int $payerId, array $overrides = [], ?int $createdBy = null): int
+    protected function insertBeneficiary(int $payerId, array $overrides = [], ?int $createdBy = null): int
     {
         $row = array_merge([
             'first_name'         => 'Jan',
@@ -118,6 +118,15 @@ abstract class IntegrationTestCase extends TestCase
             'status'           => 'active',
             'archived_at'      => null,
         ], $overrides);
+
+        // Certyfikat kwalifikowany nie istnieje bez użytkownika (ograniczenie bazy) — w testach powstaje domyślny.
+        if ($row['beneficiary_id'] === null && in_array($row['certificate_type'], \App\Service\CertificateService::QUALIFIED_TYPES, true)) {
+            $row['beneficiary_id'] = $this->insertBeneficiary($payerId, [
+                'first_name' => 'Użytkownik',
+                'last_name'  => 'Domyślny ' . $sequence,
+                'email'      => 'uzytkownik' . $sequence . '@example.com',
+            ]);
+        }
 
         $stmt = $this->db->prepare(
             'INSERT INTO certificates (name, certificate_type, serial_number, issuer, expiry_date, user_id,

@@ -316,10 +316,10 @@
                     <FormField :label="t('field.phone')" :error="errors.phone">
                         <input v-model="form.phone" type="tel" maxlength="50" :class="['input', errors.phone ? 'input-error' : '']">
                     </FormField>
-                    <FormField class="md:col-span-2" :label="t('field.payer_id')" :error="errors.payer_id" :hint="t('beneficiary.hint.payer')">
+                    <FormField class="md:col-span-2" :label="t('field.payer_id')" :error="errors.payer_id" :hint="t('beneficiary.hint.payer')" required>
                         <div class="flex gap-2">
                             <select v-model="form.payer_id" :class="['input', errors.payer_id ? 'input-error' : '']">
-                                <option value="">{{ t('beneficiary.no_payer') }}</option>
+                                <option value="">{{ t('common.choose') }}</option>
                                 <option v-for="payer in payers" :key="payer.id" :value="String(payer.id)">{{ payer.company_name }}{{ payer.city ? ' — ' + payer.city : '' }}</option>
                             </select>
                             <button v-if="can('payers.create')" type="button" class="btn-secondary shrink-0" :title="t('payer.add')" @click="addPayer">+</button>

@@ -79,7 +79,7 @@ final class BeneficiaryServiceTest extends IntegrationTestCase
     {
         $manager = $this->createActor(Rbac::MANAGER);
         $service = new BeneficiaryService($this->db);
-        $beneficiaryId = $this->insertBeneficiary(null);
+        $beneficiaryId = $this->insertBeneficiary($this->insertPayer());
         $service->archive($manager, $beneficiaryId);
 
         $this->expectException(ServiceException::class);
