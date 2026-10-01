@@ -6,6 +6,7 @@ namespace Tests\Integration;
 
 use App\MigrationRunner;
 use App\Migrations\AccountsAndOwnershipMigration;
+use App\Migrations\CertificateDiscountMigration;
 use App\Migrations\CertificatesModelMigration;
 use App\Migrations\SchemaInspector;
 use Tests\Support\IntegrationTestCase;
@@ -42,6 +43,38 @@ final class MigrationRunnerTest extends IntegrationTestCase
             "SELECT COUNT(*) FROM email_templates WHERE code IN ('renewal_invitation', 'renewal_reminder')"
         )->fetchColumn();
         $this->assertGreaterThanOrEqual(4, $templates);
+    }
+
+    public function testDiscountMigrationReplacesPriceAndIsRepeatable(): void
+    {
+        $this->assertTrue(SchemaInspector::columnExists($this->db, 'certificates', 'discount_percent'));
+        $this->assertFalse(SchemaInspector::columnExists($this->db, 'certificates', 'annual_cost'));
+        $this->assertFalse(SchemaInspector::columnExists($this->db, 'certificates', 'currency'));
+        $this->assertTrue(SchemaInspector::checkConstraintExists($this->db, 'certificates', 'chk_certificates_discount'));
+
+        // Stan sprzed migracji: kolumny z kwotą i walutą, bez rabatu.
+        $this->db->exec('ALTER TABLE certificates DROP CONSTRAINT chk_certificates_discount');
+        $this->db->exec('ALTER TABLE certificates DROP COLUMN discount_percent');
+        $this->db->exec('ALTER TABLE certificates ADD COLUMN annual_cost DECIMAL(10, 2) NOT NULL DEFAULT 0.00');
+        $this->db->exec("ALTER TABLE certificates ADD COLUMN currency CHAR(3) NOT NULL DEFAULT 'PLN'");
+
+        CertificateDiscountMigration::up($this->db);
+        CertificateDiscountMigration::up($this->db);
+
+        $this->assertTrue(SchemaInspector::columnExists($this->db, 'certificates', 'discount_percent'));
+        $this->assertFalse(SchemaInspector::columnExists($this->db, 'certificates', 'annual_cost'));
+        $this->assertFalse(SchemaInspector::columnExists($this->db, 'certificates', 'currency'));
+        $this->assertTrue(SchemaInspector::checkConstraintExists($this->db, 'certificates', 'chk_certificates_discount'));
+    }
+
+    public function testDatabaseRejectsDiscountOutsideRange(): void
+    {
+        $admin = $this->createActor(\App\Rbac::ADMIN);
+        $payerId = $this->insertPayer();
+
+        $this->expectException(\PDOException::class);
+        $this->db->exec("INSERT INTO certificates (name, certificate_type, expiry_date, user_id, payer_id, discount_percent)
+            VALUES ('Za duży rabat', 'DOMAIN', '2030-01-01', {$admin->id}, {$payerId}, 150)");
     }
 
     public function testAccountsAndOwnershipMigrationUpgradesEtap1Schema(): void

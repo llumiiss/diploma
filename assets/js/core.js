@@ -148,9 +148,13 @@
     const intlLocale = { pl: 'pl-PL', en: 'en-GB', de: 'de-DE', es: 'es-ES', uk: 'uk-UA' }[boot.locale] || 'pl-PL';
 
     const format = {
-        money(amount, currency) {
-            const number = Number(amount || 0);
-            return number.toLocaleString(intlLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (currency || 'PLN');
+        /** Rabat z minusem: 5 → „-5%”, 2.5 → „-2,5%”, 0 → „0%” (w bazie zapisana jest wielkość rabatu). */
+        discount(percent) {
+            const number = Number(percent || 0);
+            if (!(number > 0)) {
+                return '0%';
+            }
+            return '-' + number.toLocaleString(intlLocale, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '%';
         },
         date(value) {
             if (!value) {

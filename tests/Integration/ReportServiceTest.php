@@ -42,14 +42,14 @@ final class ReportServiceTest extends IntegrationTestCase
             'beneficiary_id' => $this->personId,
             'expiry_date'    => $this->day('+5 days'),
         ]);
-        $this->db->exec("UPDATE certificates SET annual_cost = 320.00, billing_cycle = 'annual' WHERE id = {$this->critical}");
+        $this->db->exec("UPDATE certificates SET discount_percent = 10.00, billing_cycle = 'annual' WHERE id = {$this->critical}");
         // Certyfikat tej samej osoby prowadzony przez innego operatora.
         $this->colleagues = $this->insertCertificate($this->colleague->id, $this->payerId, [
             'name'           => 'Pieczęć kwalifikowana',
             'beneficiary_id' => $this->personId,
             'expiry_date'    => $this->day('+20 days'),
         ]);
-        $this->db->exec("UPDATE certificates SET annual_cost = 25.00, billing_cycle = 'monthly', renewal_lead_days = 60 WHERE id = {$this->colleagues}");
+        $this->db->exec("UPDATE certificates SET discount_percent = 5.00, billing_cycle = 'monthly', renewal_lead_days = 60 WHERE id = {$this->colleagues}");
         // Łańcuch odnowień: stary certyfikat w archiwum, nowy ważny ponad rok.
         $this->archived = $this->insertCertificate($this->owner->id, $this->payerId, [
             'name'           => 'Podpis kwalifikowany 2024',
@@ -174,7 +174,7 @@ final class ReportServiceTest extends IntegrationTestCase
         }
     }
 
-    public function testPayerCardListsRelatedPeopleScheduleAndAnnualCost(): void
+    public function testPayerCardListsRelatedPeopleScheduleAndAverageDiscount(): void
     {
         // Osoba przypisana do innego płatnika, ale jej certyfikat opłaca NovaTech.
         $otherPayer = $this->insertPayer(['company_name' => 'Grupa Wisła'], $this->owner->id);
@@ -195,8 +195,8 @@ final class ReportServiceTest extends IntegrationTestCase
         $this->assertSame(2, $card['summary']['beneficiaries']);
         $this->assertSame(1, $card['summary']['expired']);
 
-        // 320 zł rocznie + 25 zł miesięcznie × 12; certyfikat z archiwum się nie liczy.
-        $this->assertSame([['currency' => 'PLN', 'amount' => 620.0]], $card['summary']['annual_cost']);
+        // Średnia z czterech bieżących certyfikatów (rabaty 10%, 5%, 0%, 0%); certyfikat z archiwum się nie liczy.
+        $this->assertSame(3.75, $card['summary']['average_discount']);
 
         $buckets = array_column($card['schedule'], null, 'key');
         $this->assertCount(13, $card['schedule']);

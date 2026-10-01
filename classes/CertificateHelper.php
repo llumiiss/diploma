@@ -42,7 +42,8 @@ final class CertificateHelper
             $item['days_left'] = $daysLeft;
             $item['owner_name'] = self::fullName($item['user_first_name'] ?? '', $item['user_last_name'] ?? '');
             $item['beneficiary_name'] = self::fullName($item['beneficiary_first_name'] ?? '', $item['beneficiary_last_name'] ?? '');
-            $item['annual_cost'] = (float) $item['annual_cost'];
+            $item['discount_percent'] = (float) ($item['discount_percent'] ?? 0);
+            $item['discount_label'] = self::formatDiscount($item['discount_percent']);
             $item['thresholds'] = $thresholds;
             $item['priority'] = self::priorityFor($daysLeft, $thresholds['critical'], $thresholds['warning']);
             $item['priority_label'] = self::priorityLabel($item['priority']);
@@ -83,37 +84,18 @@ final class CertificateHelper
     }
 
     /**
-     * Ten sam przelicznik co annualizedCost(), ale w SQL — do sum liczonych po stronie bazy.
+     * Rabat jako tekst z minusem: 5.0 → „-5%”, 2.5 → „-2,5%”, 0 → „0%”.
+     * Kolumna certificates.discount_percent przechowuje wielkość rabatu (0–100), nie liczbę ujemną.
      */
-    public static function annualizedCostSql(string $alias = 'c'): string
+    public static function formatDiscount(float $percent): string
     {
-        return "CASE {$alias}.billing_cycle
-                    WHEN 'monthly' THEN {$alias}.annual_cost * 12
-                    WHEN 'multi_year' THEN {$alias}.annual_cost / GREATEST(1, ROUND(TIMESTAMPDIFF(MONTH, COALESCE({$alias}.valid_from, {$alias}.expiry_date), {$alias}.expiry_date) / 12))
-                    ELSE {$alias}.annual_cost
-                END";
-    }
-
-    /**
-     * Koszt w przeliczeniu na rok (§5 pkt 12). Kolumna annual_cost przechowuje kwotę za okres
-     * rozliczeniowy: przy cyklu miesięcznym to kwota miesięczna, przy wieloletnim — za cały okres
-     * ważności (dzielona przez liczbę lat między datą „ważny od” a wygaśnięciem, co najmniej 1).
-     */
-    public static function annualizedCost(float $amount, string $billingCycle, ?string $validFrom, string $expiryDate): float
-    {
-        if ($billingCycle === 'monthly') {
-            return round($amount * 12, 2);
+        if ($percent <= 0.0) {
+            return '0%';
         }
 
-        if ($billingCycle === 'multi_year' && $validFrom !== null && $validFrom !== '') {
-            $span = (new DateTimeImmutable($validFrom))->diff(new DateTimeImmutable($expiryDate));
-            $months = $span->invert === 1 ? 0 : $span->y * 12 + $span->m + ($span->d >= 15 ? 1 : 0);
-            $years = max(1, (int) round($months / 12));
+        $text = rtrim(rtrim(number_format($percent, 2, ',', ''), '0'), ',');
 
-            return round($amount / $years, 2);
-        }
-
-        return round($amount, 2);
+        return '-' . $text . '%';
     }
 
     public static function priorityLabel(string $priority): string
@@ -211,11 +193,6 @@ final class CertificateHelper
             'not_applicable'   => \__('payment.na'),
             default            => ucfirst($paymentStatus),
         };
-    }
-
-    public static function formatCurrency(float $amount, string $currency = 'PLN'): string
-    {
-        return number_format($amount, 2, '.', ' ') . ' ' . $currency;
     }
 
     private static function fullName(mixed $firstName, mixed $lastName): string

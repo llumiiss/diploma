@@ -30,6 +30,21 @@ final class ValidatorTest extends TestCase
         $this->assertSame(['expiry_date'], array_keys($v->errors()));
     }
 
+    public function testDiscountAcceptsSpreadsheetNotationAndStoresSizeOfDiscount(): void
+    {
+        foreach ([['-5%', 5.0], ['-5', 5.0], ['5', 5.0], ['5,5 %', 5.5], ['−10 %', 10.0], [10, 10.0], [-3, 3.0], ['', 0.0], [null, 0.0], ['0', 0.0], ['100', 100.0]] as [$input, $expected]) {
+            $v = new Validator(['discount_percent' => $input]);
+            $this->assertSame($expected, $v->discountPercent('discount_percent'), 'wejście: ' . var_export($input, true));
+            $this->assertFalse($v->fails());
+        }
+
+        foreach (['+5%', '101', '-150', 'dużo', '5 zł', '1e2'] as $input) {
+            $v = new Validator(['discount_percent' => $input]);
+            $v->discountPercent('discount_percent');
+            $this->assertSame(['discount_percent'], array_keys($v->errors()), 'wejście: ' . $input);
+        }
+    }
+
     public function testPolishNipChecksumAndEuVatNumbers(): void
     {
         $this->assertTrue(Validator::isValidTaxId('6342851974'));

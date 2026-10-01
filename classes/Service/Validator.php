@@ -214,19 +214,36 @@ final class Validator
         return $parsed;
     }
 
-    public function currency(string $field): string
+    /**
+     * Rabat w procentach (0–100). Przyjmuje zapis z arkusza i z formularza: „-5%”, „-5”, „5”, „5,5 %”
+     * dają 5.0 — wartość oznacza wielkość rabatu, a minus jest tylko sposobem wyświetlania.
+     * Puste pole to brak rabatu. Znak plus jest odrzucany, bo oznaczałby dopłatę.
+     */
+    public function discountPercent(string $field): float
     {
-        $value = $this->string($field, false, 3);
-        if ($value === null) {
-            return 'PLN';
+        $value = $this->raw($field);
+        if ($value === null || (is_string($value) && trim($value) === '')) {
+            return 0.0;
         }
 
-        $value = strtoupper($value);
-        if (preg_match('/^[A-Z]{3}$/', $value) !== 1) {
-            $this->addError($field, 'validation.currency');
+        $number = null;
+        if (is_int($value) || is_float($value)) {
+            $number = abs((float) $value);
+        } elseif (is_string($value)) {
+            $text = str_replace(["\u{2212}", "\u{2013}", "\u{00A0}", ' ', ','], ['-', '-', '', '', '.'], trim($value));
+            $text = rtrim($text, '%');
+            if (preg_match('/^-?\d+(?:\.\d+)?$/', $text) === 1) {
+                $number = abs((float) $text);
+            }
         }
 
-        return $value;
+        if ($number === null || $number > 100) {
+            $this->addError($field, 'validation.discount');
+
+            return 0.0;
+        }
+
+        return round($number, 2);
     }
 
     /**

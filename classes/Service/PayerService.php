@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use App\CertificateHelper;
 use PDO;
 use PDOException;
 
@@ -38,19 +37,19 @@ final class PayerService
         [$beneficiaryVisibility, $beneficiaryParams] = Visibility::beneficiaries($actor, 'b');
         $archivedCondition = $archived ? 'p.archived_at IS NOT NULL' : 'p.archived_at IS NULL';
 
-        $sql = '
+        $sql = "
             SELECT
                 p.id, p.company_name, p.contact_person, p.tax_id, p.email, p.phone,
                 p.address_line, p.postal_code, p.city, p.archived_at, p.created_at, p.updated_at,
                 COALESCE(cs.certificate_count, 0) AS certificate_count,
-                COALESCE(cs.total_annual_cost, 0) AS total_annual_cost,
+                COALESCE(cs.average_discount, 0) AS average_discount,
                 cs.earliest_expiry,
                 COALESCE(bs.beneficiary_count, 0) AS beneficiary_count
             FROM payers p
             LEFT JOIN (
                 SELECT c.payer_id,
                        COUNT(*) AS certificate_count,
-                       SUM(' . CertificateHelper::annualizedCostSql('c') . ") AS total_annual_cost,
+                       AVG(c.discount_percent) AS average_discount,
                        MIN(c.expiry_date) AS earliest_expiry
                 FROM certificates c
                 WHERE c.archived_at IS NULL AND {$certificateVisibility}
@@ -124,8 +123,7 @@ final class PayerService
 
         [$certificateVisibility, $certificateParams] = Visibility::certificates($actor, 'c');
         $stmt = $this->db->prepare(
-            'SELECT c.id, c.name, c.certificate_type, c.serial_number, c.expiry_date, c.status, c.annual_cost, c.currency,
-                    ' . CertificateHelper::annualizedCostSql('c') . " AS annualized_cost,
+            "SELECT c.id, c.name, c.certificate_type, c.serial_number, c.expiry_date, c.status, c.discount_percent,
                     b.first_name AS beneficiary_first_name, b.last_name AS beneficiary_last_name
              FROM certificates c
              LEFT JOIN beneficiaries b ON b.id = c.beneficiary_id
@@ -135,8 +133,7 @@ final class PayerService
         $stmt->execute(['payer_id' => $id] + $certificateParams);
         $payer['certificates'] = array_map(static function (array $row): array {
             $row['id'] = (int) $row['id'];
-            $row['annual_cost'] = (float) $row['annual_cost'];
-            $row['annualized_cost'] = (float) $row['annualized_cost'];
+            $row['discount_percent'] = (float) $row['discount_percent'];
 
             return $row;
         }, $stmt->fetchAll());
@@ -402,8 +399,8 @@ final class PayerService
                 $row[$key] = (int) $row[$key];
             }
         }
-        if (array_key_exists('total_annual_cost', $row)) {
-            $row['total_annual_cost'] = (float) $row['total_annual_cost'];
+        if (array_key_exists('average_discount', $row)) {
+            $row['average_discount'] = round((float) $row['average_discount'], 2);
         }
         if (array_key_exists('created_by_user_id', $row)) {
             $row['created_by_user_id'] = $row['created_by_user_id'] !== null ? (int) $row['created_by_user_id'] : null;

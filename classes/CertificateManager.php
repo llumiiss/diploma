@@ -52,7 +52,7 @@ final class CertificateManager
     }
 
     /**
-     * @return array{due_soon: int, overdue: int, paid: int, total_due_amount: float}
+     * @return array{due_soon: int, overdue: int, paid: int}
      */
     public function getPaymentSummary(?int $ownerId = null): array
     {
@@ -61,8 +61,7 @@ final class CertificateManager
         $sql = <<<SQL
             SELECT
                 payment_status,
-                COUNT(*) AS total,
-                COALESCE(SUM(annual_cost), 0) AS amount
+                COUNT(*) AS total
             FROM certificates
             WHERE archived_at IS NULL{$ownerFilter}
               AND payment_status IN ('due_soon', 'overdue')
@@ -73,15 +72,13 @@ final class CertificateManager
         $stmt->execute($params);
 
         $summary = [
-            'due_soon'         => 0,
-            'overdue'          => 0,
-            'paid'             => 0,
-            'total_due_amount' => 0.0,
+            'due_soon' => 0,
+            'overdue'  => 0,
+            'paid'     => 0,
         ];
 
         foreach ($stmt->fetchAll() as $row) {
             $summary[$row['payment_status']] = (int) $row['total'];
-            $summary['total_due_amount'] += (float) $row['amount'];
         }
 
         $paidStmt = $this->db->prepare(
@@ -95,7 +92,7 @@ final class CertificateManager
     }
 
     /**
-     * @return array{expired: int, expiring_critical: int, expiring_warning: int, critical_days: int, warning_days: int, annual_commitment: float, monthly_spend: float}
+     * @return array{expired: int, expiring_critical: int, expiring_warning: int, critical_days: int, warning_days: int, average_discount: float, discounted_count: int}
      */
     public function getRenewalSummary(?int $ownerId = null): array
     {
@@ -110,8 +107,8 @@ final class CertificateManager
                 SUM(CASE WHEN expiry_date < CURDATE() THEN 1 ELSE 0 END) AS expired,
                 SUM(CASE WHEN expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL {$criticalDays} DAY) THEN 1 ELSE 0 END) AS expiring_critical,
                 SUM(CASE WHEN expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL {$warningDays} DAY) THEN 1 ELSE 0 END) AS expiring_warning,
-                COALESCE(SUM(" . CertificateHelper::annualizedCostSql('c') . '), 0) AS annual_commitment,
-                COALESCE(SUM((' . CertificateHelper::annualizedCostSql('c') . ") / 12), 0) AS monthly_spend
+                COALESCE(AVG(discount_percent), 0) AS average_discount,
+                COALESCE(SUM(CASE WHEN discount_percent > 0 THEN 1 ELSE 0 END), 0) AS discounted_count
             FROM certificates c
             WHERE archived_at IS NULL{$ownerFilter}
         ";
@@ -126,8 +123,8 @@ final class CertificateManager
             'expiring_warning'   => (int) ($row['expiring_warning'] ?? 0),
             'critical_days'      => $criticalDays,
             'warning_days'       => $warningDays,
-            'annual_commitment'  => (float) ($row['annual_commitment'] ?? 0),
-            'monthly_spend'      => (float) ($row['monthly_spend'] ?? 0),
+            'average_discount'   => round((float) ($row['average_discount'] ?? 0), 2),
+            'discounted_count'   => (int) ($row['discounted_count'] ?? 0),
         ];
     }
 

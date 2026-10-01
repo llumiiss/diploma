@@ -85,7 +85,7 @@
                                 <th class="th">{{ t('field.city') }}</th>
                                 <th class="th text-right">{{ t('beneficiary.plural') }}</th>
                                 <th class="th text-right">{{ t('certificate.plural') }}</th>
-                                <th class="th text-right">{{ t('payer.annual_cost') }}</th>
+                                <th class="th text-right">{{ t('payer.average_discount') }}</th>
                                 <th class="th">{{ t('common.earliest_expiry') }}</th>
                                 <th class="th text-right">{{ t('common.actions') }}</th>
                             </tr>
@@ -101,7 +101,7 @@
                                 <td class="td">{{ item.city || '—' }}</td>
                                 <td class="td text-right">{{ item.beneficiary_count }}</td>
                                 <td class="td text-right">{{ item.certificate_count }}</td>
-                                <td class="td text-right whitespace-nowrap">{{ format.money(item.total_annual_cost) }}</td>
+                                <td class="td text-right whitespace-nowrap">{{ item.certificate_count ? format.discount(item.average_discount) : '—' }}</td>
                                 <td class="td whitespace-nowrap">{{ format.date(item.earliest_expiry) }}</td>
                                 <td class="td text-right whitespace-nowrap" @click.stop>
                                     <button v-if="can('reports.view')" type="button" class="btn-ghost" :title="t('report.card')" @click="openCard(item)">📈 {{ t('report.card_short') }}</button>
@@ -136,10 +136,6 @@
                     { label: t('field.phone'), value: p.phone },
                     { label: t('payer.address'), value: address, wide: true },
                 ];
-            },
-            totalCost() {
-                // Koszt w przeliczeniu na rok (miesięczny × 12, wieloletni ÷ lata ważności) — §5 pkt 12.
-                return this.payer.certificates.reduce((sum, item) => sum + Number(item.annualized_cost || 0), 0);
             },
         },
         mounted() {
@@ -226,7 +222,6 @@
 
                     <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mt-6 mb-3">
                         {{ t('certificate.plural') }}
-                        <span v-if="payer.certificates.length" class="normal-case font-normal text-slate-400">· {{ format.money(totalCost) }}</span>
                     </h4>
                     <div class="card divide-y divide-slate-100">
                         <button v-for="item in payer.certificates" :key="item.id" type="button"
@@ -235,7 +230,10 @@
                                 <span class="block font-medium text-slate-800">{{ item.name }}</span>
                                 <span class="block text-xs text-slate-500">{{ labels.type(item.certificate_type) }}<span v-if="item.beneficiary_first_name"> · {{ format.person(item.beneficiary_first_name, item.beneficiary_last_name) }}</span></span>
                             </span>
-                            <span class="text-sm whitespace-nowrap">{{ format.date(item.expiry_date) }}</span>
+                            <span class="text-sm whitespace-nowrap text-right">
+                                {{ format.date(item.expiry_date) }}
+                                <span class="block text-xs text-slate-500">{{ t('field.discount_percent') }}: {{ format.discount(item.discount_percent) }}</span>
+                            </span>
                         </button>
                         <p v-if="payer.certificates.length === 0" class="px-4 py-6 text-sm text-slate-400 text-center">{{ t('payer.no_certificates') }}</p>
                     </div>
