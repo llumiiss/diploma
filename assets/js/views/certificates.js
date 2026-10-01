@@ -175,7 +175,7 @@
                                 <th class="th">{{ t('field.payer_id') }}</th>
                                 <th class="th">{{ t('field.user_id') }}</th>
                                 <th class="th">{{ t('field.expiry_date') }}</th>
-                                <th class="th text-right">{{ t('field.annual_cost') }}</th>
+                                <th class="th text-right">{{ t('field.discount_percent') }}</th>
                                 <th class="th">{{ t('field.payment_status') }}</th>
                                 <th class="th">{{ t('field.status') }}</th>
                                 <th class="th text-right">{{ t('common.actions') }}</th>
@@ -198,7 +198,7 @@
                                     <div>{{ format.date(item.expiry_date) }}</div>
                                     <span :class="['badge mt-1', badge.priority(item.priority)]">{{ format.days(item.days_left) }}</span>
                                 </td>
-                                <td class="td text-right whitespace-nowrap">{{ format.money(item.annual_cost, item.currency) }}</td>
+                                <td class="td text-right whitespace-nowrap">{{ format.discount(item.discount_percent) }}</td>
                                 <td class="td"><span :class="['badge', badge.payment(item.display_payment_status)]">{{ item.payment_label }}</span></td>
                                 <td class="td"><span :class="['badge', badge.status(item.status)]">{{ item.status_label }}</span></td>
                                 <td class="td text-right whitespace-nowrap" @click.stop>
@@ -237,7 +237,7 @@
                     { label: t('field.expiry_date'), value: CertiSub.format.date(c.expiry_date) + ' (' + CertiSub.format.days(c.days_left) + ')' },
                     { label: t('field.renewal_lead_days'), value: c.renewal_lead_days === null ? null : t('days.many', { count: c.renewal_lead_days }) },
                     { label: t('field.user_id'), value: c.owner_name },
-                    { label: t('field.annual_cost'), value: CertiSub.format.money(c.annual_cost, c.currency) + ' · ' + labels.billing(c.billing_cycle) },
+                    { label: t('field.discount_percent'), value: CertiSub.format.discount(c.discount_percent) + ' · ' + labels.billing(c.billing_cycle) },
                     { label: t('field.payment_status'), value: c.payment_label },
                     { label: t('field.last_payment_date'), value: CertiSub.format.date(c.last_payment_date) },
                     { label: t('field.auto_renew'), value: c.auto_renew ? t('common.yes') : t('common.no') },
@@ -409,8 +409,7 @@
             beneficiary_id: '',
             payer_id: '',
             status: 'active',
-            annual_cost: '0.00',
-            currency: 'PLN',
+            discount_percent: '0',
             billing_cycle: 'annual',
             payment_status: 'paid',
             last_payment_date: '',
@@ -441,6 +440,10 @@
             },
             canAssignOwner() {
                 return CertiSub.can('certificates.assign_owner');
+            },
+            /** Typowe rabaty do jednego kliknięcia; w polu można wpisać dowolną wartość 0–100. */
+            discountPresets() {
+                return ['0', '-3', '-5', '-10', '-15', '-20'];
             },
         },
         async mounted() {
@@ -475,7 +478,7 @@
                         form[key] = String(value);
                     }
                 });
-                form.annual_cost = Number(certificate.annual_cost || 0).toFixed(2);
+                form.discount_percent = Number(certificate.discount_percent || 0) > 0 ? '-' + Number(certificate.discount_percent) : '0';
                 this.form = form;
             },
             onBeneficiaryChange() {
@@ -597,11 +600,17 @@
 
                     <fieldset class="grid md:grid-cols-3 gap-4">
                         <legend class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 md:col-span-3">{{ t('certificate.section.billing') }}</legend>
-                        <FormField :label="t('field.annual_cost')" :error="errors.annual_cost">
-                            <input v-model="form.annual_cost" type="text" inputmode="decimal" :class="['input', errors.annual_cost ? 'input-error' : '']">
-                        </FormField>
-                        <FormField :label="t('field.currency')" :error="errors.currency">
-                            <input v-model="form.currency" type="text" maxlength="3" class="input uppercase">
+                        <FormField :label="t('field.discount_percent')" :error="errors.discount_percent" :hint="t('certificate.hint.discount')">
+                            <input v-model="form.discount_percent" type="text" inputmode="decimal" list="discount-presets" maxlength="8"
+                                   :class="['input', errors.discount_percent ? 'input-error' : '']">
+                            <datalist id="discount-presets">
+                                <option v-for="preset in discountPresets" :key="preset" :value="preset"></option>
+                            </datalist>
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                <button v-for="preset in discountPresets" :key="'chip-' + preset" type="button"
+                                        :class="['badge cursor-pointer', form.discount_percent === preset ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-600 hover:bg-slate-200']"
+                                        @click="form.discount_percent = preset">{{ preset === '0' ? '0%' : preset + '%' }}</button>
+                            </div>
                         </FormField>
                         <FormField :label="t('field.billing_cycle')" :error="errors.billing_cycle">
                             <select v-model="form.billing_cycle" class="input">

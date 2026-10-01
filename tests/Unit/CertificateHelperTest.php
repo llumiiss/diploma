@@ -43,16 +43,12 @@ final class CertificateHelperTest extends TestCase
         $this->assertSame('ok', CertificateHelper::priorityFor(21, 5, 20));
     }
 
-    public function testAnnualizedCostFollowsBillingCycle(): void
+    public function testDiscountIsShownWithMinusSign(): void
     {
-        $this->assertSame(1200.0, CertificateHelper::annualizedCost(100.0, 'monthly', null, '2027-01-01'));
-        $this->assertSame(320.0, CertificateHelper::annualizedCost(320.0, 'annual', '2026-01-01', '2027-01-01'));
-        // Certyfikat trzyletni: kwota za cały okres dzielona przez liczbę lat ważności.
-        $this->assertSame(300.0, CertificateHelper::annualizedCost(900.0, 'multi_year', '2025-03-01', '2028-03-01'));
-        $this->assertSame(450.0, CertificateHelper::annualizedCost(900.0, 'multi_year', '2026-01-10', '2028-01-05'));
-        // Bez daty początku nie da się ustalić liczby lat — kwota bez zmian.
-        $this->assertSame(900.0, CertificateHelper::annualizedCost(900.0, 'multi_year', null, '2028-03-01'));
-        $this->assertSame(900.0, CertificateHelper::annualizedCost(900.0, 'multi_year', '2026-01-01', '2026-03-01'));
+        $this->assertSame('-5%', CertificateHelper::formatDiscount(5.0));
+        $this->assertSame('-10%', CertificateHelper::formatDiscount(10.0));
+        $this->assertSame('-2,5%', CertificateHelper::formatDiscount(2.5));
+        $this->assertSame('0%', CertificateHelper::formatDiscount(0.0));
     }
 
     public function testQualifiedCertificateTypesHaveLabels(): void
@@ -67,7 +63,7 @@ final class CertificateHelperTest extends TestCase
         $rows = CertificateHelper::enrich([[
             'certificate_type'       => 'QUALIFIED_SIGNATURE',
             'expiry_date'            => '2026-09-20',
-            'annual_cost'            => '320.00',
+            'discount_percent'       => '5.00',
             'status'                 => 'active',
             'payment_status'         => 'paid',
             'user_first_name'        => 'Ewa',
@@ -83,7 +79,8 @@ final class CertificateHelperTest extends TestCase
         $this->assertSame('Ewa Pawlak', $row['owner_name']);
         $this->assertSame('Jan Kowalski', $row['beneficiary_name']);
         $this->assertSame('Certyfikat kwalifikowany', $row['type_label']);
-        $this->assertSame(320.0, $row['annual_cost']);
+        $this->assertSame(5.0, $row['discount_percent']);
+        $this->assertSame('-5%', $row['discount_label']);
         // Opłacona pozycja w progu odnowienia wymaga kolejnej płatności — widok pokazuje „wkrótce”.
         $this->assertSame('due_soon', $row['display_payment_status']);
     }
@@ -93,7 +90,7 @@ final class CertificateHelperTest extends TestCase
         $rows = CertificateHelper::enrich([[
             'certificate_type' => 'DOMAIN',
             'expiry_date'    => '2026-12-31',
-            'annual_cost'    => 129,
+            'discount_percent' => 3,
             'status'         => 'active',
             'payment_status' => 'paid',
         ]], new DateTimeImmutable('2026-09-16'));

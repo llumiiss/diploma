@@ -130,66 +130,66 @@ $demoCertificates = array_map(static fn (array $certificate): array => array_mer
         'name' => 'Certyfikat kwalifikowany — Jan Kowalski', 'type' => 'QUALIFIED_SIGNATURE',
         'serial' => '5A3F9C21B7E04D18', 'issuer' => 'Certum QCA 2017', 'valid_from' => -742, 'expiry' => -12, 'lead' => 30,
         'owner' => 'tomasz', 'beneficiary' => 'jan', 'payer' => 'novatech',
-        'status' => 'expired', 'cost' => 320.00, 'cycle' => 'multi_year', 'payment' => 'overdue', 'last_payment' => -742,
+        'status' => 'expired', 'discount' => 10, 'cycle' => 'multi_year', 'payment' => 'overdue', 'last_payment' => -742,
         'notes' => 'Wygasł — odnowienie wymaga ponownej weryfikacji tożsamości.',
     ],
     'novatech_seal' => [
         'name' => 'Pieczęć kwalifikowana — NovaTech', 'type' => 'QUALIFIED_SEAL',
         'serial' => '3B77E1A09F5C2D46', 'issuer' => 'Certum QCA 2017', 'valid_from' => -361, 'expiry' => 4, 'lead' => 30,
         'owner' => 'ewa', 'beneficiary' => 'maria', 'payer' => 'novatech',
-        'status' => 'renewal_in_progress', 'cost' => 640.00, 'cycle' => 'annual', 'payment' => 'due_soon', 'last_payment' => -361,
+        'status' => 'renewal_in_progress', 'discount' => 0, 'cycle' => 'annual', 'payment' => 'due_soon', 'last_payment' => -361,
         'notes' => 'Odnowienie w toku — czeka na potwierdzenie płatnika.',
     ],
     'novatech_ssl' => [
         'name' => 'SSL Wildcard *.novatech.pl', 'type' => 'SSL_CERTIFICATE',
         'serial' => '0F4A6B2C9D8E7F10', 'issuer' => 'DigiCert Global G2 TLS RSA SHA256 2020 CA1', 'valid_from' => -359, 'expiry' => 6, 'lead' => 14,
         'owner' => 'owner', 'payer' => 'novatech',
-        'status' => 'active', 'cost' => 890.00, 'cycle' => 'annual', 'payment' => 'due_soon', 'last_payment' => -359,
+        'status' => 'active', 'discount' => 5, 'cycle' => 'annual', 'payment' => 'due_soon', 'last_payment' => -359,
         'notes' => 'Certyfikat produkcyjny — odnowić przed wygaśnięciem.',
     ],
     'novatech_domain' => [
         'name' => 'Domena novatech.pl', 'type' => 'DOMAIN',
         'issuer' => 'NASK (rejestr domen .pl)', 'valid_from' => -347, 'expiry' => 18, 'lead' => 30,
         'owner' => 'tomasz', 'payer' => 'novatech',
-        'status' => 'active', 'cost' => 129.00, 'cycle' => 'annual', 'payment' => 'due_soon', 'last_payment' => -347,
+        'status' => 'active', 'discount' => 0, 'cycle' => 'annual', 'payment' => 'due_soon', 'last_payment' => -347,
     ],
     'wisla_m365' => [
         'name' => 'Microsoft 365 Business (25 stanowisk)', 'type' => 'SAAS',
         'issuer' => 'Microsoft', 'valid_from' => -341, 'expiry' => 24,
         'owner' => 'ewa', 'payer' => 'wisla',
-        'status' => 'active', 'cost' => 14400.00, 'cycle' => 'annual', 'payment' => 'paid', 'last_payment' => -60,
+        'status' => 'active', 'discount' => 10, 'cycle' => 'annual', 'payment' => 'paid', 'last_payment' => -60,
     ],
     'wisla_aws' => [
         'name' => 'Wsparcie AWS Business', 'type' => 'CLOUD_SUPPORT',
         'issuer' => 'Amazon Web Services', 'valid_from' => -338, 'expiry' => 27,
         'owner' => 'owner', 'payer' => 'wisla',
-        'status' => 'active', 'cost' => 9600.00, 'cycle' => 'annual', 'payment' => 'due_soon', 'last_payment' => -335,
+        'status' => 'active', 'discount' => 5, 'cycle' => 'annual', 'payment' => 'due_soon', 'last_payment' => -335,
         'notes' => 'Do decyzji: zmiana planu wsparcia.',
     ],
     'piotr_qes' => [
         'name' => 'Certyfikat kwalifikowany — Piotr Lewandowski', 'type' => 'QUALIFIED_SIGNATURE',
         'serial' => '7C19D4E2A6B83F05', 'issuer' => 'KIR — Szafir', 'valid_from' => -685, 'expiry' => 45, 'lead' => 30,
         'owner' => 'tomasz', 'beneficiary' => 'piotr', 'payer' => 'wisla',
-        'status' => 'active', 'cost' => 299.00, 'cycle' => 'multi_year', 'payment' => 'paid', 'last_payment' => -685,
+        'status' => 'active', 'discount' => 3, 'cycle' => 'multi_year', 'payment' => 'paid', 'last_payment' => -685,
     ],
     'wisla_ssl_ev' => [
         'name' => 'SSL EV — sklep.grupawisla.pl', 'type' => 'SSL_CERTIFICATE',
         'serial' => '4E8D2A7B1C6F9053', 'issuer' => 'Sectigo Public Server Authentication CA EV R36', 'valid_from' => -269, 'expiry' => 96, 'lead' => 21,
         'owner' => 'tomasz', 'payer' => 'wisla', 'previous' => 'wisla_ssl_ev_old',
-        'status' => 'active', 'cost' => 1450.00, 'cycle' => 'annual', 'payment' => 'paid', 'last_payment' => -272,
+        'status' => 'active', 'discount' => 0, 'cycle' => 'annual', 'payment' => 'paid', 'last_payment' => -272,
         'notes' => 'Odnowienie certyfikatu z poprzedniego roku.',
     ],
     'agnieszka_qes' => [
         'name' => 'Certyfikat kwalifikowany — Agnieszka Mazur', 'type' => 'QUALIFIED_SIGNATURE',
         'serial' => '2D6A9E4F7B1C8035', 'issuer' => 'EuroCert QCA', 'valid_from' => -580, 'expiry' => 150, 'lead' => 30,
         'owner' => 'ewa', 'beneficiary' => 'agnieszka', 'payer' => 'fundacja',
-        'status' => 'active', 'cost' => 320.00, 'cycle' => 'multi_year', 'payment' => 'paid', 'last_payment' => -580,
+        'status' => 'active', 'discount' => 5, 'cycle' => 'multi_year', 'payment' => 'paid', 'last_payment' => -580,
     ],
     'fundacja_jira' => [
         'name' => 'Jira + Confluence (zespół IT)', 'type' => 'SAAS',
         'issuer' => 'Atlassian', 'expiry' => 210,
         'owner' => 'ewa', 'payer' => 'fundacja',
-        'status' => 'pending', 'cost' => 5400.00, 'cycle' => 'annual', 'payment' => 'not_applicable',
+        'status' => 'pending', 'discount' => 0, 'cycle' => 'annual', 'payment' => 'not_applicable',
         'notes' => 'Umowa w negocjacji.',
     ],
     // Archiwum — niewidoczne w panelu; pokazuje archiwizację i łańcuch odnowień
@@ -197,14 +197,14 @@ $demoCertificates = array_map(static fn (array $certificate): array => array_mer
         'name' => 'SSL EV — sklep.grupawisla.pl (poprzedni)', 'type' => 'SSL_CERTIFICATE',
         'serial' => '9A1B3C5D7E2F4061', 'issuer' => 'Sectigo Public Server Authentication CA EV R36', 'valid_from' => -634, 'expiry' => -269, 'lead' => 21,
         'owner' => 'tomasz', 'payer' => 'wisla', 'archived' => -268,
-        'status' => 'expired', 'cost' => 1390.00, 'cycle' => 'annual', 'payment' => 'paid', 'last_payment' => -637,
+        'status' => 'expired', 'discount' => 3, 'cycle' => 'annual', 'payment' => 'paid', 'last_payment' => -637,
         'notes' => 'Zastąpiony nowym certyfikatem.',
     ],
     'novatech_old_domain' => [
         'name' => 'Domena stara-novatech.com.pl', 'type' => 'DOMAIN',
         'issuer' => 'NASK (rejestr domen .pl)', 'valid_from' => -400, 'expiry' => -35, 'lead' => 30,
         'owner' => 'tomasz', 'payer' => 'novatech', 'archived' => -30,
-        'status' => 'expired', 'cost' => 99.00, 'cycle' => 'annual', 'payment' => 'not_applicable', 'last_payment' => -400,
+        'status' => 'expired', 'discount' => 0, 'cycle' => 'annual', 'payment' => 'not_applicable', 'last_payment' => -400,
         'notes' => 'Klient zrezygnował z domeny.',
     ],
 ]);
@@ -424,11 +424,11 @@ $certificateContext = [];
 $insertCertificate = $db->prepare(
     'INSERT INTO certificates
         (name, certificate_type, serial_number, issuer, valid_from, expiry_date, renewal_lead_days,
-         user_id, beneficiary_id, payer_id, status, annual_cost, billing_cycle, currency, payment_status,
+         user_id, beneficiary_id, payer_id, status, discount_percent, billing_cycle, payment_status,
          last_payment_date, auto_renew, notes, archived_at, created_at)
      VALUES
         (:name, :type, :serial, :issuer, :valid_from, :expiry, :lead,
-         :user_id, :beneficiary_id, :payer_id, :status, :cost, :cycle, "PLN", :payment,
+         :user_id, :beneficiary_id, :payer_id, :status, :discount, :cycle, :payment,
          :last_payment, :auto_renew, :notes, :archived_at, :created_at)'
 );
 
@@ -450,7 +450,7 @@ foreach ($demoCertificates as $key => $cert) {
         'beneficiary_id' => $beneficiaryId,
         'payer_id'       => $payerId,
         'status'         => $cert['status'],
-        'cost'           => $cert['cost'],
+        'discount'       => $cert['discount'],
         'cycle'          => $cert['cycle'],
         'payment'        => $cert['payment'],
         'last_payment'   => $cert['last_payment'] !== null ? $day($cert['last_payment']) : null,

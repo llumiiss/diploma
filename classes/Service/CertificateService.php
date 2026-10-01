@@ -23,7 +23,7 @@ final class CertificateService
     /** @var list<string> */
     public const FIELDS = [
         'name', 'certificate_type', 'serial_number', 'issuer', 'valid_from', 'expiry_date', 'renewal_lead_days',
-        'user_id', 'beneficiary_id', 'payer_id', 'status', 'annual_cost', 'billing_cycle', 'currency',
+        'user_id', 'beneficiary_id', 'payer_id', 'status', 'discount_percent', 'billing_cycle',
         'payment_status', 'last_payment_date', 'auto_renew', 'notes',
     ];
 
@@ -138,10 +138,10 @@ final class CertificateService
             $id = Transaction::run($this->db, function () use ($actor, $values): int {
                 $stmt = $this->db->prepare(
                     'INSERT INTO certificates (name, certificate_type, serial_number, issuer, valid_from, expiry_date,
-                        renewal_lead_days, user_id, beneficiary_id, payer_id, status, annual_cost, billing_cycle, currency,
+                        renewal_lead_days, user_id, beneficiary_id, payer_id, status, discount_percent, billing_cycle,
                         payment_status, last_payment_date, auto_renew, notes)
                      VALUES (:name, :certificate_type, :serial_number, :issuer, :valid_from, :expiry_date,
-                        :renewal_lead_days, :user_id, :beneficiary_id, :payer_id, :status, :annual_cost, :billing_cycle, :currency,
+                        :renewal_lead_days, :user_id, :beneficiary_id, :payer_id, :status, :discount_percent, :billing_cycle,
                         :payment_status, :last_payment_date, :auto_renew, :notes)'
                 );
                 $stmt->execute(self::bindable($values));
@@ -184,7 +184,7 @@ final class CertificateService
                     'UPDATE certificates SET name = :name, certificate_type = :certificate_type, serial_number = :serial_number,
                         issuer = :issuer, valid_from = :valid_from, expiry_date = :expiry_date, renewal_lead_days = :renewal_lead_days,
                         user_id = :user_id, beneficiary_id = :beneficiary_id, payer_id = :payer_id, status = :status,
-                        annual_cost = :annual_cost, billing_cycle = :billing_cycle, currency = :currency,
+                        discount_percent = :discount_percent, billing_cycle = :billing_cycle,
                         payment_status = :payment_status, last_payment_date = :last_payment_date, auto_renew = :auto_renew,
                         notes = :notes
                      WHERE id = :id'
@@ -286,7 +286,7 @@ final class CertificateService
      * Wywołujący odpowiada za transakcję i zamknięcie zadania odnowienia.
      *
      * @param array<string, mixed> $data expiry_date (wymagana), valid_from, serial_number, issuer,
-     *                                   annual_cost, payment_status, last_payment_date, notes, name
+     *                                   discount_percent, payment_status, last_payment_date, notes, name
      */
     public function renewFrom(Actor $actor, int $oldId, array $data): int
     {
@@ -306,9 +306,8 @@ final class CertificateService
             'beneficiary_id'    => $old['beneficiary_id'],
             'payer_id'          => $old['payer_id'],
             'status'            => 'active',
-            'annual_cost'       => $pick('annual_cost', $old['annual_cost']),
+            'discount_percent'  => $pick('discount_percent', $old['discount_percent']),
             'billing_cycle'     => $old['billing_cycle'],
-            'currency'          => $old['currency'],
             'payment_status'    => $pick('payment_status', 'paid'),
             'last_payment_date' => $pick('last_payment_date', null),
             'auto_renew'        => $old['auto_renew'],
@@ -330,11 +329,11 @@ final class CertificateService
             try {
                 $stmt = $this->db->prepare(
                     'INSERT INTO certificates (name, certificate_type, serial_number, issuer, valid_from, expiry_date,
-                        renewal_lead_days, user_id, beneficiary_id, payer_id, previous_certificate_id, status, annual_cost,
-                        billing_cycle, currency, payment_status, last_payment_date, auto_renew, notes)
+                        renewal_lead_days, user_id, beneficiary_id, payer_id, previous_certificate_id, status, discount_percent,
+                        billing_cycle, payment_status, last_payment_date, auto_renew, notes)
                      VALUES (:name, :certificate_type, :serial_number, :issuer, :valid_from, :expiry_date,
-                        :renewal_lead_days, :user_id, :beneficiary_id, :payer_id, :previous_certificate_id, :status, :annual_cost,
-                        :billing_cycle, :currency, :payment_status, :last_payment_date, :auto_renew, :notes)'
+                        :renewal_lead_days, :user_id, :beneficiary_id, :payer_id, :previous_certificate_id, :status, :discount_percent,
+                        :billing_cycle, :payment_status, :last_payment_date, :auto_renew, :notes)'
                 );
                 $stmt->execute(self::bindable($values) + ['previous_certificate_id' => $oldId]);
             } catch (PDOException $e) {
@@ -419,9 +418,8 @@ final class CertificateService
             'beneficiary_id'    => $v->id('beneficiary_id', false),
             'payer_id'          => $v->id('payer_id', false),
             'status'            => (string) $v->enum('status', false, self::STATUSES, 'active'),
-            'annual_cost'       => $v->decimal('annual_cost', false, 0, 99999999.99) ?? 0.0,
+            'discount_percent'  => $v->discountPercent('discount_percent'),
             'billing_cycle'     => (string) $v->enum('billing_cycle', false, self::BILLING_CYCLES, 'annual'),
-            'currency'          => $v->currency('currency'),
             'payment_status'    => (string) $v->enum('payment_status', false, self::PAYMENT_STATUSES, 'paid'),
             'last_payment_date' => $v->date('last_payment_date', false),
             'auto_renew'        => $v->bool('auto_renew', false),
@@ -586,7 +584,7 @@ final class CertificateService
     {
         return 'SELECT
                 c.id, c.name, c.certificate_type, c.serial_number, c.issuer, c.valid_from, c.expiry_date,
-                c.renewal_lead_days, c.status, c.annual_cost, c.billing_cycle, c.currency, c.payment_status,
+                c.renewal_lead_days, c.status, c.discount_percent, c.billing_cycle, c.payment_status,
                 c.last_payment_date, c.auto_renew, c.notes, c.user_id, c.beneficiary_id, c.payer_id,
                 c.previous_certificate_id, c.archived_at, c.created_at, c.updated_at,
                 u.first_name AS user_first_name, u.last_name AS user_last_name, u.role AS user_role, u.email AS user_email,
@@ -626,7 +624,7 @@ final class CertificateService
     private static function bindable(array $values): array
     {
         $values['auto_renew'] = $values['auto_renew'] ? 1 : 0;
-        $values['annual_cost'] = number_format((float) $values['annual_cost'], 2, '.', '');
+        $values['discount_percent'] = number_format((float) $values['discount_percent'], 2, '.', '');
 
         return array_intersect_key($values, array_flip(self::FIELDS));
     }

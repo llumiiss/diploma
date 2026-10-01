@@ -102,7 +102,7 @@
                             <th class="th">{{ t('report.column.days_left') }}</th>
                             <th class="th">{{ t('report.column.task') }}</th>
                             <th class="th">{{ t('report.column.contact') }}</th>
-                            <th v-if="showCost" class="th text-right">{{ t('report.column.cost') }}</th>
+                            <th v-if="showCost" class="th text-right">{{ t('report.column.discount') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -146,9 +146,8 @@
                                 <span v-else class="text-slate-400">—</span>
                             </td>
                             <td v-if="showCost" class="td text-right whitespace-nowrap">
-                                {{ format.money(item.annual_cost, item.currency) }}
+                                {{ format.discount(item.discount_percent) }}
                                 <div class="text-xs text-slate-500">{{ labels.billing(item.billing_cycle) }}</div>
-                                <div v-if="item.billing_cycle !== 'annual'" class="text-xs text-slate-400">{{ t('report.cost_annualized', { amount: format.money(item.annualized_cost, item.currency) }) }}</div>
                             </td>
                         </tr>
                         <tr v-if="certificates.length === 0">
@@ -395,11 +394,11 @@
                     { view: 'settings', icon: '⚙️', label: t('nav.settings'), permission: 'settings.manage' },
                 ].filter((link) => CertiSub.can(link.permission));
             },
-            costText() {
-                if (!this.schedule || this.schedule.annual_cost.length === 0) {
+            discountText() {
+                if (!this.schedule || this.schedule.average_discount === null) {
                     return '';
                 }
-                return this.schedule.annual_cost.map((item) => format.money(item.amount, item.currency)).join(' + ');
+                return format.discount(this.schedule.average_discount);
             },
         },
         watch: {
@@ -517,7 +516,7 @@
                     <div v-else-if="schedule" :class="loading ? 'opacity-60' : ''">
                         <p class="px-5 pt-4 text-sm text-slate-600">
                             {{ t('report.generated_at', { date: format.dateTime(schedule.generated_at) }) }}
-                            <span v-if="costText"> · {{ t('report.schedule.cost', { amount: costText }) }}</span>
+                            <span v-if="discountText"> · {{ t('report.schedule.discount', { value: discountText }) }}</span>
                         </p>
                         <ExpirySchedule :buckets="schedule.buckets" />
                     </div>
@@ -733,9 +732,8 @@
                     { label: t('common.created_at'), value: format.dateTime(p.created_at) },
                 ];
             },
-            costText() {
-                const totals = this.summary.annual_cost;
-                return totals.length ? totals.map((item) => format.money(item.amount, item.currency)).join(' + ') : '—';
+            discountText() {
+                return this.summary.average_discount === null ? '—' : format.discount(this.summary.average_discount);
             },
             kpis() {
                 const s = this.summary;
@@ -765,7 +763,7 @@
                         value: s.open_tasks,
                         hint: t('report.kpi.contact_hint', { sent: s.invitations_sent, date: s.last_contact_at ? format.date(s.last_contact_at) : '—' }),
                     },
-                    { label: t('report.kpi.annual_cost'), value: this.costText, hint: t('report.kpi.annual_cost_hint') },
+                    { label: t('report.kpi.discount'), value: this.discountText, hint: t('report.kpi.discount_hint') },
                 ];
             },
         },

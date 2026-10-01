@@ -176,9 +176,9 @@
                         <p v-if="summary" class="text-xs text-slate-400 mt-2">{{ t('dash.overdue_count', { count: summary.payment_summary.overdue }) }}</p>
                     </div>
                     <div class="card p-5 border-emerald-200">
-                        <p class="text-xs font-semibold text-emerald-500 uppercase">{{ t('corporate.commitment') }}</p>
-                        <p class="text-2xl font-bold text-emerald-700 mt-1">{{ summary ? format.money(summary.renewal_summary.annual_commitment) : '…' }}</p>
-                        <p class="text-xs text-slate-400 mt-2">{{ t('dash.annual_total') }}</p>
+                        <p class="text-xs font-semibold text-emerald-500 uppercase">{{ t('dashboard.kpi.discount') }}</p>
+                        <p class="text-3xl font-bold text-emerald-700 mt-1">{{ summary ? format.discount(summary.renewal_summary.average_discount) : '…' }}</p>
+                        <p class="text-xs text-slate-400 mt-2">{{ t('dashboard.kpi.discount_hint', { count: summary ? summary.renewal_summary.discounted_count : 0 }) }}</p>
                     </div>
                 </div>
 
@@ -250,7 +250,7 @@
                                 <thead class="bg-slate-50 border-b border-slate-200">
                                     <tr>
                                         <th class="th">{{ t('certificate.singular') }}</th>
-                                        <th class="th text-right">{{ t('dash.amount') }}</th>
+                                        <th class="th text-right">{{ t('field.discount_percent') }}</th>
                                         <th class="th">{{ t('field.payment_status') }}</th>
                                     </tr>
                                 </thead>
@@ -261,7 +261,7 @@
                                             <div class="font-medium text-slate-800">{{ item.name }}</div>
                                             <div class="text-xs text-slate-500">{{ item.company_name }}</div>
                                         </td>
-                                        <td class="td text-right font-semibold whitespace-nowrap">{{ format.money(item.annual_cost, item.currency) }}</td>
+                                        <td class="td text-right font-semibold whitespace-nowrap">{{ format.discount(item.discount_percent) }}</td>
                                         <td class="td"><span :class="['badge', badge.payment(item.display_payment_status)]">{{ item.payment_label }}</span></td>
                                     </tr>
                                     <TableState :colspan="3" :loading="store.certificates.loading && !store.certificates.loaded"
@@ -269,8 +269,8 @@
                                 </tbody>
                             </table>
                             <div v-if="summary" class="px-4 py-3 bg-amber-50 border-t border-amber-100 flex justify-between text-sm">
-                                <span class="text-amber-800 font-medium">{{ t('dash.total_due') }}</span>
-                                <span class="font-bold text-amber-900">{{ format.money(summary.payment_summary.total_due_amount) }}</span>
+                                <span class="text-amber-800 font-medium">{{ t('dash.payments_open') }}</span>
+                                <span class="font-bold text-amber-900">{{ summary.payment_summary.due_soon + summary.payment_summary.overdue }}</span>
                             </div>
                         </div>
                     </div>

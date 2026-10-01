@@ -36,7 +36,7 @@ final class ExportServiceTest extends IntegrationTestCase
             'beneficiary_id'   => $this->personId,
             'expiry_date'      => date('Y-m-d', strtotime('+5 days')),
         ]);
-        $this->db->exec("UPDATE certificates SET annual_cost = 320.00, auto_renew = 1 WHERE id = {$this->certificateId}");
+        $this->db->exec("UPDATE certificates SET discount_percent = 5.00, auto_renew = 1 WHERE id = {$this->certificateId}");
         $this->insertCertificate($this->manager->id, $this->payerId, ['name' => 'Stary podpis', 'archived_at' => '2025-01-01 10:00:00']);
     }
 
@@ -62,7 +62,7 @@ final class ExportServiceTest extends IntegrationTestCase
         $this->assertSame('6342851974', $row['NIP płatnika']);
         $this->assertSame('jan@example.com', $row['E-mail użytkownika certyfikatu']);
         $this->assertSame('ewa.pawlak@example.com', $row['E-mail opiekuna']);
-        $this->assertSame('320.00', $row['Koszt']);
+        $this->assertSame('-5%', $row['Rabat']);
         $this->assertSame('1', $row['Odnawianie automatyczne']);
         $this->assertSame('Krytyczne', $row['Priorytet']);
 

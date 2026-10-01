@@ -25,7 +25,7 @@ final class CertificateServiceTest extends IntegrationTestCase
             'expiry_date'      => '2028-01-10',
             'renewal_lead_days' => '30',
             'payer_id'         => $payerId,
-            'annual_cost'      => '320,00',
+            'discount_percent' => '-5%',
             'billing_cycle'    => 'multi_year',
             'payment_status'   => 'paid',
         ], $overrides);
@@ -47,7 +47,8 @@ final class CertificateServiceTest extends IntegrationTestCase
 
         $this->assertSame($operator->id, $certificate['user_id']);
         $this->assertSame($payerId, $certificate['payer_id']);
-        $this->assertSame(320.0, $certificate['annual_cost']);
+        $this->assertSame(5.0, $certificate['discount_percent']);
+        $this->assertSame('-5%', $certificate['discount_label']);
         $this->assertSame(30, $certificate['renewal_lead_days']);
         $this->assertSame(1, $this->countEvents('certificate', $certificate['id'], 'created'));
         $this->assertSame('created', $certificate['events'][0]['event_type']);
@@ -184,7 +185,7 @@ final class CertificateServiceTest extends IntegrationTestCase
 
         $updated = $service->update($operator, $certificate['id'], $this->validData($payerId, [
             'expiry_date' => '2028-03-01',
-            'annual_cost' => '320.00',
+            'discount_percent' => '-5',
         ]));
 
         $this->assertSame('2028-03-01', $updated['expiry_date']);

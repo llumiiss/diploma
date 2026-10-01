@@ -14,7 +14,7 @@ use PDO;
  *
  *  - karta użytkownika certyfikatu: dane osoby, certyfikaty z datami odnowienia, łańcuch odnowień,
  *    zadania, zaproszenia i historia na osi czasu,
- *  - karta płatnika: dane płatnika, powiązane osoby, certyfikaty z datami wygaśnięcia, koszt roczny,
+ *  - karta płatnika: dane płatnika, powiązane osoby, certyfikaty z datami wygaśnięcia, średni rabat,
  *    harmonogram wygaśnięć, zadania, zaproszenia i historia,
  *  - harmonogram wygaśnięć: certyfikaty z całego zakresu konta pogrupowane wg miesięcy.
  *
@@ -107,7 +107,7 @@ final class ReportService
 
         $summary = self::summary($active, $history, $tasks, $invitations, $settings);
         $summary['beneficiaries'] = count(array_filter($beneficiaries, static fn (array $row): bool => $row['archived_at'] === null));
-        $summary['annual_cost'] = self::costTotals($active);
+        $summary['average_discount'] = self::averageDiscount($active);
 
         return [
             'payer'          => [
@@ -175,7 +175,7 @@ final class ReportService
             'months'       => $months,
             'buckets'      => $buckets,
             'total'        => count($certificates),
-            'annual_cost'  => self::costTotals($certificates),
+            'average_discount' => self::averageDiscount($certificates),
             'thresholds'   => self::thresholds($settings),
             'generated_at' => date('Y-m-d H:i:s'),
             'today'        => $today->format('Y-m-d'),
@@ -230,7 +230,7 @@ final class ReportService
 
         $stmt = $this->db->prepare(
             "SELECT c.id, c.name, c.certificate_type, c.serial_number, c.issuer, c.valid_from, c.expiry_date,
-                    c.renewal_lead_days, c.status, c.annual_cost, c.billing_cycle, c.currency, c.payment_status,
+                    c.renewal_lead_days, c.status, c.discount_percent, c.billing_cycle, c.payment_status,
                     c.previous_certificate_id, c.archived_at, c.user_id, c.beneficiary_id, c.payer_id,
                     u.first_name AS owner_first_name, u.last_name AS owner_last_name,
                     b.first_name AS beneficiary_first_name, b.last_name AS beneficiary_last_name,
@@ -268,7 +268,6 @@ final class ReportService
         $lead = $customLead ? (int) $row['renewal_lead_days'] : $settings['renewal.warning_days'];
         $renewalFrom = $expiry->modify('-' . $lead . ' days');
         $archived = $row['archived_at'] !== null;
-        $amount = (float) $row['annual_cost'];
 
         return [
             'id'                      => (int) $row['id'],
@@ -289,10 +288,8 @@ final class ReportService
                 $settings['renewal.warning_days']
             ),
             'status'                  => (string) $row['status'],
-            'annual_cost'             => $amount,
-            'annualized_cost'         => CertificateHelper::annualizedCost($amount, (string) $row['billing_cycle'], $row['valid_from'], (string) $row['expiry_date']),
+            'discount_percent'        => (float) $row['discount_percent'],
             'billing_cycle'           => (string) $row['billing_cycle'],
-            'currency'                => (string) $row['currency'],
             'payment_status'          => (string) $row['payment_status'],
             'owner'                   => ['id' => (int) $row['user_id'], 'name' => trim($row['owner_first_name'] . ' ' . $row['owner_last_name'])],
             'beneficiary'             => $row['beneficiary_id'] !== null ? [
@@ -522,29 +519,24 @@ final class ReportService
     }
 
     /**
-     * Suma kosztów w przeliczeniu na rok, osobno dla każdej waluty.
+     * Średni rabat bieżących certyfikatów w procentach (wielkość rabatu, 0–100);
+     * null, gdy nie ma żadnego bieżącego certyfikatu.
      *
      * @param list<array<string, mixed>> $certificates
-     * @return list<array{currency: string, amount: float}>
      */
-    private static function costTotals(array $certificates): array
+    private static function averageDiscount(array $certificates): ?float
     {
-        $totals = [];
+        $sum = 0.0;
+        $count = 0;
         foreach ($certificates as $certificate) {
             if ($certificate['archived_at'] !== null) {
                 continue;
             }
-            $currency = $certificate['currency'];
-            $totals[$currency] = ($totals[$currency] ?? 0.0) + $certificate['annualized_cost'];
-        }
-        ksort($totals);
-
-        $result = [];
-        foreach ($totals as $currency => $amount) {
-            $result[] = ['currency' => (string) $currency, 'amount' => round($amount, 2)];
+            $sum += (float) $certificate['discount_percent'];
+            ++$count;
         }
 
-        return $result;
+        return $count > 0 ? round($sum / $count, 2) : null;
     }
 
     /**

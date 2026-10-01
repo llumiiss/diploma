@@ -59,6 +59,18 @@ final class SchemaInspector
         );
     }
 
+    /** @phpstan-impure */
+    public static function checkConstraintExists(PDO $db, string $table, string $constraint): bool
+    {
+        return self::exists(
+            $db,
+            "SELECT 1 FROM information_schema.table_constraints
+             WHERE table_schema = DATABASE() AND table_name = :table
+               AND constraint_name = :constraint AND constraint_type = 'CHECK' LIMIT 1",
+            ['table' => $table, 'constraint' => $constraint]
+        );
+    }
+
     /**
      * @param array<string, string> $params
      */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App;
 
 use App\Migrations\AccountsAndOwnershipMigration;
+use App\Migrations\CertificateDiscountMigration;
 use App\Migrations\CertificatesModelMigration;
 use App\Migrations\OtpRateLimitMigration;
 use App\Migrations\PasswordAuthMigration;
@@ -149,6 +150,10 @@ final class MigrationRunner
             // Etap 9: logowanie hasłem z potwierdzeniem adresu e-mail (zamiast kodów jednorazowych).
             'password_auth' => static function (PDO $db): void {
                 PasswordAuthMigration::up($db);
+            },
+            // Etap 10: rabat w procentach zamiast kwoty i waluty certyfikatu.
+            'certificate_discount' => static function (PDO $db): void {
+                CertificateDiscountMigration::up($db);
             },
         ];
     }

@@ -128,7 +128,7 @@ final class EndToEndFlowTest extends IntegrationTestCase
             'valid_from'       => date('Y-m-d', strtotime('-2 years')),
             'expiry_date'      => date('Y-m-d', strtotime('+5 days')),
             'beneficiary_id'   => $person['id'],
-            'annual_cost'      => '320,00',
+            'discount_percent' => '-10%',
         ]])['certificate'];
         $this->assertSame('critical', $certificate['priority']);
 
@@ -199,10 +199,10 @@ final class EndToEndFlowTest extends IntegrationTestCase
             $this->assertContains($event, array_column($journal['events'], 'event_type'), $event);
         }
 
-        // 10. Dane widać też przez pulpit, a koszt roczny liczy się wg okresu rozliczeniowego.
+        // 10. Dane widać też przez pulpit, a średni rabat liczy się z bieżących certyfikatów.
         $summary = $this->ok(new \App\Api\DashboardController($this->db))['summary'];
         $this->assertSame(['pending' => 0, 'active' => 1, 'renewal_in_progress' => 0, 'expired' => 0], $summary['stats']);
-        $this->assertEqualsWithDelta(320.0, $summary['renewal_summary']['annual_commitment'], 0.01);
+        $this->assertEqualsWithDelta(10.0, $summary['renewal_summary']['average_discount'], 0.01);
     }
 
     public function testApiRejectsWrongMethodMissingCsrfAndForbiddenRole(): void

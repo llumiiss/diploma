@@ -182,10 +182,9 @@ CREATE TABLE certificates (
     payer_id                 INT UNSIGNED NOT NULL,
     previous_certificate_id  INT UNSIGNED NULL,
     status                   ENUM('pending', 'active', 'renewal_in_progress', 'expired') NOT NULL DEFAULT 'pending',
-    annual_cost              DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    discount_percent         DECIMAL(5, 2) NOT NULL DEFAULT 0.00,
     billing_cycle            ENUM('monthly', 'annual', 'multi_year') NOT NULL DEFAULT 'annual',
-    currency                 CHAR(3) NOT NULL DEFAULT 'PLN',
-    payment_status           ENUM('paid', 'due_soon', 'overdue', 'not_applicable') NOT NULL DEFAULT 'due_soon',
+    payment_status          ENUM('paid', 'due_soon', 'overdue', 'not_applicable') NOT NULL DEFAULT 'due_soon',
     last_payment_date        DATE NULL,
     auto_renew               TINYINT(1) NOT NULL DEFAULT 1,
     notes                    TEXT NULL,
@@ -213,7 +212,8 @@ CREATE TABLE certificates (
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_certificates_previous
         FOREIGN KEY (previous_certificate_id) REFERENCES certificates(id)
-        ON DELETE SET NULL ON UPDATE RESTRICT
+        ON DELETE SET NULL ON UPDATE RESTRICT,
+    CONSTRAINT chk_certificates_discount CHECK (discount_percent BETWEEN 0 AND 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Lista ToDo: zadania odnowień ze statusami do statystyk realizacji.

@@ -47,7 +47,6 @@ final class ExportService
         'beneficiaries' => 'beneficiary',
         'schedule'      => 'month',
         'buckets'       => 'month',
-        'annual_cost'   => 'total',
         'changes'       => 'change',
     ];
 
@@ -236,8 +235,8 @@ final class ExportService
             'exchange.column.id', 'field.name', 'field.certificate_type', 'field.serial_number', 'field.beneficiary_id',
             'field.payer_id', 'field.valid_from', 'field.expiry_date', 'report.column.renewal_from', 'field.renewal_lead_days',
             'exchange.column.days_left', 'exchange.column.priority', 'exchange.column.task_status', 'task.assignee',
-            'exchange.column.invitation_count', 'exchange.column.last_contact_at', 'exchange.column.annualized_cost',
-            'field.currency', 'exchange.column.archived_at', 'exchange.column.next_certificate_id',
+            'exchange.column.invitation_count', 'exchange.column.last_contact_at', 'field.discount_percent',
+            'exchange.column.archived_at', 'exchange.column.next_certificate_id',
         ]);
     }
 
@@ -264,8 +263,7 @@ final class ExportService
             $item['open_task']['assignee_name'] ?? null,
             $item['invitation_count'],
             $item['last_contact_at'],
-            (float) $item['annualized_cost'],
-            $item['currency'],
+            CertificateHelper::formatDiscount((float) $item['discount_percent']),
             $item['archived_at'],
             $item['next_certificate_id'],
         ];
@@ -292,9 +290,8 @@ final class ExportService
             'payer_name'              => $row['company_name'],
             'payer_tax_id'            => $row['payer_tax_id'],
             'owner_email'             => $row['user_email'],
-            'annual_cost'             => (float) $row['annual_cost'],
+            'discount_percent'        => (float) $row['discount_percent'],
             'billing_cycle'           => $row['billing_cycle'],
-            'currency'                => $row['currency'],
             'payment_status'          => $row['payment_status'],
             'last_payment_date'       => $row['last_payment_date'],
             'auto_renew'              => (bool) $row['auto_renew'],
@@ -435,6 +432,9 @@ final class ExportService
         }
         if (is_array($value)) {
             return $value === [] ? null : (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+        if ($field === 'discount_percent' && is_numeric($value)) {
+            return CertificateHelper::formatDiscount((float) $value);
         }
         if (!is_string($value)) {
             return is_scalar($value) ? $value : null;

@@ -241,6 +241,9 @@
         if (field === 'billing_cycle') {
             return labels.billing(raw);
         }
+        if (field === 'discount_percent') {
+            return format.discount(raw);
+        }
         if (field === 'role') {
             return labels.role(raw);
         }

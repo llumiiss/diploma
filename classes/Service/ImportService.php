@@ -35,7 +35,7 @@ final class ImportService
 
     private const CERTIFICATE_INPUT = [
         'name', 'certificate_type', 'serial_number', 'issuer', 'valid_from', 'expiry_date', 'renewal_lead_days', 'status',
-        'annual_cost', 'billing_cycle', 'currency', 'payment_status', 'last_payment_date', 'auto_renew', 'notes',
+        'discount_percent', 'billing_cycle', 'payment_status', 'last_payment_date', 'auto_renew', 'notes',
     ];
 
     /** Nazwy okresu rozliczeń spotykane w arkuszach. */
@@ -378,9 +378,6 @@ final class ImportService
                 CertificateService::PAYMENT_STATUSES,
                 static fn (string $code): string => $code === 'not_applicable' ? 'payment.na' : 'payment.' . $code
             ));
-        }
-        if (isset($input['annual_cost']) && $input['annual_cost'] !== '') {
-            $input['annual_cost'] = (string) preg_replace('/\s*(zł|zl|pln|eur|usd)\s*$/i', '', $input['annual_cost']);
         }
 
         if (($data['owner_email'] ?? '') !== '') {

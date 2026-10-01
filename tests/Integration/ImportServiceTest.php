@@ -133,10 +133,10 @@ final class ImportServiceTest extends IntegrationTestCase
             'name' => 'Stary SSL', 'serial_number' => 'ABC123456', 'issuer' => 'Certum', 'expiry_date' => '2026-12-01',
         ]);
 
-        $headers = ['Nazwa', 'Typ', 'Numer seryjny', 'Wystawca', 'Ważny od', 'Data wygaśnięcia', 'E-mail osoby', 'Opiekun', 'Koszt', 'Okres rozliczenia', 'Odnawianie automatyczne'];
+        $headers = ['Nazwa', 'Typ', 'Numer seryjny', 'Wystawca', 'Ważny od', 'Data wygaśnięcia', 'E-mail osoby', 'Opiekun', 'Rabat', 'Okres rozliczenia', 'Odnawianie automatyczne'];
         $content = self::csv($headers, [
-            ['Podpis Jana', 'Certyfikat kwalifikowany', 'QS-2027-001', 'Certum', '01.10.2025', '30.09.2027', 'jan@example.com', 'ewa.opiekun@example.com', '320,00 zł', 'roczny', 'tak'],
-            ['SSL odnowiony', 'SSL_CERTIFICATE', 'ABC123456', 'certum', null, '2027-12-01', null, null, '99', 'annual', 'nie'],
+            ['Podpis Jana', 'Certyfikat kwalifikowany', 'QS-2027-001', 'Certum', '01.10.2025', '30.09.2027', 'jan@example.com', 'ewa.opiekun@example.com', '-5%', 'roczny', 'tak'],
+            ['SSL odnowiony', 'SSL_CERTIFICATE', 'ABC123456', 'certum', null, '2027-12-01', null, null, '10', 'annual', 'nie'],
             ['Zła data', 'Certyfikat kwalifikowany', null, null, null, '31.02.2027', 'jan@example.com', null, null, null, null],
             ['Nieznany typ', 'Karta rabatowa', null, null, null, '2027-01-01', 'jan@example.com', null, null, null, null],
             ['Nieznany opiekun', 'Domena', null, null, null, '2027-01-01', 'jan@example.com', 'nikt@example.com', null, null, null],
@@ -158,7 +158,7 @@ final class ImportServiceTest extends IntegrationTestCase
         // Płatnik przechodzi z osoby, gdy plik go nie podaje.
         $this->assertSame((string) $payerId, (string) $created['payer_id']);
         $this->assertSame((string) $owner->id, (string) $created['user_id']);
-        $this->assertSame('320.00', $created['annual_cost']);
+        $this->assertSame('5.00', $created['discount_percent']);
         $this->assertSame('1', (string) $created['auto_renew']);
 
         $updated = $this->db->query("SELECT name, expiry_date, certificate_type FROM certificates WHERE id = {$existing}")->fetch();
