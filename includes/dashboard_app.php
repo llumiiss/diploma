@@ -45,6 +45,7 @@ $boot = [
         'role'       => $role,
     ],
     'permissions' => Rbac::permissionsFor($role),
+    'roles'       => Rbac::roles(),
     'thresholds'  => CertificateHelper::getThresholds(),
     'endpoints'   => [
         'certificates'   => 'api/certificates.php',

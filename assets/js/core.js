@@ -242,7 +242,7 @@
         statuses: ['pending', 'active', 'renewal_in_progress', 'expired'],
         billingCycles: ['monthly', 'annual', 'multi_year'],
         paymentStatuses: ['paid', 'due_soon', 'overdue', 'not_applicable'],
-        roles: ['OPERATOR', 'MANAGER', 'ADMIN'],
+        roles: Array.isArray(boot.roles) && boot.roles.length ? boot.roles : ['ADMIN', 'DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'IT', 'OPERATOR', 'EMPLOYEE'],
         type: (value) => t(TYPE_KEYS[value] || 'type.other'),
         status: (value) => t('status.' + value),
         payment: (value) => t(value === 'not_applicable' ? 'payment.na' : 'payment.' + value),
@@ -279,8 +279,12 @@
         role(value) {
             return {
                 ADMIN: 'bg-purple-100 text-purple-800',
+                DIRECTOR: 'bg-indigo-100 text-indigo-800',
                 MANAGER: 'bg-brand-100 text-brand-800',
+                ACCOUNTANT: 'bg-amber-100 text-amber-800',
+                IT: 'bg-cyan-100 text-cyan-800',
                 OPERATOR: 'bg-slate-100 text-slate-700',
+                EMPLOYEE: 'bg-emerald-50 text-emerald-700',
             }[value] || 'bg-slate-100 text-slate-700';
         },
         row(priority) {

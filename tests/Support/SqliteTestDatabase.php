@@ -21,6 +21,7 @@ final class SqliteTestDatabase
                 first_name TEXT NOT NULL,
                 last_name TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT "OPERATOR",
+                beneficiary_id INTEGER NULL,
                 email TEXT,
                 password_hash TEXT NULL,
                 email_verified_at TEXT NULL,

@@ -92,7 +92,15 @@ $demoPayers = [
 $demoStaff = [
     'ewa'    => ['Ewa', 'Pawlak', 'ewa.pawlak@example.com', Rbac::MANAGER],
     'tomasz' => ['Tomasz', 'Wróbel', 'tomasz.wrobel@example.com', Rbac::OPERATOR],
+    // Role stanowisk (Etap 10): szef, księgowość, informatyk i pracownik powiązany z użytkownikiem certyfikatu.
+    'robert' => ['Robert', 'Szymański', 'robert.szymanski@example.com', Rbac::DIRECTOR],
+    'monika' => ['Monika', 'Zielińska', 'monika.zielinska@example.com', Rbac::ACCOUNTANT],
+    'jakub'  => ['Jakub', 'Kaczmarek', 'jakub.kaczmarek@example.com', Rbac::IT],
+    'jan_pracownik' => ['Jan', 'Kowalski', 'jan.kowalski@example.com', Rbac::EMPLOYEE],
 ];
+
+/** Konto pracownika → klucz użytkownika certyfikatu, którego certyfikaty są jego własnymi. */
+$demoEmployeeLinks = ['jan_pracownik' => 'jan'];
 
 /** Konta wyłączone przez administratora (Etap 2, D3): [imię, nazwisko, e-mail, rola, wyłączone dni temu] */
 $demoInactiveStaff = [
@@ -415,6 +423,11 @@ foreach ($demoBeneficiaries as $key => $person) {
         'beneficiary_id' => $beneficiaryIds[$key],
         'payer_id'       => $payerIds[$person[4]],
     ]);
+}
+
+$linkEmployee = $db->prepare('UPDATE users SET beneficiary_id = :beneficiary_id WHERE id = :id');
+foreach ($demoEmployeeLinks as $staffKey => $personKey) {
+    $linkEmployee->execute(['beneficiary_id' => $beneficiaryIds[$personKey], 'id' => $staffIds[$staffKey]]);
 }
 
 // ── Certyfikaty i usługi ──────────────────────────────────────────────────────

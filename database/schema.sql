@@ -20,6 +20,10 @@ CREATE DATABASE IF NOT EXISTS assistent_subscriptions
 
 USE assistent_subscriptions;
 
+-- Klucze obce między users i beneficiaries są wzajemne (konto wskazuje osobę, osoba — autora), więc
+-- na czas usuwania i tworzenia tabel kontrola kluczy jest wyłączona.
+SET FOREIGN_KEY_CHECKS = 0;
+
 DROP TABLE IF EXISTS settings;
 DROP TABLE IF EXISTS events;
 DROP TABLE IF EXISTS invitation_attachments;
@@ -39,7 +43,9 @@ DROP TABLE IF EXISTS payers;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS schema_migrations;
 
--- Konta systemowe (personel) z hierarchią ról ADMIN > MANAGER > OPERATOR.
+-- Konta systemowe (personel) z rolami stanowisk (App\Rbac): administrator, szef, menedżer, księgowa,
+-- informatyk, operator i pracownik. beneficiary_id wiąże konto pracownika z jego rekordem użytkownika
+-- certyfikatu (klucz dodany po utworzeniu tabeli beneficiaries).
 -- Konta zakłada ADMIN (decyzja D3) albo osoba sama przez rejestrację, jeśli jest włączona.
 -- password_hash NULL = konto bez hasła (ustawia je linkiem z wiadomości).
 -- email_verified_at NULL = adres niepotwierdzony, logowanie zablokowane.
@@ -48,7 +54,8 @@ CREATE TABLE users (
     id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     first_name        VARCHAR(100) NOT NULL,
     last_name         VARCHAR(100) NOT NULL,
-    role              ENUM('ADMIN', 'MANAGER', 'OPERATOR') NOT NULL DEFAULT 'OPERATOR',
+    role              ENUM('ADMIN', 'DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'IT', 'OPERATOR', 'EMPLOYEE') NOT NULL DEFAULT 'OPERATOR',
+    beneficiary_id    INT UNSIGNED NULL,
     email             VARCHAR(255) NULL,
     password_hash     VARCHAR(255) NULL,
     email_verified_at DATETIME NULL,
@@ -56,7 +63,8 @@ CREATE TABLE users (
     deactivated_at    DATETIME NULL,
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_users_email (email),
-    KEY idx_users_verified (email_verified_at)
+    KEY idx_users_verified (email_verified_at),
+    KEY idx_users_beneficiary (beneficiary_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Płatnicy — podmioty opłacające usługi certyfikacyjne.
@@ -162,6 +170,11 @@ CREATE TABLE beneficiaries (
         FOREIGN KEY (created_by_user_id) REFERENCES users(id)
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE users
+    ADD CONSTRAINT fk_users_beneficiary
+        FOREIGN KEY (beneficiary_id) REFERENCES beneficiaries(id)
+        ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- Certyfikaty i usługi (dawniej subscriptions — decyzje D5, D7).
 -- user_id to opiekun rekordu (konto personelu), beneficiary_id to użytkownik certyfikatu,
@@ -380,3 +393,5 @@ CREATE TABLE settings (
         FOREIGN KEY (updated_by_user_id) REFERENCES users(id)
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SET FOREIGN_KEY_CHECKS = 1;

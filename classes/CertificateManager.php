@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Service\Actor;
 use App\Service\Visibility;
 use PDO;
 
 /**
  * Wskaźniki pulpitu liczone na tabeli certyfikatów.
  * Rekordy zarchiwizowane (archived_at) są pomijane we wszystkich widokach bieżących.
+ *
+ * Wskaźniki liczone są w zakresie danych konta (Visibility) i — jeśli konto ustawiło filtr firm —
+ * tylko dla wybranych firm. Bez konta (null) liczona jest cała ewidencja.
  */
 final class CertificateManager
 {
@@ -23,15 +27,15 @@ final class CertificateManager
     /**
      * @return array{pending: int, active: int, renewal_in_progress: int, expired: int}
      */
-    public function getStatusStats(?int $ownerId = null): array
+    public function getStatusStats(?Actor $actor = null): array
     {
-        [$ownerFilter, $params] = $this->ownerFilter($ownerId, []);
+        [$scope, $params] = $this->scope($actor);
 
         $sql = <<<SQL
-            SELECT status, COUNT(*) AS total
-            FROM certificates
-            WHERE archived_at IS NULL{$ownerFilter}
-            GROUP BY status
+            SELECT c.status, COUNT(*) AS total
+            FROM certificates c
+            WHERE c.archived_at IS NULL{$scope}
+            GROUP BY c.status
         SQL;
 
         $stmt = $this->db->prepare($sql);
@@ -54,18 +58,16 @@ final class CertificateManager
     /**
      * @return array{due_soon: int, overdue: int, paid: int}
      */
-    public function getPaymentSummary(?int $ownerId = null): array
+    public function getPaymentSummary(?Actor $actor = null): array
     {
-        [$ownerFilter, $params] = $this->ownerFilter($ownerId, []);
+        [$scope, $params] = $this->scope($actor);
 
         $sql = <<<SQL
-            SELECT
-                payment_status,
-                COUNT(*) AS total
-            FROM certificates
-            WHERE archived_at IS NULL{$ownerFilter}
-              AND payment_status IN ('due_soon', 'overdue')
-            GROUP BY payment_status
+            SELECT c.payment_status, COUNT(*) AS total
+            FROM certificates c
+            WHERE c.archived_at IS NULL{$scope}
+              AND c.payment_status IN ('due_soon', 'overdue')
+            GROUP BY c.payment_status
         SQL;
 
         $stmt = $this->db->prepare($sql);
@@ -82,8 +84,8 @@ final class CertificateManager
         }
 
         $paidStmt = $this->db->prepare(
-            "SELECT COUNT(*) FROM certificates
-             WHERE archived_at IS NULL{$ownerFilter} AND payment_status = 'paid'"
+            "SELECT COUNT(*) FROM certificates c
+             WHERE c.archived_at IS NULL{$scope} AND c.payment_status = 'paid'"
         );
         $paidStmt->execute($params);
         $summary['paid'] = (int) $paidStmt->fetchColumn();
@@ -94,23 +96,23 @@ final class CertificateManager
     /**
      * @return array{expired: int, expiring_critical: int, expiring_warning: int, critical_days: int, warning_days: int, average_discount: float, discounted_count: int}
      */
-    public function getRenewalSummary(?int $ownerId = null): array
+    public function getRenewalSummary(?Actor $actor = null): array
     {
         $thresholds = CertificateHelper::getThresholds();
         $criticalDays = (int) $thresholds['critical'];
         $warningDays = (int) $thresholds['warning'];
 
-        [$ownerFilter, $params] = $this->ownerFilter($ownerId, [], 'c');
+        [$scope, $params] = $this->scope($actor);
 
         $sql = "
             SELECT
-                SUM(CASE WHEN expiry_date < CURDATE() THEN 1 ELSE 0 END) AS expired,
-                SUM(CASE WHEN expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL {$criticalDays} DAY) THEN 1 ELSE 0 END) AS expiring_critical,
-                SUM(CASE WHEN expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL {$warningDays} DAY) THEN 1 ELSE 0 END) AS expiring_warning,
-                COALESCE(AVG(discount_percent), 0) AS average_discount,
-                COALESCE(SUM(CASE WHEN discount_percent > 0 THEN 1 ELSE 0 END), 0) AS discounted_count
+                SUM(CASE WHEN c.expiry_date < CURDATE() THEN 1 ELSE 0 END) AS expired,
+                SUM(CASE WHEN c.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL {$criticalDays} DAY) THEN 1 ELSE 0 END) AS expiring_critical,
+                SUM(CASE WHEN c.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL {$warningDays} DAY) THEN 1 ELSE 0 END) AS expiring_warning,
+                COALESCE(AVG(c.discount_percent), 0) AS average_discount,
+                COALESCE(SUM(CASE WHEN c.discount_percent > 0 THEN 1 ELSE 0 END), 0) AS discounted_count
             FROM certificates c
-            WHERE archived_at IS NULL{$ownerFilter}
+            WHERE c.archived_at IS NULL{$scope}
         ";
 
         $stmt = $this->db->prepare($sql);
@@ -129,20 +131,20 @@ final class CertificateManager
     }
 
     /**
-     * Zwraca warunek SQL i parametry ograniczające wynik do rekordów widocznych dla konta:
-     * certyfikatów, których jest opiekunem, i tych z przydzielonym mu zadaniem odnowienia (D8).
+     * Warunek SQL (z początkowym „ AND ”) i parametry ograniczające wynik do rekordów widocznych dla konta
+     * (D8, role stanowisk) i do firm wybranych w filtrze konta. Alias tabeli certyfikatów to „c”.
      *
-     * @param array<string, mixed> $params
-     * @return array{0: string, 1: array<string, mixed>}
+     * @return array{0: string, 1: array<string, int>}
      */
-    private function ownerFilter(?int $ownerId, array $params, string $alias = 'certificates'): array
+    private function scope(?Actor $actor): array
     {
-        if ($ownerId === null) {
-            return ['', $params];
+        if ($actor === null) {
+            return ['', []];
         }
 
-        [$condition, $visibilityParams] = Visibility::certificatesForUserId($ownerId, $alias);
+        [$visibility, $visibilityParams] = Visibility::certificates($actor, 'c');
+        [$company, $companyParams] = Visibility::companyFilter($actor, 'c.payer_id');
 
-        return [' AND ' . $condition, $params + $visibilityParams];
+        return [" AND {$visibility} AND {$company}", $visibilityParams + $companyParams];
     }
 }

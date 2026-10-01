@@ -275,6 +275,9 @@
             edit() {
                 CertiSub.openModal('CertificateForm', { certificateId: this.id }, () => this.load());
             },
+            editPayment() {
+                CertiSub.openModal('CertificatePaymentForm', { certificate: this.certificate }, () => this.load());
+            },
             async createTask() {
                 try {
                     const result = await api.post(endpoints.tasks, { action: 'create', data: { certificate_id: this.id } });
@@ -320,6 +323,7 @@
                 <template #actions>
                     <template v-if="certificate && !certificate.archived_at">
                         <button v-if="can('certificates.update')" type="button" class="btn-secondary" @click="edit">✏️ {{ t('common.edit') }}</button>
+                        <button v-if="can('certificates.update_payment') && !can('certificates.update')" type="button" class="btn-secondary" @click="editPayment">💳 {{ t('certificate.payment_edit') }}</button>
                         <button v-if="can('certificates.archive')" type="button" class="btn-secondary text-red-700" @click="archive">📦 {{ t('common.archive') }}</button>
                     </template>
                     <button v-else-if="certificate && can('certificates.archive')" type="button" class="btn-secondary" @click="restore">♻️ {{ t('common.restore') }}</button>
@@ -644,6 +648,84 @@
                 <template #footer>
                     <button type="button" class="btn-secondary" :disabled="saving" @click="$emit('close')">{{ t('common.cancel') }}</button>
                     <button type="submit" form="certificate-form" class="btn-primary" :disabled="saving || loading">{{ saving ? t('common.saving') : t('common.save') }}</button>
+                </template>
+            </ModalShell>
+        `,
+    };
+    /**
+     * Zmiana samych danych płatności (status, data płatności, rabat) — dla ról bez pełnej edycji
+     * certyfikatu, np. księgowej (uprawnienie certificates.update_payment).
+     */
+    CertiSub.components.CertificatePaymentForm = {
+        props: {
+            certificate: { type: Object, required: true },
+        },
+        emits: ['close', 'saved'],
+        data() {
+            const c = this.certificate;
+            return {
+                form: {
+                    payment_status: c.payment_status,
+                    last_payment_date: c.last_payment_date || '',
+                    discount_percent: Number(c.discount_percent || 0) > 0 ? '-' + Number(c.discount_percent) : '0',
+                },
+                saving: false,
+                errors: {},
+                message: '',
+            };
+        },
+        computed: {
+            discountPresets() {
+                return ['0', '-3', '-5', '-10', '-15', '-20'];
+            },
+        },
+        methods: {
+            async submit() {
+                this.saving = true;
+                this.errors = {};
+                this.message = '';
+                try {
+                    const result = await api.post(endpoints.certificates, {
+                        action: 'update_payment',
+                        id: this.certificate.id,
+                        data: this.form,
+                    });
+                    CertiSub.notify(t('certificate.updated'));
+                    CertiSub.data.refresh('certificates', 'summary');
+                    this.$emit('saved', result.certificate);
+                    this.$emit('close');
+                } catch (error) {
+                    this.errors = error.errors || {};
+                    this.message = error.message;
+                } finally {
+                    this.saving = false;
+                }
+            },
+        },
+        template: `
+            <ModalShell :title="t('certificate.payment_edit')" :subtitle="certificate.name" size="md" :busy="saving" @close="$emit('close')">
+                <form id="payment-form" class="grid gap-4" novalidate @submit.prevent="submit">
+                    <div v-if="message" class="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{{ message }}</div>
+                    <FormField :label="t('field.payment_status')" :error="errors.payment_status" required>
+                        <select v-model="form.payment_status" class="input">
+                            <option v-for="status in labels.paymentStatuses" :key="status" :value="status">{{ labels.payment(status) }}</option>
+                        </select>
+                    </FormField>
+                    <FormField :label="t('field.last_payment_date')" :error="errors.last_payment_date">
+                        <input v-model="form.last_payment_date" type="date" class="input">
+                    </FormField>
+                    <FormField :label="t('field.discount_percent')" :error="errors.discount_percent" :hint="t('certificate.hint.discount')">
+                        <input v-model="form.discount_percent" type="text" inputmode="decimal" maxlength="8" :class="['input', errors.discount_percent ? 'input-error' : '']">
+                        <div class="flex flex-wrap gap-1 mt-2">
+                            <button v-for="preset in discountPresets" :key="'pay-' + preset" type="button"
+                                    :class="['badge cursor-pointer', form.discount_percent === preset ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-600 hover:bg-slate-200']"
+                                    @click="form.discount_percent = preset">{{ preset === '0' ? '0%' : preset + '%' }}</button>
+                        </div>
+                    </FormField>
+                </form>
+                <template #footer>
+                    <button type="button" class="btn-secondary" :disabled="saving" @click="$emit('close')">{{ t('common.cancel') }}</button>
+                    <button type="submit" form="payment-form" class="btn-primary" :disabled="saving">{{ saving ? t('common.saving') : t('common.save') }}</button>
                 </template>
             </ModalShell>
         `,

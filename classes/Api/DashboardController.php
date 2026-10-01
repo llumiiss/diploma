@@ -45,16 +45,18 @@ final class DashboardController
         }
 
         $actor->authorize('certificates.view');
-        $ownerId = $actor->seesAllRecords() ? null : $actor->id;
 
-        // Klucz zawiera rolę i właściciela rekordów — cache nie może pokazać cudzych liczb (D8).
-        $summary = Cache::remember('dashboard:' . $actor->role . ':' . ($ownerId ?? 'all'), Cache::DEFAULT_TTL, function () use ($ownerId): array {
+        // Klucz zawiera rolę, konto (dla zakresów zależnych od konta) i filtr firm — cache nie może pokazać
+        // cudzych liczb (D8) ani liczb z innego filtra.
+        $key = 'dashboard:' . $actor->role . ':' . ($actor->seesAllRecords() ? 'all' : $actor->id . ':' . ($actor->beneficiaryId ?? 0))
+            . ':f' . ($actor->companyIds === null ? 'all' : md5(implode(',', $actor->companyIds)));
+        $summary = Cache::remember($key, Cache::DEFAULT_TTL, function () use ($actor): array {
             $manager = new CertificateManager($this->db);
 
             return [
-                'stats'           => $manager->getStatusStats($ownerId),
-                'payment_summary' => $manager->getPaymentSummary($ownerId),
-                'renewal_summary' => $manager->getRenewalSummary($ownerId),
+                'stats'           => $manager->getStatusStats($actor),
+                'payment_summary' => $manager->getPaymentSummary($actor),
+                'renewal_summary' => $manager->getRenewalSummary($actor),
             ];
         });
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\CertificateHelper;
+use App\Rbac;
 use PDO;
 use PDOException;
 
@@ -119,7 +120,10 @@ final class CertificateService
             'owners'           => $owners,
             'beneficiaries'    => $this->beneficiaries->options($actor),
             'payers'           => $this->payers->options($actor),
-            'types'            => self::TYPES,
+            'types'            => array_values(array_filter(
+                self::TYPES,
+                static fn (string $type): bool => Rbac::canManageCertificateType($actor->role, $type)
+            )),
             'statuses'         => self::STATUSES,
             'billing_cycles'   => self::BILLING_CYCLES,
             'payment_statuses' => self::PAYMENT_STATUSES,
@@ -197,6 +201,51 @@ final class CertificateService
         } catch (PDOException $e) {
             throw $this->translateDuplicate($e, $actor, $values);
         }
+
+        return $this->get($actor, $id);
+    }
+
+    /**
+     * Zmiana samych danych płatności (status, data ostatniej płatności, rabat) — dla księgowej,
+     * która nie edytuje reszty rekordu. Osoby z pełnym prawem edycji też mogą z niej skorzystać.
+     *
+     * @param array<string, mixed> $data payment_status, last_payment_date, discount_percent
+     * @return array<string, mixed>
+     */
+    public function updatePayment(Actor $actor, int $id, array $data): array
+    {
+        $actor->authorize('certificates.update_payment');
+        $before = $this->findVisible($actor, $id, false);
+
+        $v = new Validator($data);
+        $values = [
+            'payment_status'    => (string) $v->enum('payment_status', true, self::PAYMENT_STATUSES),
+            'last_payment_date' => $v->date('last_payment_date', false),
+            'discount_percent'  => $v->discountPercent('discount_percent'),
+        ];
+        $v->throwIfFailed();
+
+        $changes = EventLogger::diff($before, $values, ['payment_status', 'last_payment_date', 'discount_percent']);
+        if ($changes === []) {
+            return $this->get($actor, $id);
+        }
+
+        Transaction::run($this->db, function () use ($actor, $id, $before, $values, $changes): void {
+            $this->db->prepare(
+                'UPDATE certificates SET payment_status = :payment_status, last_payment_date = :last_payment_date,
+                        discount_percent = :discount_percent
+                 WHERE id = :id'
+            )->execute([
+                'payment_status'    => $values['payment_status'],
+                'last_payment_date' => $values['last_payment_date'],
+                'discount_percent'  => number_format((float) $values['discount_percent'], 2, '.', ''),
+                'id'                => $id,
+            ]);
+            $this->events->log('certificate', $id, 'updated', $actor->id, self::context($id, $before), [
+                'changes' => $changes,
+                'scope'   => 'payment',
+            ]);
+        });
 
         return $this->get($actor, $id);
     }
@@ -442,6 +491,11 @@ final class CertificateService
 
         if ($values['valid_from'] !== null && $values['expiry_date'] !== '' && $values['valid_from'] > $values['expiry_date']) {
             $v->addError('valid_from', 'validation.date_order');
+        }
+
+        // Informatyk obsługuje tylko certyfikaty techniczne — kwalifikowane zakładają i zmieniają inne role.
+        if (!Rbac::canManageCertificateType($actor->role, $values['certificate_type'])) {
+            $v->addError('certificate_type', 'certificate.error.type_forbidden');
         }
 
         // Certyfikat kwalifikowany zawsze ma użytkownika, a użytkownik zawsze ma firmę.
