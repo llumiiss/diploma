@@ -29,7 +29,7 @@ Choć opis pracy wskazywał wstępnie Javę ze Spring jako narzędzie realizacji
 
 Aplikacja działa też jako publiczny link, bez uruchamiania czegokolwiek lokalnie — wystarczy przeglądarka na dowolnym urządzeniu. Instrukcja wdrożenia na darmowy hosting PHP+MySQL: [`docs/DEPLOY_INFINITYFREE.md`](docs/DEPLOY_INFINITYFREE.md).
 
-<!-- Po wdrożeniu: **Demo:** https://twoja-domena/ -->
+**Demo:** https://subscriptionassistent.freedev.app/ (hosting w trakcie aktywacji po stronie InfinityFree — zob. [status platformy](https://status.infinityfree.com/); link zacznie działać automatycznie, kod i baza są już wdrożone)
 
 ## Stack technologiczny
 
