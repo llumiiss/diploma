@@ -99,6 +99,8 @@ final class PayerServiceTest extends IntegrationTestCase
         }
 
         $this->db->exec("UPDATE certificates SET archived_at = NOW() WHERE id = {$certificateId}");
+        // Domyślny użytkownik certyfikatu z helpera też jest bieżący i też blokuje archiwizację firmy.
+        $this->db->exec("UPDATE beneficiaries SET archived_at = NOW() WHERE payer_id = {$payerId}");
         $archived = $service->archive($manager, $payerId);
         $this->assertNotNull($archived['archived_at']);
         $this->assertNotContains($payerId, array_column($service->list($manager), 'id'));

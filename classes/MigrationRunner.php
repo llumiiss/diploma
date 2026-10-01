@@ -7,6 +7,7 @@ namespace App;
 use App\Migrations\AccountsAndOwnershipMigration;
 use App\Migrations\CertificateDiscountMigration;
 use App\Migrations\CertificatesModelMigration;
+use App\Migrations\CompanyIntegrityMigration;
 use App\Migrations\OtpRateLimitMigration;
 use App\Migrations\PasswordAuthMigration;
 use App\Migrations\RenewalProcessMigration;
@@ -154,6 +155,10 @@ final class MigrationRunner
             // Etap 10: rabat w procentach zamiast kwoty i waluty certyfikatu.
             'certificate_discount' => static function (PDO $db): void {
                 CertificateDiscountMigration::up($db);
+            },
+            // Etap 10: osoba nie istnieje bez firmy, certyfikat kwalifikowany nie istnieje bez osoby.
+            'company_integrity' => static function (PDO $db): void {
+                CompanyIntegrityMigration::up($db);
             },
         ];
     }

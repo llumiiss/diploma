@@ -528,9 +528,9 @@
                                             <FormField :label="t('field.last_name')" required><input v-model="emlActions.person.last_name" class="input" maxlength="100"></FormField>
                                             <FormField :label="t('field.email')"><input v-model="emlActions.person.email" type="email" class="input" maxlength="255"></FormField>
                                             <FormField :label="t('field.phone')"><input v-model="emlActions.person.phone" class="input" maxlength="50"></FormField>
-                                            <FormField class="sm:col-span-2" :label="t('field.payer_id')">
+                                            <FormField class="sm:col-span-2" :label="t('field.payer_id')" :hint="t('beneficiary.hint.payer')" required>
                                                 <select v-model="emlActions.person.payer_id" class="input">
-                                                    <option value="">{{ t('beneficiary.no_payer') }}</option>
+                                                    <option value="">{{ t('common.choose') }}</option>
                                                     <option v-for="payer in payerOptions" :key="payer.id" :value="String(payer.id)">{{ payer.company_name }}</option>
                                                 </select>
                                             </FormField>

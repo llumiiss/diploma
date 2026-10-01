@@ -441,6 +441,10 @@
             canAssignOwner() {
                 return CertiSub.can('certificates.assign_owner');
             },
+            /** Certyfikat kwalifikowany nie istnieje bez użytkownika (tak samo jak w bazie i w usłudze). */
+            requiresBeneficiary() {
+                return ['QUALIFIED_SIGNATURE', 'QUALIFIED_SEAL'].indexOf(this.form.certificate_type) !== -1;
+            },
             /** Typowe rabaty do jednego kliknięcia; w polu można wpisać dowolną wartość 0–100. */
             discountPresets() {
                 return ['0', '-3', '-5', '-10', '-15', '-20'];
@@ -573,10 +577,11 @@
 
                     <fieldset class="grid md:grid-cols-2 gap-4">
                         <legend class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 md:col-span-2">{{ t('certificate.section.links') }}</legend>
-                        <FormField :label="t('field.beneficiary_id')" :error="errors.beneficiary_id" :hint="t('certificate.hint.beneficiary')">
+                        <FormField :label="t('field.beneficiary_id')" :error="errors.beneficiary_id" :required="requiresBeneficiary"
+                                   :hint="requiresBeneficiary ? t('certificate.hint.beneficiary_required') : t('certificate.hint.beneficiary')">
                             <div class="flex gap-2">
-                                <select v-model="form.beneficiary_id" class="input" @change="onBeneficiaryChange">
-                                    <option value="">{{ t('certificate.no_beneficiary') }}</option>
+                                <select v-model="form.beneficiary_id" :class="['input', errors.beneficiary_id ? 'input-error' : '']" @change="onBeneficiaryChange">
+                                    <option value="">{{ requiresBeneficiary ? t('common.choose') : t('certificate.no_beneficiary') }}</option>
                                     <option v-for="item in options.beneficiaries" :key="item.id" :value="String(item.id)">{{ personName(item) }}</option>
                                 </select>
                                 <button v-if="can('beneficiaries.create')" type="button" class="btn-secondary shrink-0" :title="t('beneficiary.add')" @click="addBeneficiary">+</button>

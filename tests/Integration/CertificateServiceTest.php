@@ -14,9 +14,18 @@ final class CertificateServiceTest extends IntegrationTestCase
     /**
      * @return array<string, mixed>
      */
-    private function validData(int $payerId, array $overrides = []): array
+    private function validData(int $payerId, array $overrides = [], ?int $createdBy = null): array
     {
+        static $sequence = 0;
+        ++$sequence;
+
+        // Certyfikat kwalifikowany nie istnieje bez użytkownika — domyślnie powstaje osoba z firmy płatnika.
+        $beneficiaryId = array_key_exists('beneficiary_id', $overrides)
+            ? $overrides['beneficiary_id']
+            : $this->insertBeneficiary($payerId, ['last_name' => 'Osoba' . $sequence, 'email' => 'osoba' . $sequence . '@example.com'], $createdBy);
+
         return array_merge([
+            'beneficiary_id'   => $beneficiaryId,
             'name'             => 'Certyfikat kwalifikowany — Jan Kowalski',
             'certificate_type' => 'QUALIFIED_SIGNATURE',
             'serial_number'    => '5A3F9C21B7E04D18',
@@ -63,7 +72,7 @@ final class CertificateServiceTest extends IntegrationTestCase
         $payerId = $this->insertPayer();
         $service = new CertificateService($this->db);
 
-        $certificate = $service->create($manager, $this->validData($payerId, ['user_id' => $operator->id]));
+        $certificate = $service->create($manager, $this->validData($payerId, ['user_id' => $operator->id], $operator->id));
         $this->assertSame($operator->id, $certificate['user_id']);
 
         try {
@@ -81,14 +90,14 @@ final class CertificateServiceTest extends IntegrationTestCase
         $service = new CertificateService($this->db);
 
         try {
-            $service->create($operator, $this->validData($payerId, ['expiry_date' => '2026-02-31']));
+            $service->create($operator, $this->validData($payerId, ['expiry_date' => '2026-02-31'], $operator->id));
             $this->fail('Data 2026-02-31 nie istnieje.');
         } catch (ServiceException $e) {
             $this->assertArrayHasKey('expiry_date', $e->errors);
         }
 
         try {
-            $service->create($operator, $this->validData($payerId, ['valid_from' => '2029-01-01']));
+            $service->create($operator, $this->validData($payerId, ['valid_from' => '2029-01-01'], $operator->id));
             $this->fail('Data „ważny od” nie może być późniejsza niż wygaśnięcie.');
         } catch (ServiceException $e) {
             $this->assertArrayHasKey('valid_from', $e->errors);
@@ -134,7 +143,7 @@ final class CertificateServiceTest extends IntegrationTestCase
         $this->assertCount(3, $service->list($manager));
 
         try {
-            $service->update($operator, $managers, $this->validData($payerId));
+            $service->update($operator, $managers, $this->validData($payerId, [], $operator->id));
             $this->fail('Operator nie może edytować cudzego certyfikatu.');
         } catch (ServiceException $e) {
             $this->assertSame(404, $e->httpStatus());
@@ -181,9 +190,10 @@ final class CertificateServiceTest extends IntegrationTestCase
         $operator = $this->createActor(Rbac::OPERATOR);
         $payerId = $this->insertPayer([], $operator->id);
         $service = new CertificateService($this->db);
-        $certificate = $service->create($operator, $this->validData($payerId));
+        $certificate = $service->create($operator, $this->validData($payerId, [], $operator->id));
 
         $updated = $service->update($operator, $certificate['id'], $this->validData($payerId, [
+            'beneficiary_id' => $certificate['beneficiary_id'],
             'expiry_date' => '2028-03-01',
             'discount_percent' => '-5',
         ]));

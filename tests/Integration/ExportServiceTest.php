@@ -37,7 +37,7 @@ final class ExportServiceTest extends IntegrationTestCase
             'expiry_date'      => date('Y-m-d', strtotime('+5 days')),
         ]);
         $this->db->exec("UPDATE certificates SET discount_percent = 5.00, auto_renew = 1 WHERE id = {$this->certificateId}");
-        $this->insertCertificate($this->manager->id, $this->payerId, ['name' => 'Stary podpis', 'archived_at' => '2025-01-01 10:00:00']);
+        $this->insertCertificate($this->manager->id, $this->payerId, ['name' => 'Stary podpis', 'beneficiary_id' => $this->personId, 'archived_at' => '2025-01-01 10:00:00']);
     }
 
     private function service(): ExportService

@@ -16,6 +16,8 @@ final class CertificateService
 {
     /** Typy certyfikatów i usług ewidencji firmowej (D7). */
     public const TYPES = ['QUALIFIED_SIGNATURE', 'QUALIFIED_SEAL', 'SSL_CERTIFICATE', 'CODE_SIGNING', 'DOMAIN', 'SAAS', 'CLOUD_SUPPORT', 'OTHER'];
+    /** Typy, które nie istnieją bez użytkownika certyfikatu (spójne z chk_certificates_qualified_user). */
+    public const QUALIFIED_TYPES = ['QUALIFIED_SIGNATURE', 'QUALIFIED_SEAL'];
     public const STATUSES = ['pending', 'active', 'renewal_in_progress', 'expired'];
     public const BILLING_CYCLES = ['monthly', 'annual', 'multi_year'];
     public const PAYMENT_STATUSES = ['paid', 'due_soon', 'overdue', 'not_applicable'];
@@ -440,6 +442,11 @@ final class CertificateService
 
         if ($values['valid_from'] !== null && $values['expiry_date'] !== '' && $values['valid_from'] > $values['expiry_date']) {
             $v->addError('valid_from', 'validation.date_order');
+        }
+
+        // Certyfikat kwalifikowany zawsze ma użytkownika, a użytkownik zawsze ma firmę.
+        if ($values['beneficiary_id'] === null && in_array($values['certificate_type'], self::QUALIFIED_TYPES, true)) {
+            $v->addError('beneficiary_id', 'certificate.error.beneficiary_required');
         }
 
         $beneficiary = null;

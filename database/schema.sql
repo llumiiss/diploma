@@ -136,14 +136,15 @@ CREATE TABLE login_attempts (
     INDEX idx_login_attempts_ip_created (request_ip, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Użytkownicy certyfikatów (beneficjenci) — dane osobowe, powiązanie z płatnikiem
+-- Użytkownicy certyfikatów (beneficjenci) — dane osobowe. Osoba nie istnieje bez firmy:
+-- payer_id jest wymagane (firmą jest rekord płatnika), a firmy z osobami nie da się usunąć.
 CREATE TABLE beneficiaries (
     id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     first_name          VARCHAR(100) NOT NULL,
     last_name           VARCHAR(100) NOT NULL,
     email               VARCHAR(255) NULL,
     phone               VARCHAR(50) NULL,
-    payer_id            INT UNSIGNED NULL,
+    payer_id            INT UNSIGNED NOT NULL,
     notes               TEXT NULL,
     created_by_user_id  INT UNSIGNED NULL,
     archived_at         DATETIME NULL,
@@ -165,6 +166,9 @@ CREATE TABLE beneficiaries (
 -- Certyfikaty i usługi (dawniej subscriptions — decyzje D5, D7).
 -- user_id to opiekun rekordu (konto personelu), beneficiary_id to użytkownik certyfikatu,
 -- previous_certificate_id tworzy łańcuch kolejnych odnowień.
+-- Certyfikat kwalifikowany (podpis i pieczęć) nie istnieje bez użytkownika certyfikatu — pilnuje tego
+-- ograniczenie chk_certificates_qualified_user, a klucz beneficiary_id ma ON UPDATE RESTRICT,
+-- bo MySQL nie pozwala łączyć CHECK z akcją CASCADE na tej samej kolumnie.
 CREATE TABLE certificates (
     id                       INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name                     VARCHAR(255) NOT NULL,
@@ -206,14 +210,16 @@ CREATE TABLE certificates (
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_certificates_beneficiary
         FOREIGN KEY (beneficiary_id) REFERENCES beneficiaries(id)
-        ON DELETE RESTRICT ON UPDATE CASCADE,
+        ON DELETE RESTRICT ON UPDATE RESTRICT,
     CONSTRAINT fk_certificates_payer
         FOREIGN KEY (payer_id) REFERENCES payers(id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_certificates_previous
         FOREIGN KEY (previous_certificate_id) REFERENCES certificates(id)
         ON DELETE SET NULL ON UPDATE RESTRICT,
-    CONSTRAINT chk_certificates_discount CHECK (discount_percent BETWEEN 0 AND 100)
+    CONSTRAINT chk_certificates_discount CHECK (discount_percent BETWEEN 0 AND 100),
+    CONSTRAINT chk_certificates_qualified_user
+        CHECK (certificate_type NOT IN ('QUALIFIED_SIGNATURE', 'QUALIFIED_SEAL') OR beneficiary_id IS NOT NULL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Lista ToDo: zadania odnowień ze statusami do statystyk realizacji.
