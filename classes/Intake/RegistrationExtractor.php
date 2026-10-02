@@ -61,6 +61,16 @@ final class RegistrationExtractor
         'certificate' => ['danecertyfikatu', 'certyfikat', 'zamowienie', 'produkt', 'certificatedetails', 'order', 'zamawianycertyfikat', 'danezamowienia', 'certificate', 'parametrycertyfikatu'],
     ];
 
+    /**
+     * Limity wejścia: wiadomość ze skrzynki może pochodzić od obcego nadawcy, a prawdziwy wniosek mieści się
+     * w kilkunastu liniach. Dłuższa treść jest obcinana, zanim ekstraktor ją przeczyta.
+     */
+    private const MAX_TEXT_BYTES = 200_000;
+    private const MAX_HTML_BYTES = 300_000;
+    private const MAX_LINES = 4000;
+    private const MAX_LINE_CHARS = 1000;
+    private const MAX_TABLE_ROWS = 500;
+
     /** Wartości oznaczające „brak danych”. */
     private const EMPTY_VALUES = ['', '-', '--', '—', '–', 'brak', 'nd', 'n/d', 'none', 'null', 'nie dotyczy', 'x', '...', '…'];
 
@@ -94,6 +104,7 @@ final class RegistrationExtractor
      */
     public static function extract(EmlMessage $message): array
     {
+        $message = self::limited($message);
         $found = [];
         $warnings = [];
         $lines = array_merge(self::lines($message->text), self::tableLines($message->html));
@@ -437,9 +448,12 @@ final class RegistrationExtractor
     {
         $lines = [];
         foreach (preg_split('/\R/u', $text) ?: [] as $line) {
-            $line = trim($line);
+            $line = trim(mb_substr($line, 0, self::MAX_LINE_CHARS));
             if ($line !== '') {
                 $lines[] = $line;
+                if (count($lines) >= self::MAX_LINES) {
+                    break;
+                }
             }
         }
 
@@ -457,26 +471,75 @@ final class RegistrationExtractor
             return [];
         }
 
+        // Podział po znacznikach zamykających i odczyt tego, co stoi po ostatnim otwarciu, jest liniowy — wyrażenie
+        // z „(.*?)” po całym dokumencie mogłoby się liczyć kwadratowo na złośliwym HTML-u z samymi otwarciami.
         $lines = [];
-        preg_match_all('#<tr\b[^>]*>(.*?)</tr>#is', $html, $rows);
-        foreach ($rows[1] as $row) {
-            preg_match_all('#<t[dh]\b[^>]*>(.*?)</t[dh]>#is', $row, $cells);
-            $texts = array_map(
-                static fn (string $cell): string => trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($cell), ENT_QUOTES | ENT_HTML5, 'UTF-8'))),
-                $cells[1]
-            );
+        $rows = 0;
+        foreach (preg_split('#</tr\s*>#i', $html) ?: [] as $chunk) {
+            $row = self::afterLastOpen($chunk, 'tr');
+            if ($row === null) {
+                continue;
+            }
+            if (++$rows > self::MAX_TABLE_ROWS) {
+                break;
+            }
+
+            $texts = [];
+            foreach (preg_split('#</t[dh]\s*>#i', $row) ?: [] as $piece) {
+                $cell = self::afterLastOpen($piece, 't[dh]');
+                if ($cell !== null) {
+                    $texts[] = trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($cell), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+                }
+            }
+
             if (count($texts) === 1 && $texts[0] !== '') {
-                $lines[] = $texts[0];
+                $lines[] = mb_substr($texts[0], 0, self::MAX_LINE_CHARS);
                 continue;
             }
             for ($i = 0; $i + 1 < count($texts); $i += 2) {
                 if ($texts[$i] !== '') {
-                    $lines[] = rtrim($texts[$i], ': ') . ': ' . $texts[$i + 1];
+                    $lines[] = mb_substr(rtrim($texts[$i], ': ') . ': ' . $texts[$i + 1], 0, self::MAX_LINE_CHARS);
                 }
             }
         }
 
         return $lines;
+    }
+
+    /**
+     * Treść po ostatnim znaczniku otwierającym `$tag` (wzorzec bez `<` i `>`), null gdy go nie ma. Granica znacznika
+     * odrzuca `<track` czy `<thead`, a atrybuty są ograniczone, więc czas rośnie liniowo z długością tekstu.
+     */
+    private static function afterLastOpen(string $html, string $tag): ?string
+    {
+        $parts = preg_split('#<' . $tag . '(?=[\s/>])[^>]{0,500}>#i', $html);
+        if ($parts === false || count($parts) < 2) {
+            return null;
+        }
+
+        return $parts[count($parts) - 1];
+    }
+
+    /**
+     * Wiadomość z obciętą treścią (tylko to, co czyta ekstraktor); załączniki nie biorą udziału w odczycie.
+     */
+    private static function limited(EmlMessage $message): EmlMessage
+    {
+        if (strlen($message->text) <= self::MAX_TEXT_BYTES && strlen($message->html) <= self::MAX_HTML_BYTES) {
+            return $message;
+        }
+
+        return new EmlMessage(
+            $message->headers,
+            $message->subject,
+            $message->from,
+            $message->to,
+            $message->date,
+            $message->messageId,
+            mb_strcut($message->text, 0, self::MAX_TEXT_BYTES),
+            [],
+            mb_strcut($message->html, 0, self::MAX_HTML_BYTES),
+        );
     }
 
     /**

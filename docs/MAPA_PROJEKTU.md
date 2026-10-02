@@ -699,6 +699,7 @@ każdy z testami; baza przed migracjami zrzucona `mysqldump`). Opis tabel i powi
 | **10d** filtr firm | operator wybiera: wszystkie firmy / jedna firma / lista wybranych; wybór w `users.company_filter`, zawęża listy, pulpit, ToDo, zaproszenia i harmonogram (eksport pomija filtr); wybrać można tylko firmy widoczne dla roli | `CompanyFilterService`, `api/preferences.php`, `Visibility::companyFilter`, `assets/js/views/company_filter.js` |
 | **10e** powiadomienia | wiadomości wewnętrzne (prośba o uzupełnienie danych, zgłoszenie błędu, wiadomość, komunikat systemowy), wątki, „załatwione”, powiązanie z rekordem, znaczek w menu; komunikat o przydzielonym zadaniu | `NotificationService`, `api/notifications.php`, `assets/js/views/notifications.js` |
 | **10f** wnioski z e-maila | wiadomość z wnioskiem → odczyt danych (użytkownik, certyfikat, NIP) → firma z **Białej Listy podatników VAT** po NIP-ie (`wl-api.mf.gov.pl`) → dopasowanie do ewidencji → formularz do sprawdzenia i zatwierdzenia jednym przyciskiem (jedna transakcja: firma, użytkownik, certyfikat); cztery drogi odbioru: plik `.eml`, skrzynka IMAP (`cron/mail-intake.php`, własny klient IMAP bez rozszerzenia `imap`, hasło albo XOAUTH2), webhook (`api/inbound-mail.php`), potok serwera pocztowego (`scripts/mail-pipe.php`) | `RegistrationExtractor`, `WhiteListRegistry`, `ImapClient`, `RegistrationIntakeService`, `RegistrationService`, `config/intake.php` |
+| **10h** odporność odbioru | skrzynka przyjmuje pocztę od obcych nadawców, więc ekstraktor czyta tylko ograniczoną treść: tekst do 200 kB, HTML do 300 kB, 4000 linii po 1000 znaków, 500 wierszy tabel; tabele są parsowane liniowo (bez wyrażeń z leniwym kwantyfikatorem po całym dokumencie), a `<track`/`<thead` nie są brane za wiersz lub komórkę | `RegistrationExtractor` (`limited`, `tableLines`, `afterLastOpen`), `tests/Unit/RegistrationExtractorTest.php` |
 
 **Decyzje projektowe:** (1) „firma” w interfejsie to dotychczasowy płatnik — jedna tabela `payers`, żeby nie
 rozbijać relacji i raportów z opisu pracy; (2) rabat przechowywany jako wielkość nieujemna, minus jest tylko
@@ -709,7 +710,7 @@ zapisuje rekordy na konto operatora, ale z uprawnieniami potrzebnymi do podpięc
 po NIP-ie (także spoza jego zakresu) — identyfikator firmy spoza dopasowania jest odrzucany; (6) wnioski
 z automatycznych dróg, które nie wyglądają na wniosek (brak NIP-u i etykiet), są pomijane.
 
-Weryfikacja: **314 testów** (187 przed etapem), PHPStan poziom 5 bez uwag, `composer cs` czyste; scenariusz
+Weryfikacja: **318 testów** (187 przed etapem), PHPStan poziom 5 bez uwag, `composer cs` czyste; scenariusz
 sprawdzony ręcznie w przeglądarce: wiadomość przepuszczona przez `scripts/mail-pipe.php` z prawdziwym zapytaniem
 do Białej Listy → formularz → zatwierdzenie → firma, użytkownik i certyfikat w ewidencji operatora.
 

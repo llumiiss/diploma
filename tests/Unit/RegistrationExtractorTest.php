@@ -246,4 +246,59 @@ final class RegistrationExtractorTest extends TestCase
         $this->assertSame('Jan', $result['person']['first_name']);
         $this->assertSame('Kowalski', $result['person']['last_name']);
     }
+
+    public function testTableParsingIgnoresLookalikeTagsAndReadsAttributes(): void
+    {
+        $html = '<table><thead><tr><th>Dane</th></tr></thead><tbody>'
+            . '<tr class="a" style="color:red"><td width="30%" align="left">Imię</td><td><b>Piotr</b></td></tr>'
+            . '<TR><TD>Nazwisko</TD><TD>Lewandowski</TD></TR>'
+            . '<track src="x"><tr><td>NIP firmy</td><td>9876543210</td></tr>'
+            . '</tbody></table>';
+
+        $result = $this->extract($html, 'Rejestracja', 'Piotr Lewandowski <piotr@grupawisla.example.com>', 'text/html; charset=utf-8');
+
+        $this->assertSame('Piotr', $result['person']['first_name']);
+        $this->assertSame('Lewandowski', $result['person']['last_name']);
+        $this->assertSame('9876543210', $result['company']['nip']);
+    }
+
+    public function testHostileHtmlIsProcessedQuicklyAndRowsAreCapped(): void
+    {
+        $rows = '<tr><td>Imię</td><td>Piotr</td></tr><tr><td>Nazwisko</td><td>Lewandowski</td></tr>';
+        $rows .= str_repeat('<tr><td>x</td><td>y</td></tr>', 600);
+        $rows .= '<tr><td>NIP firmy</td><td>9876543210</td></tr>';
+        // Same otwarcia bez zamknięć i bez „>” — wyrażenie z leniwym kwantyfikatorem liczyłoby się tu kwadratowo.
+        $html = '<table>' . $rows . str_repeat('<tr <td ', 20000) . '</table>';
+
+        $started = microtime(true);
+        $result = $this->extract($html, 'Rejestracja kwalifikowany', 'Piotr Lewandowski <piotr@grupawisla.example.com>', 'text/html; charset=utf-8');
+        $elapsed = microtime(true) - $started;
+
+        $this->assertLessThan(3.0, $elapsed, 'złośliwy HTML nie może blokować odbioru poczty');
+        $this->assertSame('Piotr', $result['person']['first_name']);
+        $this->assertNull($result['company']['nip'], 'wiersze ponad limit tabeli nie są czytane');
+    }
+
+    public function testOversizedTextIsTruncatedBeforeReading(): void
+    {
+        $body = "Imię: Jan\nNazwisko: Kowalski\n" . str_repeat("wypełniacz wypełniacz wypełniacz\n", 12000) . "NIP: 6342851974\n";
+        $this->assertGreaterThan(300_000, strlen($body));
+
+        $started = microtime(true);
+        $result = $this->extract($body);
+        $elapsed = microtime(true) - $started;
+
+        $this->assertLessThan(3.0, $elapsed);
+        $this->assertSame('Jan', $result['person']['first_name']);
+        $this->assertSame('Kowalski', $result['person']['last_name']);
+        $this->assertNull($result['company']['nip'], 'treść za limitem rozmiaru jest odcinana');
+    }
+
+    public function testVeryLongLinesAreCut(): void
+    {
+        $result = $this->extract('Imię: Jan' . "\n" . 'Nazwisko: Kowalski' . "\n" . 'Uwagi: ' . str_repeat('a', 150_000) . "\nNIP: 6342851974");
+
+        $this->assertSame('Jan', $result['person']['first_name']);
+        $this->assertSame('6342851974', $result['company']['nip']);
+    }
 }
