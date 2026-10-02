@@ -26,6 +26,7 @@ $db = Database::getInstance()->getConnection();
 // Kolejność zgodna z kluczami obcymi: najpierw rekordy zależne.
 $steps = [
     'events'                    => 'DELETE FROM events',
+    'notifications'             => 'DELETE FROM notifications',
     'invitation attachments'    => 'DELETE FROM invitation_attachments',
     'invitations'               => 'DELETE FROM invitations',
     'renewal tasks'             => 'DELETE FROM renewal_tasks',

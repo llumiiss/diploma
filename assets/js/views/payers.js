@@ -190,10 +190,20 @@
             openCard() {
                 CertiSub.navigate('payers', this.id);
             },
+            askAdmin() {
+                CertiSub.openComposer({
+                    type: 'request',
+                    subject: t('notification.about', { name: this.payer.company_name }),
+                    related_type: 'payer',
+                    related_id: this.payer.id,
+                    related_label: this.payer.company_name,
+                });
+            },
         },
         template: `
             <DrawerShell :title="payer ? payer.company_name : ''" :subtitle="t('payer.singular')" :loading="loading" :error="error" @close="close">
                 <template #actions>
+                    <button v-if="payer && can('notifications.use')" type="button" class="btn-secondary" @click="askAdmin">📨 {{ t('notification.ask_admin') }}</button>
                     <button v-if="payer && can('reports.view')" type="button" class="btn-secondary" @click="openCard">📈 {{ t('report.card') }}</button>
                     <template v-if="payer && !payer.archived_at">
                         <button v-if="can('payers.update')" type="button" class="btn-secondary" @click="edit">✏️ {{ t('common.edit') }}</button>

@@ -184,6 +184,16 @@
             openCertificate(item) {
                 CertiSub.openDrawer('certificate', item.id);
             },
+            askAdmin() {
+                const b = this.beneficiary;
+                CertiSub.openComposer({
+                    type: 'request',
+                    subject: t('notification.about', { name: CertiSub.format.person(b.first_name, b.last_name) }),
+                    related_type: 'beneficiary',
+                    related_id: b.id,
+                    related_label: CertiSub.format.person(b.first_name, b.last_name),
+                });
+            },
             openPayer() {
                 CertiSub.openDrawer('payer', this.beneficiary.payer_id);
             },
@@ -195,6 +205,7 @@
             <DrawerShell :title="beneficiary ? format.person(beneficiary.first_name, beneficiary.last_name) : ''"
                          :subtitle="t('beneficiary.singular')" :loading="loading" :error="error" @close="close">
                 <template #actions>
+                    <button v-if="beneficiary && can('notifications.use')" type="button" class="btn-secondary" @click="askAdmin">📨 {{ t('notification.ask_admin') }}</button>
                     <button v-if="beneficiary && can('reports.view')" type="button" class="btn-secondary" @click="openCard">📈 {{ t('report.card') }}</button>
                     <template v-if="beneficiary && !beneficiary.archived_at">
                         <button v-if="can('beneficiaries.update')" type="button" class="btn-secondary" @click="edit">✏️ {{ t('common.edit') }}</button>

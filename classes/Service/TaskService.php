@@ -287,7 +287,7 @@ final class TaskService
         $priority = RenewalScanner::priorityFor($daysLeft, Settings::read($this->db)['renewal.critical_days']);
 
         try {
-            return Transaction::run($this->db, function () use ($actor, $certificate, $certificateId, $assignee, $priority, $daysLeft, $source, $note): int {
+            $taskId = Transaction::run($this->db, function () use ($actor, $certificate, $certificateId, $assignee, $priority, $daysLeft, $source, $note): int {
                 $this->db->prepare(
                     "INSERT INTO renewal_tasks (certificate_id, assigned_user_id, status, priority, due_date, resolution_note)
                      VALUES (:certificate_id, :assigned_user_id, 'todo', :priority, :due_date, NULL)"
@@ -315,6 +315,34 @@ final class TaskService
             }
             throw $e;
         }
+
+        $this->notifyAssignee($assignee, $actor, $certificate, $priority);
+
+        return $taskId;
+    }
+
+    /**
+     * Komunikat dla osoby, której przydzielono zadanie (nie dla tej, która sama je sobie przydzieliła).
+     *
+     * @param array<string, mixed> $certificate
+     */
+    private function notifyAssignee(?int $assignee, Actor $actor, array $certificate, string $priority): void
+    {
+        if ($assignee === null || $assignee === $actor->id) {
+            return;
+        }
+
+        (new NotificationService($this->db))->notify(
+            [$assignee],
+            \__('notification.system.task_assigned_subject', ['name' => (string) $certificate['name']]),
+            \__('notification.system.task_assigned_body', [
+                'name'     => (string) $certificate['name'],
+                'date'     => (string) $certificate['expiry_date'],
+                'priority' => \__('priority.label.' . $priority),
+            ]),
+            'certificate',
+            (int) $certificate['id']
+        );
     }
 
     /**
@@ -419,6 +447,8 @@ final class TaskService
                 'from_name'    => $task['assignee_name'] !== '' ? $task['assignee_name'] : null,
             ]);
         });
+
+        $this->notifyAssignee($userId, $actor, ['id' => $task['certificate_id'], 'name' => $task['certificate_name'], 'expiry_date' => $task['due_date']], (string) $task['priority']);
 
         return $this->get($actor, $id);
     }

@@ -21,7 +21,7 @@ final class MysqlTestDatabase
 
     /** Tabele czyszczone przed każdym testem; domyślne szablony wiadomości są potem wstawiane od nowa. */
     private const BUSINESS_TABLES = [
-        'settings', 'events', 'invitation_attachments', 'invitations', 'email_template_attachments', 'attachments',
+        'notifications', 'settings', 'events', 'invitation_attachments', 'invitations', 'email_template_attachments', 'attachments',
         'email_templates', 'renewal_tasks', 'certificates', 'beneficiaries',
         'login_attempts', 'email_verifications', 'login_otps',
         'payers', 'users',
