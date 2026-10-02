@@ -33,6 +33,7 @@ final class BeneficiaryService
 
         [$beneficiaryVisibility, $params] = Visibility::beneficiaries($actor, 'b');
         [$certificateVisibility, $certificateParams] = Visibility::certificates($actor, 'c');
+        [$company, $companyParams] = Visibility::companyFilter($actor, 'b.payer_id');
         $archivedCondition = $archived ? 'b.archived_at IS NOT NULL' : 'b.archived_at IS NULL';
 
         $sql = "
@@ -52,12 +53,12 @@ final class BeneficiaryService
                 WHERE c.archived_at IS NULL AND {$certificateVisibility}
                 GROUP BY c.beneficiary_id
             ) cs ON cs.beneficiary_id = b.id
-            WHERE {$archivedCondition} AND {$beneficiaryVisibility}
+            WHERE {$archivedCondition} AND {$beneficiaryVisibility} AND {$company}
             ORDER BY " . ($archived ? 'b.archived_at DESC' : 'b.last_name, b.first_name') . '
         ';
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute($params + $certificateParams);
+        $stmt->execute($params + $certificateParams + $companyParams);
 
         return array_map([self::class, 'castRow'], $stmt->fetchAll());
     }

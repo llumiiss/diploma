@@ -54,7 +54,9 @@ final class InvitationService
     {
         $actor->authorize('invitations.view');
         [$visibility, $params] = Visibility::certificates($actor, 'c');
-        $conditions = [$visibility];
+        [$company, $companyParams] = Visibility::companyFilter($actor, 'c.payer_id');
+        $conditions = [$visibility, $company];
+        $params += $companyParams;
 
         $status = (string) ($filters['status'] ?? '');
         if (in_array($status, self::STATUSES, true)) {

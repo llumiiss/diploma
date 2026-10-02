@@ -70,6 +70,8 @@ final class ExportService
     public function export(Actor $actor, string $dataset, string $format, array $options = []): array
     {
         $actor->authorize('export.run');
+        // Eksport obejmuje wszystko, co rola widzi — filtr firm z panelu zawęża tylko ekran, nie plik.
+        $actor = $actor->withCompanyFilter(null);
         if (!in_array($dataset, self::DATASETS, true)) {
             throw ServiceException::badRequest(\__('exchange.error.unknown_dataset'));
         }

@@ -343,7 +343,7 @@
 
     // ── Stan widoków: szuflada szczegółów i stos okien ────────────────────────
 
-    const ui = reactive({ view: 'dashboard', recordId: null, drawer: null, modals: [], searchQuery: '', searchNonce: 0 });
+    const ui = reactive({ view: 'dashboard', recordId: null, drawer: null, modals: [], searchQuery: '', searchNonce: 0, filterNonce: 0 });
     let modalSequence = 0;
 
     /**

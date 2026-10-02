@@ -45,7 +45,8 @@ DROP TABLE IF EXISTS schema_migrations;
 
 -- Konta systemowe (personel) z rolami stanowisk (App\Rbac): administrator, szef, menedżer, księgowa,
 -- informatyk, operator i pracownik. beneficiary_id wiąże konto pracownika z jego rekordem użytkownika
--- certyfikatu (klucz dodany po utworzeniu tabeli beneficiaries).
+-- certyfikatu (klucz dodany po utworzeniu tabeli beneficiaries). company_filter to filtr firm z panelu:
+-- NULL = wszystkie firmy, w przeciwnym razie obiekt z trybem (one albo list) i identyfikatorami firm.
 -- Konta zakłada ADMIN (decyzja D3) albo osoba sama przez rejestrację, jeśli jest włączona.
 -- password_hash NULL = konto bez hasła (ustawia je linkiem z wiadomości).
 -- email_verified_at NULL = adres niepotwierdzony, logowanie zablokowane.
@@ -56,6 +57,7 @@ CREATE TABLE users (
     last_name         VARCHAR(100) NOT NULL,
     role              ENUM('ADMIN', 'DIRECTOR', 'MANAGER', 'ACCOUNTANT', 'IT', 'OPERATOR', 'EMPLOYEE') NOT NULL DEFAULT 'OPERATOR',
     beneficiary_id    INT UNSIGNED NULL,
+    company_filter    JSON NULL,
     email             VARCHAR(255) NULL,
     password_hash     VARCHAR(255) NULL,
     email_verified_at DATETIME NULL,

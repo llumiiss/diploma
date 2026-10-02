@@ -46,6 +46,8 @@ $boot = [
     ],
     'permissions' => Rbac::permissionsFor($role),
     'roles'       => Rbac::roles(),
+    // Filtr firm ma sens dla ról, które widzą więcej niż kilka własnych certyfikatów (pracownik go nie dostaje).
+    'company_filter' => Rbac::scope($role) !== Rbac::SCOPE_PERSONAL,
     'thresholds'  => CertificateHelper::getThresholds(),
     'endpoints'   => [
         'certificates'   => 'api/certificates.php',
@@ -63,6 +65,7 @@ $boot = [
         'events'         => 'api/events.php',
         'export'         => 'api/export.php',
         'import'         => 'api/import.php',
+        'preferences'    => 'api/preferences.php',
         'delete_account' => 'api/delete_account.php',
     ],
     'links'       => [
@@ -91,6 +94,7 @@ $scripts = [
     'assets/js/views/reports.js',
     'assets/js/views/events.js',
     'assets/js/views/exchange.js',
+    'assets/js/views/company_filter.js',
     'assets/js/app.js',
 ];
 
