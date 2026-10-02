@@ -24,6 +24,8 @@ final class EmlMessage
         public readonly ?string $messageId,
         public readonly string $text,
         public readonly array $attachments,
+        /** Treść HTML (jeśli wiadomość ją zawiera) — z niej wyciągane są tabele z formularzy. */
+        public readonly string $html = '',
     ) {
     }
 }

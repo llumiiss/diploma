@@ -297,7 +297,7 @@
             if (type === 'renewed') {
                 return '🔁';
             }
-            if (type === 'email_received' || type === 'eml_imported') {
+            if (type === 'email_received' || type === 'eml_imported' || type.indexOf('registration_') === 0) {
                 return '📨';
             }
             if (type === 'data_imported') {

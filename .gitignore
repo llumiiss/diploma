@@ -12,9 +12,12 @@
 !/storage/attachments/.gitkeep
 /storage/cache/*
 !/storage/cache/.gitkeep
+/storage/intake/*
+!/storage/intake/.gitkeep
 graphify-out/
 /node_modules/
 .php-cs-fixer.cache
 
 # Pliki z hasłami startowymi (tworzone lokalnie, nigdy do repozytorium)
 /config/*.local.txt
+/config/intake.local.php

@@ -27,6 +27,7 @@ $db = Database::getInstance()->getConnection();
 $steps = [
     'events'                    => 'DELETE FROM events',
     'notifications'             => 'DELETE FROM notifications',
+    'registration drafts'       => 'DELETE FROM registration_drafts',
     'invitation attachments'    => 'DELETE FROM invitation_attachments',
     'invitations'               => 'DELETE FROM invitations',
     'renewal tasks'             => 'DELETE FROM renewal_tasks',

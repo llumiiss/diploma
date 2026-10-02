@@ -24,6 +24,7 @@ USE assistent_subscriptions;
 -- na czas usuwania i tworzenia tabel kontrola kluczy jest wyłączona.
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS registration_drafts;
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS settings;
 DROP TABLE IF EXISTS events;
@@ -430,6 +431,69 @@ CREATE TABLE notifications (
     CONSTRAINT fk_notifications_recipient
         FOREIGN KEY (recipient_user_id) REFERENCES users(id)
         ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Wnioski o certyfikat przesłane e-mailem (Etap 10) — kolejka robocza operatora. Wiadomość (plik, skrzynka IMAP,
+-- webhook albo potok z serwera pocztowego) zamieniona na gotowy do sprawdzenia formularz: dane użytkownika, firmy
+-- (z Białej Listy po NIP) i certyfikatu. extracted to wynik odczytu wiadomości, form — formularz edytowany przez
+-- operatora, company_lookup — odpowiedź rejestru, warnings — wątpliwości do wyjaśnienia. matched_* to rekordy już
+-- istniejące w ewidencji, result_* — rekordy utworzone albo użyte przy zatwierdzeniu. Message-ID i skrót treści
+-- (unikalne) chronią przed podwójnym wczytaniem tej samej wiadomości.
+CREATE TABLE registration_drafts (
+    id                     INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    status                 ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+    source                 ENUM('upload', 'imap', 'webhook', 'cli') NOT NULL DEFAULT 'upload',
+    message_id             VARCHAR(255) NULL,
+    content_hash           CHAR(64) NOT NULL,
+    sender_email           VARCHAR(255) NULL,
+    sender_name            VARCHAR(255) NULL,
+    subject                VARCHAR(255) NULL,
+    received_at            DATETIME NULL,
+    body_text              MEDIUMTEXT NULL,
+    raw_file               VARCHAR(64) NULL,
+    extracted              JSON NOT NULL,
+    form                   JSON NOT NULL,
+    company_lookup         JSON NULL,
+    warnings               JSON NULL,
+    matched_payer_id       INT UNSIGNED NULL,
+    matched_beneficiary_id INT UNSIGNED NULL,
+    assigned_user_id       INT UNSIGNED NULL,
+    created_by_user_id     INT UNSIGNED NULL,
+    reviewed_by_user_id    INT UNSIGNED NULL,
+    reviewed_at            DATETIME NULL,
+    rejection_reason       VARCHAR(500) NULL,
+    result_payer_id        INT UNSIGNED NULL,
+    result_beneficiary_id  INT UNSIGNED NULL,
+    result_certificate_id  INT UNSIGNED NULL,
+    created_at             DATETIME NOT NULL,
+    updated_at             TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_registration_drafts_message (message_id),
+    UNIQUE KEY uq_registration_drafts_hash (content_hash),
+    KEY idx_registration_drafts_status (status, created_at),
+    KEY idx_registration_drafts_matched_payer (matched_payer_id),
+    KEY idx_registration_drafts_matched_beneficiary (matched_beneficiary_id),
+    KEY idx_registration_drafts_assigned (assigned_user_id),
+    KEY idx_registration_drafts_created_by (created_by_user_id),
+    KEY idx_registration_drafts_reviewed_by (reviewed_by_user_id),
+    KEY idx_registration_drafts_result_payer (result_payer_id),
+    KEY idx_registration_drafts_result_beneficiary (result_beneficiary_id),
+    KEY idx_registration_drafts_result_certificate (result_certificate_id),
+    CONSTRAINT fk_registration_drafts_matched_payer
+        FOREIGN KEY (matched_payer_id) REFERENCES payers(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_registration_drafts_matched_beneficiary
+        FOREIGN KEY (matched_beneficiary_id) REFERENCES beneficiaries(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_registration_drafts_assigned
+        FOREIGN KEY (assigned_user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_registration_drafts_created_by
+        FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_registration_drafts_reviewed_by
+        FOREIGN KEY (reviewed_by_user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_registration_drafts_result_payer
+        FOREIGN KEY (result_payer_id) REFERENCES payers(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_registration_drafts_result_beneficiary
+        FOREIGN KEY (result_beneficiary_id) REFERENCES beneficiaries(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_registration_drafts_result_certificate
+        FOREIGN KEY (result_certificate_id) REFERENCES certificates(id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

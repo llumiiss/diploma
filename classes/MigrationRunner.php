@@ -13,6 +13,7 @@ use App\Migrations\CompanyRolesMigration;
 use App\Migrations\NotificationsMigration;
 use App\Migrations\OtpRateLimitMigration;
 use App\Migrations\PasswordAuthMigration;
+use App\Migrations\RegistrationDraftsMigration;
 use App\Migrations\RenewalProcessMigration;
 use App\Migrations\SchemaInspector;
 use App\Migrations\SplitPersonalAppMigration;
@@ -174,6 +175,10 @@ final class MigrationRunner
             // Etap 10: powiadomienia wewnętrzne między kontami.
             'notifications' => static function (PDO $db): void {
                 NotificationsMigration::up($db);
+            },
+            // Etap 10: wnioski o certyfikat przesłane e-mailem (kolejka robocza operatora).
+            'registration_drafts' => static function (PDO $db): void {
+                RegistrationDraftsMigration::up($db);
             },
         ];
     }
