@@ -275,6 +275,15 @@
             edit() {
                 CertiSub.openModal('CertificateForm', { certificateId: this.id }, () => this.load());
             },
+            askAdmin() {
+                CertiSub.openComposer({
+                    type: 'request',
+                    subject: t('notification.about', { name: this.certificate.name }),
+                    related_type: 'certificate',
+                    related_id: this.certificate.id,
+                    related_label: this.certificate.name,
+                });
+            },
             editPayment() {
                 CertiSub.openModal('CertificatePaymentForm', { certificate: this.certificate }, () => this.load());
             },
@@ -321,6 +330,7 @@
             <DrawerShell :title="certificate ? certificate.name : ''" :subtitle="certificate ? certificate.type_label : ''"
                          :loading="loading" :error="error" @close="close">
                 <template #actions>
+                    <button v-if="certificate && can('notifications.use')" type="button" class="btn-secondary" @click="askAdmin">📨 {{ t('notification.ask_admin') }}</button>
                     <template v-if="certificate && !certificate.archived_at">
                         <button v-if="can('certificates.update')" type="button" class="btn-secondary" @click="edit">✏️ {{ t('common.edit') }}</button>
                         <button v-if="can('certificates.update_payment') && !can('certificates.update')" type="button" class="btn-secondary" @click="editPayment">💳 {{ t('certificate.payment_edit') }}</button>

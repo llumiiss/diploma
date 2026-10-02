@@ -9,6 +9,7 @@
 
     const VIEWS = {
         dashboard: { component: 'DashboardView', icon: '📊', label: 'nav.dashboard' },
+        notifications: { component: 'NotificationsView', icon: '🔔', label: 'nav.notifications', permission: 'notifications.use' },
         todo: { component: 'TasksView', icon: '✅', label: 'nav.todo', permission: 'tasks.view' },
         invitations: { component: 'InvitationsView', icon: '✉️', label: 'nav.invitations', permission: 'invitations.view' },
         certificates: { component: 'CertificatesView', icon: '📜', label: 'nav.certificates', props: { mode: 'all' }, permission: 'certificates.view' },
@@ -79,6 +80,9 @@
                     if (id === 'todo' && store.taskStats) {
                         badgeCount = store.taskStats.open || null;
                     }
+                    if (id === 'notifications') {
+                        badgeCount = CertiSub.notificationCounters.unread || null;
+                    }
                     return { id, icon: view.icon, label: t(view.label), group: view.group || 'main', badge: badgeCount };
                 });
             },
@@ -129,6 +133,9 @@
             if (can('tasks.view')) {
                 CertiSub.data.taskStats();
             }
+            // Licznik nieprzeczytanych wiadomości w menu odświeża się co minutę.
+            CertiSub.refreshNotificationCounters();
+            window.setInterval(CertiSub.refreshNotificationCounters, 60000);
         },
         methods: {
             go(id) {

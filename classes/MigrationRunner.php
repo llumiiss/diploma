@@ -10,6 +10,7 @@ use App\Migrations\CertificatesModelMigration;
 use App\Migrations\CompanyFilterMigration;
 use App\Migrations\CompanyIntegrityMigration;
 use App\Migrations\CompanyRolesMigration;
+use App\Migrations\NotificationsMigration;
 use App\Migrations\OtpRateLimitMigration;
 use App\Migrations\PasswordAuthMigration;
 use App\Migrations\RenewalProcessMigration;
@@ -169,6 +170,10 @@ final class MigrationRunner
             // Etap 10: filtr firm operatora (wszystkie / jedna / lista wybranych) zapisany przy koncie.
             'company_filter' => static function (PDO $db): void {
                 CompanyFilterMigration::up($db);
+            },
+            // Etap 10: powiadomienia wewnętrzne między kontami.
+            'notifications' => static function (PDO $db): void {
+                NotificationsMigration::up($db);
             },
         ];
     }
