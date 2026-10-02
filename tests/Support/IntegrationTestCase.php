@@ -45,13 +45,13 @@ abstract class IntegrationTestCase extends TestCase
         );
         $stmt->execute([
             'first'         => ucfirst(strtolower($role)),
-            'last'          => 'Tester' . $sequence,
+            'last'          => 'Tester' . sprintf('%04d', $sequence),
             'role'          => $role,
             'email'         => $email,
             'password_hash' => PasswordPolicy::hash('TesteroweHaslo123'),
         ]);
 
-        return new Actor((int) $this->db->lastInsertId(), $role, ucfirst(strtolower($role)), 'Tester' . $sequence, $email);
+        return new Actor((int) $this->db->lastInsertId(), $role, ucfirst(strtolower($role)), 'Tester' . sprintf('%04d', $sequence), $email);
     }
 
     /**

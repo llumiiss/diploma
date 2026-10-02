@@ -67,6 +67,7 @@ $boot = [
         'import'         => 'api/import.php',
         'preferences'    => 'api/preferences.php',
         'notifications'  => 'api/notifications.php',
+        'registrations'  => 'api/registrations.php',
         'delete_account' => 'api/delete_account.php',
     ],
     'links'       => [
@@ -97,6 +98,7 @@ $scripts = [
     'assets/js/views/exchange.js',
     'assets/js/views/company_filter.js',
     'assets/js/views/notifications.js',
+    'assets/js/views/registrations.js',
     'assets/js/app.js',
 ];
 

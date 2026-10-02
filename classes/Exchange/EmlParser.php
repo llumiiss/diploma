@@ -56,6 +56,8 @@ final class EmlParser
             isset($headers['message-id']) ? trim($headers['message-id'], " <>\t") : null,
             $text,
             $attachments,
+            trim(implode('
+', $htmls)),
         );
     }
 
