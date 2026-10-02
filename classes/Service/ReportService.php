@@ -157,8 +157,9 @@ final class ReportService
         $settings = Settings::read($this->db);
         $end = $today->modify('first day of this month')->modify('+' . $months . ' months');
 
-        $conditions = ['c.archived_at IS NULL', 'c.expiry_date < :schedule_end'];
-        $params = ['schedule_end' => $end->format('Y-m-d')];
+        [$company, $companyParams] = Visibility::companyFilter($actor, 'c.payer_id');
+        $conditions = ['c.archived_at IS NULL', 'c.expiry_date < :schedule_end', $company];
+        $params = ['schedule_end' => $end->format('Y-m-d')] + $companyParams;
         if ($payerId !== null) {
             $conditions[] = 'c.payer_id = :payer_id';
             $params['payer_id'] = $payerId;

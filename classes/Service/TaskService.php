@@ -50,7 +50,9 @@ final class TaskService
     {
         $actor->authorize('tasks.view');
         [$visibility, $params] = Visibility::certificates($actor, 'c');
-        $conditions = [$visibility];
+        [$company, $companyParams] = Visibility::companyFilter($actor, 'c.payer_id');
+        $conditions = [$visibility, $company];
+        $params += $companyParams;
 
         $status = (string) ($filters['status'] ?? 'open');
         if ($status === 'open') {
@@ -147,7 +149,7 @@ final class TaskService
 
         // Jak na pulpicie: klucz z rolą i kontem, bo zakres zadań zależy od przydziałów (D8).
         return Cache::remember(
-            'task-stats:' . $actor->role . ':' . $actor->id,
+            'task-stats:' . $actor->role . ':' . $actor->id . ':' . ($actor->companyIds === null ? 'all' : md5(implode(',', $actor->companyIds))),
             Cache::DEFAULT_TTL,
             fn (): array => $this->computeStats($actor)
         );
@@ -159,6 +161,9 @@ final class TaskService
     private function computeStats(Actor $actor): array
     {
         [$visibility, $params] = Visibility::certificates($actor, 'c');
+        [$company, $companyParams] = Visibility::companyFilter($actor, 'c.payer_id');
+        $visibility .= ' AND ' . $company;
+        $params += $companyParams;
         $from = "FROM renewal_tasks t INNER JOIN certificates c ON c.id = t.certificate_id
                  WHERE {$visibility}";
 

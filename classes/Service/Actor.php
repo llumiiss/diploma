@@ -42,7 +42,33 @@ final class Actor
             (string) ($user['last_name'] ?? ''),
             (string) ($user['email'] ?? ''),
             isset($user['beneficiary_id']) ? (int) $user['beneficiary_id'] : null,
+            Rbac::scope((string) ($user['role'] ?? '')) === Rbac::SCOPE_PERSONAL ? null : self::parseCompanyFilter($user['company_filter'] ?? null),
         );
+    }
+
+    /**
+     * Filtr firm zapisany w users.company_filter: {"mode": "one"|"list", "ids": [...]}. Zły albo pusty zapis
+     * oznacza brak filtra (wszystkie firmy), żeby uszkodzone dane nie ukryły całej ewidencji.
+     *
+     * @return list<int>|null
+     */
+    public static function parseCompanyFilter(mixed $raw): ?array
+    {
+        if (!is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded) || !in_array($decoded['mode'] ?? null, ['one', 'list'], true) || !is_array($decoded['ids'] ?? null)) {
+            return null;
+        }
+
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $decoded['ids']),
+            static fn (int $id): bool => $id > 0
+        )));
+
+        return $ids === [] ? null : $ids;
     }
 
     /**

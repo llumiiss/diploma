@@ -96,10 +96,14 @@
                 return view;
             },
             routeKey() {
-                return ui.view + (ui.recordId ? '/' + ui.recordId : '');
+                // filterNonce zmienia się po zmianie filtra firm — otwarty widok ładuje dane od nowa.
+                return ui.view + (ui.recordId ? '/' + ui.recordId : '') + ':' + ui.filterNonce;
             },
             showSearch() {
                 return can('search.use') && ui.view !== 'search';
+            },
+            showCompanyFilter() {
+                return Boolean(CertiSub.boot.company_filter) && can('payers.view');
             },
             drawerComponent() {
                 return ui.drawer ? DRAWERS[ui.drawer.type] : null;
@@ -188,6 +192,7 @@
                 </aside>
 
                 <main ref="main" class="flex-1 overflow-y-auto p-4 sm:p-6 min-w-0">
+                    <CompanyFilterBar v-if="showCompanyFilter" class="mb-4" />
                     <div v-if="showSearch" class="mb-5"><GlobalSearch /></div>
                     <label class="md:hidden block mb-4 no-print">
                         <span class="sr-only">{{ t('dash.navigation') }}</span>

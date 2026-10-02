@@ -7,6 +7,7 @@ namespace App;
 use App\Migrations\AccountsAndOwnershipMigration;
 use App\Migrations\CertificateDiscountMigration;
 use App\Migrations\CertificatesModelMigration;
+use App\Migrations\CompanyFilterMigration;
 use App\Migrations\CompanyIntegrityMigration;
 use App\Migrations\CompanyRolesMigration;
 use App\Migrations\OtpRateLimitMigration;
@@ -164,6 +165,10 @@ final class MigrationRunner
             // Etap 10: role stanowisk (szef, księgowa, informatyk, pracownik) i powiązanie konta z osobą.
             'company_roles' => static function (PDO $db): void {
                 CompanyRolesMigration::up($db);
+            },
+            // Etap 10: filtr firm operatora (wszystkie / jedna / lista wybranych) zapisany przy koncie.
+            'company_filter' => static function (PDO $db): void {
+                CompanyFilterMigration::up($db);
             },
         ];
     }

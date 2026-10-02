@@ -56,7 +56,9 @@ final class CertificateService
         $actor->authorize($archived ? 'archive.view' : 'certificates.view');
 
         [$visibility, $params] = Visibility::certificates($actor, 'c');
-        $conditions = [$archived ? 'c.archived_at IS NOT NULL' : 'c.archived_at IS NULL', $visibility];
+        [$company, $companyParams] = Visibility::companyFilter($actor, 'c.payer_id');
+        $conditions = [$archived ? 'c.archived_at IS NOT NULL' : 'c.archived_at IS NULL', $visibility, $company];
+        $params += $companyParams;
 
         $query = trim((string) ($filters['q'] ?? ''));
         if ($query !== '') {
