@@ -26,6 +26,7 @@ Legenda: ✅ zrobione · 🟡 częściowo · ❌ brak · ⚠️ błąd lub ryzyk
 14. **Etap 7 (UX i wydajność) wykonany 2026-09-17 (§11):** szkielety treści zamiast pustych ekranów (przed zamontowaniem Vue, w tabelach, kafelkach pulpitu, panelach i formularzach), cache agregatów pulpitu i statystyk zadań z kluczem roli i właściciela oraz unieważnianiem przy każdym zapisie, nagłówki pamięci podręcznej dla zasobów z wersją w adresie. **Plan z §7 jest wykonany w całości.**
 15. **Etap 6 (jakość i domknięcie) wykonany 2026-09-17 (§11):** frontend bez CDN (Tailwind budowany lokalnie, Vue i krój Inter w repozytorium), limit wysyłek kodów OTP liczony w bazie, strona główna bez zmyślonych liczb, koszt roczny liczony wg okresu rozliczeniowego, scenariusz E2E przez API.
 15. **Etap 5 (wymiana danych) wykonany 2026-09-17 (§11):** eksport list, kart i dziennika do CSV i XML, import płatników, osób i certyfikatów z CSV/XML z podglądem każdego wiersza przed zapisem oraz import wiadomości e-mail (EML) — własny parser MIME, rozpoznanie nadawcy, certyfikatów i załączników.
+16. **Etap 10 (firmy, role, rabat, wnioski z e-maila, powiadomienia) wykonany 2026-10-02 (§11, `docs/BAZA_DANYCH.md`):** rabat procentowy zamiast ceny certyfikatu, spójność relacji firma → użytkownik → certyfikat kwalifikowany wymuszona w bazie, role stanowisk (szef, menedżer, księgowość, informatyk, operator, pracownik) z własnym zakresem danych, filtr firm operatora (wszystkie / jedna / lista), powiadomienia wewnętrzne oraz automatyczne przygotowanie formularza certyfikatu z wiadomości e-mail z danymi firmy z Białej Listy podatników VAT.
 
 ---
 
@@ -104,9 +105,9 @@ Każdy krok zapisuje zdarzenie w historii (`events`) — z niej powstaje oś cza
 | Encja (tabela) | Najważniejsze pola | Stan po Etapie 1 |
 |---|---|---|
 | Konta personelu (`users`) | imię, nazwisko, e-mail, rola | ✅ opiekunowie rekordów (`certificates.user_id`) i przydział zadań |
-| Użytkownicy certyfikatów (`beneficiaries`) | imię, nazwisko, e-mail, telefon, `payer_id`, notatki, `archived_at` | ✅ |
+| Użytkownicy certyfikatów (`beneficiaries`) | imię, nazwisko, e-mail, telefon, `payer_id` (od Etapu 10 wymagane — osoba nie istnieje bez firmy), notatki, `archived_at` | ✅ |
 | Płatnicy (`payers`) | nazwa, osoba kontaktowa, NIP (unikalny), e-mail, telefon, adres, kod pocztowy, miasto, `archived_at` | ✅ |
-| Certyfikaty (`certificates`, dawniej `subscriptions`) | `certificate_type` (D7), numer seryjny (unikalny u wystawcy), wystawca, ważny od / do, `renewal_lead_days`, `user_id`, `beneficiary_id`, `payer_id`, `previous_certificate_id`, koszt i płatność, `archived_at` | ✅ |
+| Certyfikaty (`certificates`, dawniej `subscriptions`) | `certificate_type` (D7), numer seryjny (unikalny u wystawcy), wystawca, ważny od / do, `renewal_lead_days`, `user_id`, `beneficiary_id` (od Etapu 10 wymagane dla certyfikatów kwalifikowanych), `payer_id`, `previous_certificate_id`, rabat `discount_percent` (od Etapu 10 zamiast ceny) i płatność, `archived_at` | ✅ |
 | Zadania ToDo (`renewal_tasks`) | `certificate_id`, przypisane konto, status (todo / in_progress / done / abandoned), priorytet, termin, wynik, data zamknięcia; co najwyżej jedno otwarte zadanie na certyfikat | ✅ |
 | Szablony (`email_templates`) | kod, język, nazwa, temat, treść HTML i tekstowa z polami `{imie}`, `{nazwisko}`, `{typ_certyfikatu}`, `{numer_seryjny}`, `{data_waznosci}`, `{dni_do_wygasniecia}`, `{platnik}` | ✅ 4 domyślne (zaproszenie i przypomnienie, PL i EN) |
 | Załączniki (`attachments` + `email_template_attachments`) | nazwa oryginalna, nazwa pliku w `storage/attachments`, typ MIME, rozmiar, SHA-256 | ✅ |
@@ -124,9 +125,13 @@ Relacje: płatnik 1–N użytkownik certyfikatu · użytkownik 1–N certyfikat 
 
 | Rola | Zakres |
 |---|---|
-| ADMIN | pełny dostęp: konta i role, szablony i załączniki, progi odnowień, import, archiwum, historia zdarzeń |
-| MANAGER | wszystko, co OPERATOR, + przydzielanie zadań, statystyki, raporty, eksport, archiwizacja |
-| OPERATOR | ewidencja certyfikatów, osób i płatników; zadania ToDo; zaproszenia i przypomnienia |
+| ADMIN | pełny dostęp do wszystkich danych i ustawień: konta i role, szablony i załączniki, progi odnowień, import, archiwum, historia zdarzeń, powiadomienia do wszystkich |
+| DIRECTOR (szef, od Etapu 10) | podgląd całej organizacji, raporty, statystyki, eksport, przydział opiekunów i zadań; nie edytuje rekordów |
+| MANAGER | ewidencja całej organizacji, przydzielanie zadań, statystyki, raporty, eksport, archiwizacja i archiwum, wnioski e-mail |
+| ACCOUNTANT (księgowość, od Etapu 10) | podgląd całej organizacji, zmiana płatności i rabatu, dane firm, raporty i eksport; bez edycji certyfikatów |
+| IT (informatyk, od Etapu 10) | certyfikaty techniczne całej organizacji (SSL, podpis kodu, domeny, SaaS, chmura), zadania i zaproszenia; bez certyfikatów kwalifikowanych i danych osób |
+| OPERATOR | własne i przydzielone certyfikaty oraz powiązane osoby i firmy (D8); zadania ToDo; zaproszenia; wnioski z e-maila |
+| EMPLOYEE (pracownik, od Etapu 10) | wyłącznie własne certyfikaty (opiekun albo użytkownik certyfikatu powiązany z kontem) i firmy, do których należą; tylko odczyt |
 
 Perspektywy z opisu jako raporty w panelu:
 
@@ -331,6 +336,11 @@ Kolejność etapów = kolejność ważności. Gdy zabraknie czasu, najpierw upra
 | D6 | Harmonogram | **otwarte — do ustalenia z promotorem** | plan §7 zakłada freeze w połowie listopada 2026 |
 | D7 | Rodzaje certyfikatów | **b) ogólny model z typem** | ✅ Etap 1: `certificates.certificate_type` — QUALIFIED_SIGNATURE, QUALIFIED_SEAL, SSL_CERTIFICATE, CODE_SIGNING, DOMAIN, SAAS, CLOUD_SUPPORT, OTHER (typy subskrypcji prywatnych usunięte w Etapie 8) oraz pola wspólne: numer seryjny, wystawca, ważny od/do, wymagany czas odnowienia; w pracy przykłady na certyfikatach kwalifikowanych |
 | D8 | Zakres danych OPERATORA (przyjęte w Etapie 2, 2026-09-17 — do potwierdzenia z promotorem) | **zasada najmniejszych uprawnień** | OPERATOR widzi certyfikaty, których jest opiekunem, i te z przydzielonym mu zadaniem odnowienia; osoby i płatników, których sam wprowadził (`created_by_user_id`) albo którzy są powiązani z jego certyfikatami. MANAGER i ADMIN widzą całą organizację. Duplikat NIP-u zgłaszany operatorowi bez ujawniania cudzego płatnika. Archiwizacja i archiwum od roli MANAGER. Konta się nie usuwa — ADMIN je wyłącza; system zawsze zachowuje aktywnego administratora |
+
+| D9 | Firma w ewidencji (2026-10-02) | **firma = płatnik, jedna tabela `payers`** | Interfejs mówi „firma”, baza i raporty zostają przy płatniku z opisu pracy; użytkownik certyfikatu zawsze ma firmę (`payer_id NOT NULL`), certyfikat kwalifikowany zawsze ma użytkownika (`CHECK`) |
+| D10 | Cena certyfikatu (2026-10-02) | **rabat procentowy zamiast kwoty** | Kolumny `annual_cost` i `currency` usunięte, `discount_percent` 0–100; pulpit i raporty pokazują średni rabat |
+| D11 | Role (2026-10-02) | **profile stanowisk zamiast hierarchii** | `ADMIN`, `DIRECTOR`, `MANAGER`, `ACCOUNTANT`, `IT`, `OPERATOR`, `EMPLOYEE`; własne uprawnienia i zakres danych każdej roli (`Rbac::scope()`); D8 obowiązuje dla operatora |
+| D12 | Wnioski z e-maila (2026-10-02) | **odczyt deterministyczny + Biała Lista + zatwierdzenie przez operatora** | Aplikacja niczego nie zakłada sama — przygotowuje formularz; zakłada rekordy dopiero operator jednym przyciskiem (jedna transakcja) |
 
 ---
 
@@ -676,6 +686,36 @@ Przy okazji wyszły dwie rzeczy warte poprawy i poprawione:
 prawdziwe adresy uzupełnić blok `oauth2` w `config/mail.local.php` (`php scripts/oauth2-token.php`)
 i przełączyć `driver` na `oauth2`.
 
+### Etap 10 — firmy, role stanowisk, rabat, wnioski z e-maila i powiadomienia (2026-10-02)
+
+Rozszerzenia na życzenie autora, wykonane w jednej serii (gałąź `etap-10-firmy-role-wnioski`, commity 10a–10f,
+każdy z testami; baza przed migracjami zrzucona `mysqldump`). Opis tabel i powiązań: `docs/BAZA_DANYCH.md`.
+
+| Podetap | Zmiana | Najważniejsze pliki |
+|---|---|---|
+| **10a** rabat zamiast ceny | kolumny `certificates.annual_cost` i `currency` zastąpione przez `discount_percent DECIMAL(5,2)` (0–100, `CHECK`); w interfejsie rabat wyświetlany z minusem (-3%, -5%, -10%), pole przyjmuje „-5%”, „-5”, „5”, „5,5 %”; pulpit, płatnicy i raporty pokazują średni rabat; eksport/import (kolumna „Rabat”, aliasy rabat/upust/discount) | `CertificateDiscountMigration`, `Validator::discountPercent`, `CertificateHelper::formatDiscount`, `CertificateManager`, `ReportService` |
+| **10b** spójność firma → użytkownik → certyfikat kwalifikowany | `beneficiaries.payer_id NOT NULL`; `CHECK chk_certificates_qualified_user` (podpis i pieczęć kwalifikowana wymagają użytkownika), klucz `beneficiary_id` z `ON UPDATE RESTRICT` (MySQL: `CHECK` + `CASCADE` na jednej kolumnie to błąd 3823); migracja naprawia stare dane („Firma do uzupełnienia”, „Użytkownik do uzupełnienia”); usługi zwracają błędy pól; etykiety „Płatnik” → „Firma” (nazwy kolumn plików eksportu bez zmian) | `CompanyIntegrityMigration`, `CertificateService::validate`, `BeneficiaryService::validate` |
+| **10c** role stanowisk | siedem profili zamiast hierarchii: `ADMIN`, `DIRECTOR` (szef), `MANAGER`, `ACCOUNTANT` (księgowość), `IT` (informatyk — certyfikaty techniczne), `OPERATOR`, `EMPLOYEE` (pracownik — tylko własne certyfikaty i firmy, odczyt); uprawnienie `certificates.update_payment` (księgowa zmienia status płatności, datę i rabat); `users.beneficiary_id` łączy konto pracownika z jego osobą; wskaźniki pulpitu liczone w zakresie roli; administrator ma wszystkie uprawnienia i widzi wszystko (sprawdzone testami) | `Rbac` (profile i `scope()`), `Visibility`, `CertificateManager`, `CompanyRolesMigration` |
+| **10d** filtr firm | operator wybiera: wszystkie firmy / jedna firma / lista wybranych; wybór w `users.company_filter`, zawęża listy, pulpit, ToDo, zaproszenia i harmonogram (eksport pomija filtr); wybrać można tylko firmy widoczne dla roli | `CompanyFilterService`, `api/preferences.php`, `Visibility::companyFilter`, `assets/js/views/company_filter.js` |
+| **10e** powiadomienia | wiadomości wewnętrzne (prośba o uzupełnienie danych, zgłoszenie błędu, wiadomość, komunikat systemowy), wątki, „załatwione”, powiązanie z rekordem, znaczek w menu; komunikat o przydzielonym zadaniu | `NotificationService`, `api/notifications.php`, `assets/js/views/notifications.js` |
+| **10f** wnioski z e-maila | wiadomość z wnioskiem → odczyt danych (użytkownik, certyfikat, NIP) → firma z **Białej Listy podatników VAT** po NIP-ie (`wl-api.mf.gov.pl`) → dopasowanie do ewidencji → formularz do sprawdzenia i zatwierdzenia jednym przyciskiem (jedna transakcja: firma, użytkownik, certyfikat); cztery drogi odbioru: plik `.eml`, skrzynka IMAP (`cron/mail-intake.php`, własny klient IMAP bez rozszerzenia `imap`, hasło albo XOAUTH2), webhook (`api/inbound-mail.php`), potok serwera pocztowego (`scripts/mail-pipe.php`) | `RegistrationExtractor`, `WhiteListRegistry`, `ImapClient`, `RegistrationIntakeService`, `RegistrationService`, `config/intake.php` |
+
+**Decyzje projektowe:** (1) „firma” w interfejsie to dotychczasowy płatnik — jedna tabela `payers`, żeby nie
+rozbijać relacji i raportów z opisu pracy; (2) rabat przechowywany jako wielkość nieujemna, minus jest tylko
+sposobem wyświetlania; (3) ekstraktor jest deterministyczny (etykiety, sekcje, tabele, NIP z sumą kontrolną) —
+wynik to propozycja z zapisanym źródłem każdego pola i listą ostrzeżeń, a nie dane zaufane; (4) awaria rejestru nie
+blokuje wniosku (status `error` w `company_lookup`, dane do uzupełnienia ręcznie); (5) zatwierdzenie wniosku
+zapisuje rekordy na konto operatora, ale z uprawnieniami potrzebnymi do podpięcia certyfikatu do firmy dopasowanej
+po NIP-ie (także spoza jego zakresu) — identyfikator firmy spoza dopasowania jest odrzucany; (6) wnioski
+z automatycznych dróg, które nie wyglądają na wniosek (brak NIP-u i etykiet), są pomijane.
+
+Weryfikacja: **314 testów** (187 przed etapem), PHPStan poziom 5 bez uwag, `composer cs` czyste; scenariusz
+sprawdzony ręcznie w przeglądarce: wiadomość przepuszczona przez `scripts/mail-pipe.php` z prawdziwym zapytaniem
+do Białej Listy → formularz → zatwierdzenie → firma, użytkownik i certyfikat w ewidencji operatora.
+
+**Zostaje do zrobienia przez autora:** zrzut i migracja istniejących baz (`php scripts/migrate.php` — kwoty ze starej
+kolumny nie są przenoszone); dla odbioru ze skrzynki uzupełnić `config/intake.local.php` (blok `imap`, ewentualnie
+`webhook.token`) i dodać `cron/mail-intake.php` do crontaba; konta ról stanowisk założyć w „Konta i role”.
 ### Część pisemna — poprawki rozdz. 1–2 i nowy rozdz. 3 (2026-09-30)
 
 Na wyraźną prośbę autora poprawiono `docs/generate_thesis_pdfs.py` (źródło

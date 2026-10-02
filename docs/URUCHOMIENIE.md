@@ -20,6 +20,7 @@ composer install
 
 - `config/database.php` — dane połączenia z MySQL (`host`, `dbname`, `username`, `password`, `charset`); domyślnie `localhost` / `assistent_subscriptions` / `root` bez hasła (typowe dla Laragon)
 - `config/auth.php` — `self_registration` (włącz/wyłącz publiczną rejestrację) i `default_role` konta z rejestracji
+- `config/intake.php` (domyślne) i `config/intake.local.php` (sekrety, poza gitem) — odbiór wniosków z e-maila: rejestr firm (Biała Lista MF, `registry`), token webhooka (`webhook.token`) i skrzynka IMAP (`imap`: `enabled`, `host`, `username`, `password` albo `auth => oauth2`); patrz komentarze w `config/intake.php`
 - `config/mail.local.php` — konfiguracja poczty, **plik nieśledzony przez git** (sekrety); utworzyć na podstawie wzorca:
 
 ```powershell
@@ -88,6 +89,12 @@ Po skopiowaniu katalogu do webroot serwera (np. `C:\laragon\www\assistent_subscr
 
 ```powershell
 php cron\renewals.php
+```
+
+Odbiór wniosków ze skrzynki IMAP (jeśli włączony w `config/intake.local.php`) — co kilka minut:
+
+```powershell
+php cron\mail-intake.php
 ```
 
 Skaner odnowień (zakłada zadania ToDo) oraz wysyłka zaległych przypomnień o zaproszeniach — uruchamiać codziennie (np. Harmonogram zadań Windows: program = pełna ścieżka do `php.exe`, argument = pełna ścieżka do skryptu). Wynik zapisywany do `logs/renewals.log`. Na hostingu bez crontaba patrz `deploy-cron.php` w [`DEPLOY_INFINITYFREE.md`](DEPLOY_INFINITYFREE.md).

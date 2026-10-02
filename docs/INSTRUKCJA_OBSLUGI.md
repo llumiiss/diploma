@@ -36,29 +36,37 @@ Interfejs startuje po polsku; język zmienisz przełącznikiem w nagłówku.
 
 ### Konta personelu
 
-Konta zakłada **administrator** w panelu: **Zarządzanie → Konta i role**. Nie ma haseł — osoba loguje się kodem wysłanym na adres e-mail podany przy zakładaniu konta.
+Konta zakłada **administrator** w panelu: **Zarządzanie → Konta i role**. Nowa osoba dostaje e-mailem link do ustawienia hasła (logowanie: e-mail + hasło).
 
-Hierarchia ról: **ADMIN > MANAGER > OPERATOR**.
+Role odpowiadają stanowiskom w firmie — każda ma własne uprawnienia **i własny zakres danych** (od Etapu 10 to nie jest już liniowa hierarchia):
 
-| Rola | Co może |
-|---|---|
-| ADMIN | wszystko, co MANAGER, oraz konta i role (zakładanie, zmiana roli, wyłączanie, przekazywanie rekordów), **szablony i załączniki**, **ustawienia** procesu odnowień, **dziennik zdarzeń** całego systemu, **import danych i wiadomości EML** |
-| MANAGER | dane całej organizacji, archiwizacja i przywracanie, ekran **Archiwum** (także historia certyfikatów w kartach i rekordy z archiwum w wyszukiwarce), wybór opiekuna certyfikatu, **przydział zadań**, ponowne otwieranie zadań, **uruchamianie skanera**, statystyki wg osób, **eksport danych** |
-| OPERATOR | ewidencja w swoim zakresie: certyfikaty, których jest opiekunem (albo ma do nich przydzielone zadanie), oraz osoby i płatnicy, których sam wprowadził lub którzy są z tymi certyfikatami powiązani; **zadania ToDo, zaproszenia i przypomnienia, odnawianie certyfikatów, raporty (karty osób i płatników, harmonogram) i wyszukiwarka** w tym zakresie; nie archiwizuje i nie widzi archiwum |
+| Rola | Stanowisko | Zakres danych | Co może |
+|---|---|---|---|
+| ADMIN | administrator systemu | cała organizacja | wszystko: konta i role (zakładanie, zmiana roli, wyłączanie, przekazywanie rekordów, powiązanie konta pracownika z osobą), **szablony i załączniki**, **ustawienia** procesu odnowień, **dziennik zdarzeń**, **import danych i wiadomości EML**, powiadomienia do wszystkich użytkowników |
+| DIRECTOR | szef | cała organizacja | podgląd wszystkiego, raporty i statystyki, **eksport**, wybór opiekuna certyfikatu i **przydział zadań**; nie edytuje rekordów |
+| MANAGER | menedżer | cała organizacja | ewidencja, archiwizacja i **Archiwum**, przydział zadań, **uruchamianie skanera**, statystyki wg osób, eksport, wnioski z e-maila |
+| ACCOUNTANT | księgowość | cała organizacja | podgląd, **zmiana płatności i rabatu** (przycisk „Płatność i rabat” w certyfikacie), edycja danych firm, raporty, eksport; bez edycji certyfikatów |
+| IT | informatyk | wszystkie certyfikaty **techniczne** (SSL, podpis kodu, domeny, SaaS, wsparcie chmurowe, inne) | zakłada i zmienia tylko certyfikaty techniczne, zadania ToDo i zaproszenia do odnowień; nie widzi certyfikatów kwalifikowanych ani osób |
+| OPERATOR | operator | certyfikaty, których jest opiekunem (albo ma do nich zadanie), oraz osoby i firmy wprowadzone przez niego lub z nimi powiązane (D8) | ewidencja w tym zakresie, zadania ToDo, zaproszenia, odnawianie, raporty, wyszukiwarka, **wnioski z e-maila**; nie archiwizuje |
+| EMPLOYEE | pracownik | **tylko własne certyfikaty** (jako opiekun albo jako użytkownik certyfikatu powiązany z kontem) i firmy, do których te certyfikaty należą | tylko odczyt: swoje certyfikaty, ich firmy, raporty i wyszukiwarka w tym zakresie |
 
-Kontrolę dostępu wykonuje serwer (API) — ukryte przyciski w przeglądarce to tylko wygoda. Szczegóły reguły zakresu danych: decyzja **D8** w mapie projektu.
+Powiadomienia wewnętrzne są dostępne dla każdej roli (pracownik pisze tylko do administratorów i menedżerów).
 
-Konta na danych demo:
+Kontrolę dostępu wykonuje serwer (API) — ukryte przyciski w przeglądarce to tylko wygoda. Szczegóły reguły zakresu danych operatora: decyzja **D8**, role stanowisk: **D11** w mapie projektu.
+
+Konta na danych demo (hasło wszystkich kont `@example.com`: `Demo2026!haslo`, chyba że seed uruchomiono z `--password`):
 
 | E-mail | Rola | Uwaga |
 |---|---|---|
 | `mobi.litosh@gmail.com` | ADMIN | Twoje konto do demonstracji — opiekun 2 aktywnych certyfikatów |
 | dwa wcześniej założone konta testowe | OPERATOR | konta istniejące przed Etapem 0 |
-| `ewa.pawlak@example.com` | MANAGER | konto demo personelu — opiekunka 4 certyfikatów |
-| `tomasz.wrobel@example.com` | OPERATOR | konto demo personelu — opiekun 4 certyfikatów |
+| `ewa.pawlak@example.com` | MANAGER | opiekunka 4 certyfikatów |
+| `tomasz.wrobel@example.com` | OPERATOR | opiekun 4 certyfikatów — dobre konto do pokazania wniosków z e-maila i powiadomień |
+| `robert.szymanski@example.com` | DIRECTOR | szef: podgląd i raporty bez edycji |
+| `monika.zielinska@example.com` | ACCOUNTANT | księgowość: zmiana płatności i rabatu |
+| `jakub.kaczmarek@example.com` | IT | widzi tylko certyfikaty techniczne |
+| `jan.kowalski@example.com` | EMPLOYEE | powiązany z użytkownikiem certyfikatu Jan Kowalski — widzi tylko jego certyfikat i firmę NovaTech |
 | `adam.nowicki@example.com` | OPERATOR, **wyłączone** | przykład konta osoby, która odeszła — nie może się zalogować |
-
-Konta `@example.com` służą jako opiekunowie rekordów i osoby przypisane do zadań — nie da się na nie zalogować, bo nie ma dostępu do tych skrzynek.
 
 Awaryjnie role można też zmienić z wiersza poleceń: `php scripts/set-role.php --list` / `php scripts/set-role.php <e-mail> <rola>`.
 
@@ -298,21 +306,21 @@ Każda zmiana ustawień trafia do historii zdarzeń.
 ### Certyfikaty
 
 - **Lista** z wyszukiwarką (nazwa, numer seryjny, wystawca, osoba, płatnik, opiekun) i filtrami: typ, status, płatność, priorytet.
-- **Szczegóły** (kliknij wiersz): typ, status, numer seryjny, wystawca, ważność z liczbą dni, wymagany czas odnowienia, opiekun, koszt, płatność, notatki; odnośniki do osoby i płatnika; łańcuch odnowień (poprzedni certyfikat / zastąpiony przez); sekcja **Odnowienie** (otwarte zadanie, **Utwórz zadanie**, **Wyślij zaproszenie**, lista zaproszeń); **historia zdarzeń** — kto i kiedy dodał, zmienił (z listą zmienionych pól „z → na”), zarchiwizował, wysłał zaproszenie.
-- **Dodaj / Edytuj** — formularz w sekcjach: dane certyfikatu, ważność i odnowienie, powiązania, koszt i płatność. Walidacja pokazuje błędy przy polach, np.:
+- **Szczegóły** (kliknij wiersz): typ, status, numer seryjny, wystawca, ważność z liczbą dni, wymagany czas odnowienia, opiekun, **rabat** (np. -5%), płatność, notatki; odnośniki do osoby i płatnika; łańcuch odnowień (poprzedni certyfikat / zastąpiony przez); sekcja **Odnowienie** (otwarte zadanie, **Utwórz zadanie**, **Wyślij zaproszenie**, lista zaproszeń); **historia zdarzeń** — kto i kiedy dodał, zmienił (z listą zmienionych pól „z → na”), zarchiwizował, wysłał zaproszenie.
+- **Dodaj / Edytuj** — formularz w sekcjach: dane certyfikatu, ważność i odnowienie, powiązania, **rabat i płatność**. Rabat to procent: pole przyjmuje „-5%”, „-5”, „5” albo „5,5 %” (przyciski 0, -3, -5, -10, -15, -20%), a w liście i szczegółach widać go z minusem. **Certyfikat kwalifikowany (podpis i pieczęć) wymaga użytkownika certyfikatu**, a użytkownik zawsze ma firmę. Walidacja pokazuje błędy przy polach, np.:
   - data „ważny od” późniejsza niż wygaśnięcie,
   - numer seryjny zajęty u tego samego wystawcy,
   - nieistniejąca data (np. 31 lutego — serwer sprawdza datę kalendarzem).
-- Po wybraniu osoby **płatnik podpowiada się sam**. Przyciski „+” przy polach osoby i płatnika dodają nowy rekord bez zamykania formularza.
+- Po wybraniu osoby **firma (płatnik) podpowiada się sama**. Przyciski „+” przy polach osoby i płatnika dodają nowy rekord bez zamykania formularza.
 - **Archiwizuj** (MANAGER, ADMIN) — certyfikat znika z bieżących list, historia zostaje, a otwarte zadanie odnowienia zamyka się jako porzucone.
 
 ### Użytkownicy certyfikatów
 
-Lista osób z płatnikiem, liczbą certyfikatów i najbliższym wygaśnięciem. Szczegóły osoby pokazują jej certyfikaty; z panelu można dodać certyfikat od razu przypisany do tej osoby. Przycisk **Karta** w wierszu (i **Karta raportowa** w panelu szczegółów) otwiera kartę użytkownika certyfikatu — opis niżej w „Raportach”. Osoby z aktywnymi certyfikatami **nie da się zarchiwizować** — najpierw trzeba zarchiwizować certyfikaty albo przypisać je komuś innemu.
+Lista osób z firmą (**wymaganą** — osoba nie istnieje bez firmy), liczbą certyfikatów i najbliższym wygaśnięciem. Szczegóły osoby pokazują jej certyfikaty; z panelu można dodać certyfikat od razu przypisany do tej osoby. Przycisk **Karta** w wierszu (i **Karta raportowa** w panelu szczegółów) otwiera kartę użytkownika certyfikatu — opis niżej w „Raportach”. Osoby z aktywnymi certyfikatami **nie da się zarchiwizować** — najpierw trzeba zarchiwizować certyfikaty albo przypisać je komuś innemu.
 
-### Płatnicy
+### Firmy (płatnicy)
 
-Lista z NIP-em, osobą kontaktową, miejscowością, liczbą osób i certyfikatów oraz kosztem rocznym. Szczegóły płatnika pokazują powiązane osoby i certyfikaty z sumą kosztów, a przycisk **Karta** otwiera kartę płatnika.
+Lista z NIP-em, osobą kontaktową, miejscowością, liczbą osób i certyfikatów oraz **średnim rabatem**. W interfejsie firma to dawny „płatnik” (ta sama tabela `payers`). Szczegóły firmy pokazują powiązane osoby i certyfikaty z rabatami, a przycisk **Karta** otwiera kartę firmy.
 
 - **NIP** jest sprawdzany sumą kontrolną (można wpisać go z kreskami lub z prefiksem PL) i musi być unikalny. Przy próbie dodania istniejącego NIP-u formularz pokazuje nazwę istniejącego płatnika i odnośnik do niego — operator, który tego płatnika nie widzi, dostaje komunikat bez szczegółów.
 - Płatnika z aktywnymi certyfikatami lub osobami **nie da się zarchiwizować** (komunikat podaje liczby).
@@ -338,6 +346,31 @@ Widok **Raporty** odpowiada perspektywom z opisu systemu. Trzy kafelki: wybór o
 
 Karty i harmonogram mają przycisk **Drukuj** — wydruk (albo zapis do PDF w oknie drukowania) nie zawiera menu ani przycisków. OPERATOR widzi w kartach tylko swoje certyfikaty i zdarzenia, które ich dotyczą.
 
+### Filtr firm (od Etapu 10)
+
+Pasek **Zakres firm** nad treścią (nie ma go pracownik) pozwala zawęzić pracę do wybranych firm: **wszystkie firmy**, **jedna wybrana firma** albo **lista wybranych firm** (z wyszukiwarką i „Zaznacz widoczne”). Wybór zapisuje się przy koncie i od razu zawęża listy certyfikatów, osób i firm, pulpit, listę ToDo, zaproszenia i harmonogram wygaśnięć. Do wyboru są tylko firmy widoczne dla roli. Filtr nie jest kontrolą dostępu (rekord spoza wyboru da się otworzyć np. z wyszukiwarki), a **eksport pomija filtr** i obejmuje wszystko, co rola widzi. „Pokaż wszystkie firmy” czyści filtr.
+
+### Powiadomienia (od Etapu 10)
+
+Pozycja **Powiadomienia** w menu (ze znaczkiem nieprzeczytanych) to prosta wymiana wiadomości między kontami — głównie administratora z operatorami:
+
+- rodzaje: **wiadomość**, **prośba o uzupełnienie danych**, **zgłoszenie błędu** oraz **komunikat systemowy** (np. „przydzielono Ci zadanie odnowienia”, „nowy wniosek z e-maila”);
+- **Nowa wiadomość**: odbiorcy (osoby albo „wszyscy administratorzy”; „wszyscy użytkownicy” tylko dla administratora), rodzaj, temat, treść;
+- przycisk **Zgłoś / poproś o uzupełnienie** w panelu szczegółów certyfikatu, osoby i firmy tworzy wiadomość powiązaną z tym rekordem — odbiorca otwiera rekord jednym kliknięciem;
+- odbiorca może **odpowiedzieć** (wątek), **oznaczyć prośbę jako załatwioną** (nadawca dostaje informację), oznaczyć jako nieprzeczytaną albo zarchiwizować.
+
+### Wnioski e-mail (od Etapu 10)
+
+Pozycja **Wnioski e-mail** (operator, menedżer, administrator; szef tylko podgląd) to kolejka wniosków o certyfikat przesłanych pocztą. Aplikacja **sama przygotowuje formularz**, operator tylko sprawdza i zatwierdza:
+
+1. **Wniosek trafia do aplikacji** jedną z dróg: przycisk **Wczytaj wiadomość (.eml)** (zapisz wiadomość z programu pocztowego), skrzynka IMAP (`cron/mail-intake.php` albo przycisk **Pobierz nowe wiadomości**), webhook `api/inbound-mail.php` albo potok serwera pocztowego `scripts/mail-pipe.php` (konfiguracja: `config/intake.local.php`).
+2. **Odczyt wiadomości**: imię i nazwisko, e-mail, telefon, **NIP**, rodzaj certyfikatu (podpis czy pieczęć kwalifikowana), wystawca, okres ważności albo daty, rabat i uwagi. Rozumie „Etykieta: wartość” po polsku i angielsku, sekcje „Dane firmy” / „Dane wnioskodawcy”, tabele HTML i NIP wpisany w zdaniu (sprawdzany sumą kontrolną).
+3. **Firma po NIP-ie**: aplikacja pyta publiczne API **Białej Listy podatników VAT** (`wl-api.mf.gov.pl`) o nazwę, adres i status VAT. Jeśli firma jest już w ewidencji — zostanie użyta; jeśli nie — **powstanie z danych z rejestru**. Awaria rejestru nie blokuje wniosku (dane uzupełnia się ręcznie, przycisk 🔎 ponawia zapytanie).
+4. **Dopasowanie do ewidencji**: osoba z tym samym adresem e-mail w tej samej firmie jest użyta, w innej firmie — powstaje nowa osoba z ostrzeżeniem.
+5. **Ekran sprawdzenia** (`#/registrations/N`): po lewej treść wiadomości i lista uwag („do sprawdzenia”: np. niepoprawny NIP, firma w archiwum, status VAT inny niż czynny, założona domyślna data wygaśnięcia), po prawej wypełniony formularz firmy, użytkownika i certyfikatu. Przyciski: **Zapisz zmiany**, **Przejmij wniosek**, **Poproś o uzupełnienie** (powiadomienie), **Odrzuć**, **Zatwierdź i utwórz**.
+6. **Zatwierdź i utwórz** zakłada w **jednej transakcji** firmę (jeśli jej nie było), użytkownika certyfikatu w tej firmie i certyfikat (opiekun: zatwierdzający operator); błąd w którymkolwiek polu wycofuje całość i podświetla pole w odpowiedniej sekcji. Zatwierdzony wniosek pokazuje odnośniki do utworzonych rekordów.
+
+Wiadomości powtórzone (ten sam `Message-ID` lub treść) nie tworzą drugiego wniosku, a z automatycznych dróg wiadomości niewyglądające na wniosek (brak NIP-u i etykiet) są pomijane. Nowy wniosek wysyła komunikat systemowy osobom z uprawnieniem do sprawdzania.
 ### Archiwum (MANAGER, ADMIN)
 
 Trzy zakładki: certyfikaty, użytkownicy certyfikatów, płatnicy — z datą archiwizacji i przyciskiem **Przywróć**. Na danych demo są tu 2 certyfikaty (poprzedni SSL EV i porzucona domena). Certyfikatu nie da się przywrócić, jeśli jego płatnik lub osoba są w archiwum. Rekord z archiwum można obejrzeć, ale nie edytować.
@@ -463,7 +496,7 @@ W **HeidiSQL** (Laragon → Database → baza `assistent_subscriptions`) — mat
 
 | Tabela | Co zawiera na danych demo |
 |---|---|
-| `certificates` | 12 pozycji (10 bieżących, 2 w archiwum); numery seryjne, wystawcy, daty ważności, wymagany czas odnowienia |
+| `certificates` | 12 pozycji (10 bieżących, 2 w archiwum); numery seryjne, wystawcy, daty ważności, wymagany czas odnowienia, `discount_percent` (rabat) |
 | `beneficiaries` | 5 użytkowników certyfikatów powiązanych z płatnikami; `created_by_user_id` — kto wprowadził rekord |
 | `payers` | 4 płatników z NIP-em, adresem i kontaktem; `created_by_user_id` |
 | `users` | konta personelu z rolą; `deactivated_at` — konto wyłączone przez administratora |
@@ -473,6 +506,10 @@ W **HeidiSQL** (Laragon → Database → baza `assistent_subscriptions`) — mat
 | `invitations` | 4 zaproszenia: wysłane z 2 przypomnieniami, z odpowiedzią, nieudane (z treścią błędu), zamknięte |
 | `events` | ok. 55 zdarzeń historii; każda zmiana wykonana w panelu, skaner i wysyłki dopisują kolejne (np. `payload.changes` ze zmienionymi polami); w panelu to **Dziennik zdarzeń** i osie czasu na kartach |
 | `settings` | tylko zmienione ustawienia procesu odnowień (pusta = wartości domyślne) |
+| `notifications` | powiadomienia wewnętrzne (od Etapu 10) — wiadomości między kontami, wątki, komunikaty systemowe |
+| `registration_drafts` | wnioski z e-maila (od Etapu 10) — formularz do zatwierdzenia z odpowiedzią Białej Listy w `company_lookup` |
+
+Pełny opis tabel i powiązań (wraz z diagramem) jest w [BAZA_DANYCH.md](BAZA_DANYCH.md).
 
 Gotowe zapytania do pokazania:
 
@@ -501,7 +538,21 @@ FROM events e LEFT JOIN users u ON u.id = e.user_id
 ORDER BY e.occurred_at DESC LIMIT 20;
 ```
 
-Integralność pilnowana przez bazę — ta próba **musi się nie udać** (błąd `Duplicate entry`), bo certyfikat może mieć tylko jedno otwarte zadanie:
+Integralność pilnowana przez bazę — te próby **muszą się nie udać**:
+
+```sql
+-- użytkownik certyfikatu bez firmy (błąd: payer_id nie może być NULL)
+INSERT INTO beneficiaries (first_name, last_name, payer_id) VALUES ('Jan', 'Sierota', NULL);
+
+-- certyfikat kwalifikowany bez użytkownika (błąd: naruszone ograniczenie chk_certificates_qualified_user)
+INSERT INTO certificates (name, certificate_type, expiry_date, user_id, payer_id)
+SELECT 'Podpis bez osoby', 'QUALIFIED_SIGNATURE', '2030-01-01', MIN(id), (SELECT MIN(id) FROM payers) FROM users;
+
+-- rabat poza zakresem 0-100 (błąd: naruszone ograniczenie chk_certificates_discount)
+UPDATE certificates SET discount_percent = 150 WHERE id = (SELECT MIN(id) FROM (SELECT id FROM certificates) x);
+```
+
+I jeszcze jedna — ta próba **też musi się nie udać** (błąd `Duplicate entry`), bo certyfikat może mieć tylko jedno otwarte zadanie:
 
 ```sql
 INSERT INTO renewal_tasks (certificate_id, status, due_date)
@@ -560,6 +611,13 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 24. Przełącznik języka (PL → EN) — interfejs, komunikaty walidacji i opisy zdarzeń się tłumaczą.
 25. HeidiSQL: tabele modelu, zapytanie „ostatnie zmiany wykonane w panelu” (§8), nieudana próba drugiego otwartego zadania.
 26. Bezpieczeństwo: `/.git/config`, `/storage/attachments/`, `/classes/Rbac.php` → **403**; `/api/accounts.php` bez logowania → **401**.
+27. **Rabat** (Etap 10): certyfikaty → Edytuj → pole „Rabat” — wpisz `-5%` albo kliknij przycisk -10%; w liście kolumna „Rabat”, na pulpicie kafelek „Średni rabat”; wpisz `150` → błąd przy polu.
+28. **Spójność relacji**: Dodaj certyfikat typu „Certyfikat kwalifikowany” bez wybranej osoby → błąd „nie istnieje bez użytkownika”; Dodaj użytkownika certyfikatu bez firmy → błąd przy polu „Firma”; w HeidiSQL ta sama próba SQL kończy się błędem bazy (§8).
+29. **Role** (zaloguj się kolejno): `robert.szymanski@example.com` (szef — podgląd i raporty, bez przycisków edycji), `monika.zielinska@example.com` (księgowość — w certyfikacie tylko „Płatność i rabat”), `jakub.kaczmarek@example.com` (informatyk — tylko certyfikaty techniczne, brak osób), `jan.kowalski@example.com` (pracownik — jeden certyfikat i firma NovaTech, tylko odczyt).
+30. **Filtr firm** (operator `tomasz.wrobel@example.com`): pasek „Zakres firm” → Zmień → „Jedna wybrana firma” → liczba certyfikatów na liście i pulpit się zawężają; potem „Lista wybranych firm” z dwiema firmami; „Pokaż wszystkie firmy”.
+31. **Powiadomienia**: jako operator w certyfikacie kliknij „Zgłoś / poproś o uzupełnienie” → wyślij do administratorów; jako administrator (`mobi.litosh@gmail.com`) znaczek przy „Powiadomienia” → otwórz wątek → odpowiedz i „Oznacz jako załatwione”; wróć do operatora — odpowiedź i informacja o załatwieniu.
+32. **Wniosek z e-maila**: `php scripts/mail-pipe.php < docs\przyklady\wniosek.eml` (albo przycisk „Wczytaj wiadomość (.eml)”) → Wnioski e-mail → otwórz wniosek: formularz wypełniony danymi z wiadomości i z Białej Listy po NIP-ie → popraw jedno pole → **Zatwierdź i utwórz** → firma, użytkownik i certyfikat w ewidencji; spróbuj wczytać ten sam plik jeszcze raz (komunikat o duplikacie).
+33. Skrzynka IMAP i webhook: `config/intake.local.php` (`imap.enabled`, `webhook.token`) → `php cron/mail-intake.php`; `curl --data-binary @wniosek.eml -H "X-Intake-Token: …" http://localhost/assistent_subscription/api/inbound-mail.php`.
 
 ---
 
