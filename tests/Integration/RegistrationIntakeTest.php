@@ -21,7 +21,7 @@ final class RegistrationIntakeTest extends IntegrationTestCase
 {
     private FakeCompanyRegistry $registry;
     private RegistrationIntakeService $intake;
-    private string $storage;
+    private string $storage = '';
     private Actor $admin;
     private Actor $operator;
 
@@ -38,10 +38,13 @@ final class RegistrationIntakeTest extends IntegrationTestCase
 
     protected function tearDown(): void
     {
-        foreach (glob($this->storage . '/*') ?: [] as $file) {
-            @unlink($file);
+        // Bez flagi RUN_INTEGRATION_TESTS test jest pominięty w setUp, zanim powstał katalog.
+        if ($this->storage !== '') {
+            foreach (glob($this->storage . '/*') ?: [] as $file) {
+                @unlink($file);
+            }
+            @rmdir($this->storage);
         }
-        @rmdir($this->storage);
         parent::tearDown();
     }
 

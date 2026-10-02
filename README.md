@@ -10,6 +10,7 @@ Praca inżynierska (Uniwersytet Śląski) — webowa aplikacja LAMP do ewidencji
 | [`docs/API.md`](docs/API.md) | Opis endpointów API i kluczowych funkcji aplikacji |
 | [`docs/CLI.md`](docs/CLI.md) | Skrypty wiersza poleceń (`scripts/`, `cron/`) i ich odpowiedniki HTTP na hostingu bez SSH |
 | [`docs/DEPLOY_INFINITYFREE.md`](docs/DEPLOY_INFINITYFREE.md) | Wdrożenie na darmowy publiczny hosting (wersja demonstracyjna) |
+| [`docs/BAZA_DANYCH.md`](docs/BAZA_DANYCH.md) | Opis baz i tabel: co przechowują, jak są powiązane (diagram), reguły spójności, migracje |
 | [`docs/MAPA_PROJEKTU.md`](docs/MAPA_PROJEKTU.md) | Oficjalny opis pracy, macierz wymagań, model danych, plan etapów, dziennik zmian |
 | [`docs/INSTRUKCJA_OBSLUGI.md`](docs/INSTRUKCJA_OBSLUGI.md) | Instrukcja obsługi i scenariusz demonstracyjny |
 
@@ -58,14 +59,15 @@ assistent_subscription/
 │   ├── Api/                 # kontrolery obsługujące poszczególne endpointy
 │   ├── Auth/                # PasswordPolicy, VerificationTokens, LoginThrottle
 │   ├── Mail/                # OAuth2TokenProvider (wysyłka XOAUTH2)
+│   ├── Intake/              # wnioski z e-maila: ekstraktor danych, Biała Lista MF, klient IMAP
 │   ├── Exchange/             # formaty wymiany danych: czytniki/zapisy CSV i XML, parser EML, aliasy kolumn
 │   └── Migrations/           # idempotentne migracje schematu bazy
 ├── includes/                # powłoka panelu, wspólny <head>, przełącznik języka
 ├── assets/                  # css (build Tailwind), js (komponenty Vue bez kroku budowania), fonty, vendor
-├── cron/                    # renewals.php — skaner odnowień + przypomnienia o zaproszeniach
+├── cron/                    # renewals.php (skaner odnowień + przypomnienia), mail-intake.php (wnioski ze skrzynki IMAP)
 ├── database/schema.sql      # pełny schemat do świeżej instalacji
 ├── scripts/                 # migrate, seed-demo-data, cleanup-demo-data, set-role, set-password, oauth2-token, mailtrap-inbox, test-mail
-├── storage/                 # attachments/ (załączniki) i cache/ (agregaty pulpitu) — niedostępne przez HTTP
+├── storage/                 # attachments/ (załączniki), intake/ (oryginały wniosków) i cache/ (agregaty pulpitu) — niedostępne przez HTTP
 ├── docs/                    # dokumentacja (patrz tabela wyżej) i materiały pracy dyplomowej
 └── tests/                   # PHPUnit — testy jednostkowe i integracyjne
 ```
