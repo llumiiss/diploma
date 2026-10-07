@@ -30,7 +30,9 @@ Choć opis pracy wskazywał wstępnie Javę ze Spring jako narzędzie realizacji
 
 Aplikacja działa też jako publiczny link, bez uruchamiania czegokolwiek lokalnie — wystarczy przeglądarka na dowolnym urządzeniu. Instrukcja wdrożenia na darmowy hosting PHP+MySQL: [`docs/DEPLOY_INFINITYFREE.md`](docs/DEPLOY_INFINITYFREE.md).
 
-**Demo:** https://subscriptionassistent.freedev.app/ (hosting w trakcie aktywacji po stronie InfinityFree — zob. [status platformy](https://status.infinityfree.com/); link zacznie działać automatycznie, kod i baza są już wdrożone)
+**Demo:** https://subscriptionassistent.freedev.app/
+
+Uwaga: niektóre sieci (np. część ofert T-Mobile/Telekom z włączonym „bezpiecznym surfowaniem”) domyślnie blokują darmowe domeny hostingowe w rodzaju `freedev.app`. Jeśli link nie otwiera się w danej sieci, zadziała z innej sieci (np. transmisja danych w telefonie) albo po wyłączeniu tej funkcji w ustawieniach operatora.
 
 ## Stack technologiczny
 
