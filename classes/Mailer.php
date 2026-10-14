@@ -126,6 +126,10 @@ final class Mailer
      * każdym porcie). Z domeną demo (bez weryfikacji DNS, 'from_email' w config) Mailtrap
      * dostarcza wyłącznie na adres właściciela konta — wystarcza do konta administratora.
      *
+     * Opcjonalny 'catch_all_to' w config przekierowuje KAŻDĄ wiadomość na jeden adres (np. na
+     * pokaz, gdy jedyny dostępny adres dostawy to konto właściciela) — pierwotny odbiorca trafia
+     * do tematu, żeby dało się rozpoznać, do kogo wiadomość była naprawdę adresowana.
+     *
      * @param list<array{path: string, name: string}> $attachments
      *
      * @throws PhpMailerException
@@ -142,6 +146,13 @@ final class Mailer
         $apiToken = (string) ($config['api_token'] ?? '');
         $fromEmail = (string) ($config['from_email'] ?? $this->config['from_email'] ?? '');
         $fromName = (string) ($this->config['from_name'] ?? 'CertiSub');
+
+        $catchAllTo = (string) ($config['catch_all_to'] ?? '');
+        if ($catchAllTo !== '' && strtolower($catchAllTo) !== strtolower($toEmail)) {
+            $subject = '[Do: ' . $toEmail . '] ' . $subject;
+            $toName = $toName !== '' ? $toName . ' (przekierowano)' : 'Przekierowano';
+            $toEmail = $catchAllTo;
+        }
 
         $payload = [
             'from'    => ['email' => $fromEmail, 'name' => $fromName],

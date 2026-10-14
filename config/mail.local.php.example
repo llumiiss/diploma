@@ -49,8 +49,12 @@ declare(strict_types=1);
  *
  * 'driver' => 'mailtrap_api',
  * 'mailtrap_api' => [
- *     'api_token'  => '...',                  // mailtrap.io → Settings → API Tokens
- *     'from_email' => 'mailer@<twoja-domena-demo>.co',  // dokładnie jak w Sending Domains
+ *     'api_token'    => '...',                  // mailtrap.io → Settings → API Tokens
+ *     'from_email'   => 'mailer@<twoja-domena-demo>.co',  // dokładnie jak w Sending Domains
+ *     'catch_all_to' => 'twoj@gmail.com',       // opcjonalnie: KAŻDA wiadomość trafia tu
+ *                                                // (pierwotny odbiorca w temacie) — przydatne
+ *                                                // na pokazie, gdy jedyny dostępny adres
+ *                                                // dostawy to konto właściciela Mailtrap.
  * ],
  *
  * === PODGLĄD SKRZYNKI MAILTRAP Z TERMINALA (opcjonalnie) ===
