@@ -36,7 +36,7 @@ final class MailConfig
     {
         $driver = strtolower((string) (self::all()['driver'] ?? 'sandbox'));
 
-        return in_array($driver, ['sandbox', 'smtp', 'oauth2', 'log'], true) ? $driver : 'sandbox';
+        return in_array($driver, ['sandbox', 'smtp', 'oauth2', 'mailtrap_api', 'log'], true) ? $driver : 'sandbox';
     }
 
     public static function isSandbox(): bool
@@ -47,6 +47,28 @@ final class MailConfig
     public static function isProductionSmtp(): bool
     {
         return self::driver() === 'smtp';
+    }
+
+    /**
+     * Wysyłka przez HTTP API Mailtrap (send.api.mailtrap.io) zamiast SMTP — jedyna opcja na
+     * hostingu, który blokuje wychodzące połączenia SMTP (np. InfinityFree). Z domeną demo
+     * (bez weryfikacji DNS) dostarcza wyłącznie na adres właściciela konta Mailtrap.
+     */
+    public static function isMailtrapApi(): bool
+    {
+        return self::driver() === 'mailtrap_api';
+    }
+
+    /**
+     * Blok „mailtrap_api” konfiguracji: api_token, from_email (adres w domenie demo/zweryfikowanej).
+     *
+     * @return array<string, mixed>
+     */
+    public static function mailtrapApi(): array
+    {
+        $config = self::all()['mailtrap_api'] ?? [];
+
+        return is_array($config) ? $config : [];
     }
 
     /**
@@ -74,7 +96,7 @@ final class MailConfig
      */
     public static function isRealDelivery(): bool
     {
-        return self::isProductionSmtp() || self::isOauth2();
+        return self::isProductionSmtp() || self::isOauth2() || self::isMailtrapApi();
     }
 
     public static function shouldLogOtpCodes(): bool

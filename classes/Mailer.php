@@ -49,6 +49,12 @@ final class Mailer
             return;
         }
 
+        if (MailConfig::isMailtrapApi()) {
+            $this->sendViaMailtrapApi($toEmail, $subject, $htmlBody, $toName, $textBody, $attachments);
+
+            return;
+        }
+
         $mail = new PHPMailer(true);
         $mail->CharSet = PHPMailer::CHARSET_UTF8;
         $mail->isHTML(true);
@@ -111,6 +117,75 @@ final class Mailer
             } catch (PhpMailerException $retry) {
                 throw self::describe($mail, $retry);
             }
+        }
+    }
+
+    /**
+     * Wysyłka przez HTTP API Mailtrap zamiast SMTP — jedyna droga na hostingu, który blokuje
+     * wychodzące połączenia SMTP (np. InfinityFree, kod błędu 110 „Connection timed out” na
+     * każdym porcie). Z domeną demo (bez weryfikacji DNS, 'from_email' w config) Mailtrap
+     * dostarcza wyłącznie na adres właściciela konta — wystarcza do konta administratora.
+     *
+     * @param list<array{path: string, name: string}> $attachments
+     *
+     * @throws PhpMailerException
+     */
+    private function sendViaMailtrapApi(
+        string $toEmail,
+        string $subject,
+        string $htmlBody,
+        string $toName,
+        ?string $textBody,
+        array $attachments
+    ): void {
+        $config = MailConfig::mailtrapApi();
+        $apiToken = (string) ($config['api_token'] ?? '');
+        $fromEmail = (string) ($config['from_email'] ?? $this->config['from_email'] ?? '');
+        $fromName = (string) ($this->config['from_name'] ?? 'CertiSub');
+
+        $payload = [
+            'from'    => ['email' => $fromEmail, 'name' => $fromName],
+            'to'      => [['email' => $toEmail, 'name' => $toName !== '' ? $toName : null]],
+            'subject' => $subject,
+            'html'    => $htmlBody,
+            'text'    => $textBody ?? strip_tags($htmlBody),
+        ];
+
+        if ($attachments !== []) {
+            $payload['attachments'] = array_map(
+                static fn (array $attachment): array => [
+                    'content'     => base64_encode((string) file_get_contents($attachment['path'])),
+                    'filename'    => $attachment['name'],
+                    'disposition' => 'attachment',
+                ],
+                $attachments
+            );
+        }
+
+        $ch = curl_init('https://send.api.mailtrap.io/api/send');
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $apiToken,
+                'Content-Type: application/json',
+            ],
+            CURLOPT_POSTFIELDS => json_encode($payload, JSON_THROW_ON_ERROR),
+        ]);
+
+        $response = curl_exec($ch);
+        $errno = curl_errno($ch);
+        $error = curl_error($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($errno !== 0) {
+            throw new PhpMailerException('Mailtrap API: ' . $error);
+        }
+
+        if ($status < 200 || $status >= 300) {
+            throw new PhpMailerException('Mailtrap API HTTP ' . $status . ': ' . (string) $response);
         }
     }
 

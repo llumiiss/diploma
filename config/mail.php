@@ -13,6 +13,10 @@ declare(strict_types=1);
  *             account-verification e-mail. Get the refresh token with: php scripts/oauth2-token.php
  *   sandbox — Mailtrap Email Sandbox: mail appears ONLY in mailtrap.io inbox (NOT your Gmail).
  *   smtp    — Real delivery with a password (Gmail app password, Mailtrap Email Sending, SendGrid).
+ *   mailtrap_api — Real delivery over HTTPS (Mailtrap Send API) instead of SMTP sockets — the only
+ *             option on hosts that block outbound SMTP (e.g. InfinityFree, timeout on every port).
+ *             With Mailtrap's unverified demo domain, delivers only to the Mailtrap account owner's
+ *             own address. Needs mailtrap_api.api_token + mailtrap_api.from_email in mail.local.php.
  *   log     — No sending: messages (with attachment names) are written to logs/mail.log.
  *             For demos and intranet installs without SMTP. Never in production — links land in the file.
  */
@@ -36,6 +40,12 @@ return [
         'password'    => 'your_mailtrap_password',
         'smtp_secure' => 'tls',
         'auth'        => true,
+    ],
+
+    // Used only when driver = mailtrap_api. Credentials belong in config/mail.local.php.
+    'mailtrap_api' => [
+        'api_token'  => '',
+        'from_email' => '',
     ],
 
     // Used only when driver = oauth2. Credentials belong in config/mail.local.php.
