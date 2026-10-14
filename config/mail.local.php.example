@@ -42,6 +42,17 @@ declare(strict_types=1);
  * 'driver' => 'smtp',
  * 'smtp' => ['host' => 'smtp.gmail.com', 'port' => 587, 'username' => 'twoj@gmail.com', 'password' => 'xxxx xxxx xxxx xxxx'],
  *
+ * === REAL EMAIL BEZ SMTP (hosting blokuje wychodzące SMTP, np. InfinityFree) ===
+ * Wysyłka przez HTTPS (Mailtrap Send API), nie przez gniazdo SMTP — omija blokadę portów.
+ * Z domeną demo (mailtrap.io → Sending Domains, bez weryfikacji DNS) dostarcza TYLKO na adres
+ * właściciela konta Mailtrap — wystarcza do konta administratora na pokazie.
+ *
+ * 'driver' => 'mailtrap_api',
+ * 'mailtrap_api' => [
+ *     'api_token'  => '...',                  // mailtrap.io → Settings → API Tokens
+ *     'from_email' => 'mailer@<twoja-domena-demo>.co',  // dokładnie jak w Sending Domains
+ * ],
+ *
  * === PODGLĄD SKRZYNKI MAILTRAP Z TERMINALA (opcjonalnie) ===
  * Token API (mailtrap.io → Settings → API Tokens) pozwala czytać skrzynkę skryptem
  * scripts/mailtrap-inbox.php — do wysyłki nie jest potrzebny, wystarczy SMTP wyżej.
