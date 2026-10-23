@@ -437,6 +437,9 @@
                                                     <span v-else-if="row.changes.length" class="text-blue-700">{{ t('exchange.preview.changes', { fields: row.changes.join(', ') }) }}</span>
                                                     <span v-else-if="row.message" class="text-slate-500">{{ row.message }}</span>
                                                     <span v-else-if="row.status === 'create'" class="text-emerald-700">{{ t('exchange.preview.new_record') }}</span>
+                                                    <p v-if="row.registry && row.registry.length" class="mt-1 text-brand-700">
+                                                        {{ t('exchange.preview.from_registry', { fields: row.registry.map((field) => t('field.' + field)).join(', ') }) }}
+                                                    </p>
                                                 </td>
                                             </tr>
                                             <tr v-if="visibleRows.length === 0">

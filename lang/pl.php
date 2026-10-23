@@ -1360,4 +1360,5 @@ return [
     'payer.registry.warning.exists_archived' => 'Firma z tym NIP-em jest w archiwum — przywróć ją zamiast dodawać nową.',
     'payer.registry.existing_name' => 'W ewidencji: :name',
     'payer.registry.existing_hidden' => 'Ten NIP ma już firma poza Twoim zakresem danych — poproś menedżera o przypisanie jej do Twoich certyfikatów.',
+    'exchange.preview.from_registry' => 'Uzupełnione z rejestru: :fields',
 ];

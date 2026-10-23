@@ -1372,4 +1372,5 @@ return [
     'payer.registry.warning.exists_archived' => 'A company with this tax ID is in the archive — restore it instead of adding a new one.',
     'payer.registry.existing_name' => 'On record: :name',
     'payer.registry.existing_hidden' => 'This tax ID already belongs to a company outside your data scope — ask a manager to assign it to your certificates.',
+    'exchange.preview.from_registry' => 'Filled in from the registry: :fields',
 ];

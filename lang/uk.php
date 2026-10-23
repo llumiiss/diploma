@@ -1384,4 +1384,5 @@ return [
     'payer.registry.warning.exists_archived' => 'Компанія з цим податковим номером у архіві — відновіть її замість додавання нової.',
     'payer.registry.existing_name' => 'В обліку: :name',
     'payer.registry.existing_hidden' => 'Цей податковий номер уже має компанія поза вашим обсягом даних — попросіть менеджера призначити її вашим сертифікатам.',
+    'exchange.preview.from_registry' => 'Доповнено з реєстру: :fields',
 ];

@@ -11,6 +11,9 @@ use App\Exchange\EmlParser;
 use App\Exchange\Normalizer;
 use App\Exchange\ParsedTable;
 use App\Exchange\XmlRecordReader;
+use App\Intake\CompanyRegistry;
+use App\Intake\IntakeConfig;
+use App\Intake\RegistryException;
 use PDO;
 use PDOException;
 use Throwable;
@@ -50,8 +53,15 @@ final class ImportService
     private readonly BeneficiaryService $beneficiaries;
     private readonly CertificateService $certificates;
 
-    public function __construct(private readonly PDO $db, ?EventLogger $events = null)
+    /** Najwięcej zapytań do rejestru na jeden plik — plik z 1000 wierszy nie może zalać rejestru. */
+    public const MAX_REGISTRY_LOOKUPS = 100;
+
+    private ?CompanyRegistry $registry;
+    private int $registryLookups = 0;
+
+    public function __construct(private readonly PDO $db, ?EventLogger $events = null, ?CompanyRegistry $registry = null)
     {
+        $this->registry = $registry;
         $this->events = $events ?? new EventLogger($db);
         $this->payers = new PayerService($db, $this->events);
         $this->beneficiaries = new BeneficiaryService($db, $this->events, $this->payers);
@@ -166,6 +176,8 @@ final class ImportService
             return $result;
         }
 
+        $this->registryLookups = 0;
+
         $ownTransaction = !$this->db->inTransaction();
         $ownTransaction ? $this->db->beginTransaction() : $this->db->exec('SAVEPOINT import_file');
 
@@ -230,6 +242,7 @@ final class ImportService
             'changes'   => [],
             'message'   => null,
             'errors'    => [],
+            'registry'  => [],
         ];
 
         $this->db->exec('SAVEPOINT import_row');
@@ -264,6 +277,10 @@ final class ImportService
     {
         $input = array_intersect_key($data, array_flip(PayerService::FIELDS));
         $taxId = ($input['tax_id'] ?? '') !== '' ? Validator::normalizeTaxId($input['tax_id']) : null;
+
+        // Plik bywa ubogi: sam NIP i osoba kontaktowa. Brakujące pola bierzemy z rejestru
+        // (ten sam, który obsługuje wnioski z poczty i przycisk w formularzu firmy).
+        [$input, $fromRegistry] = $this->enrichPayer($input, $taxId);
         $name = $input['company_name'] ?? '';
         self::assertFirstInFile($seen, $taxId !== null ? 'tax:' . $taxId : 'name:' . Normalizer::key($name), $line);
 
@@ -279,10 +296,10 @@ final class ImportService
         }
 
         if ($existing === null) {
-            return ['status' => 'create', 'record_id' => $this->payers->create($actor, $input)['id']];
+            return ['status' => 'create', 'record_id' => $this->payers->create($actor, $input)['id'], 'registry' => $fromRegistry];
         }
 
-        return $this->existing(
+        return ['registry' => $fromRegistry] + $this->existing(
             $existing,
             $input,
             $mode,
@@ -292,6 +309,72 @@ final class ImportService
         );
     }
 
+    /**
+     * Uzupełnia brakujące pola firmy danymi z rejestru (Biała lista, VIES — patrz CompanyRegistry).
+     *
+     * Zasady:
+     *  - **nie nadpisujemy tego, co jest w pliku** — plik to deklaracja operatora, rejestr tylko
+     *    dopełnia luki (inaczej import „poprawiałby” dane bez jego wiedzy),
+     *  - awaria rejestru nie przerywa importu: wiersz idzie dalej z danymi z pliku, a jeśli po
+     *    uzupełnieniu brakuje nazwy, zgłosi to zwykła walidacja,
+     *  - uzupełniamy też w podglądzie, żeby pokazywał dokładnie to, co zostanie zapisane
+     *    (odpowiedzi rejestru są pamiętane, więc zapis nie pyta drugi raz),
+     *  - najwyżej MAX_REGISTRY_LOOKUPS zapytań na plik.
+     *
+     * @param array<string, string> $input
+     * @return array{0: array<string, string>, 1: list<string>} dane i lista pól wziętych z rejestru
+     */
+    private function enrichPayer(array $input, ?string $taxId): array
+    {
+        $missing = array_values(array_filter(
+            ['company_name', 'address_line', 'postal_code', 'city'],
+            static fn (string $field): bool => trim($input[$field] ?? '') === ''
+        ));
+
+        if ($taxId === null || $missing === [] || $this->registryLookups >= self::MAX_REGISTRY_LOOKUPS) {
+            return [$input, []];
+        }
+
+        $registry = $this->companyRegistry();
+        if (!$registry->supports($taxId)) {
+            return [$input, []];
+        }
+
+        ++$this->registryLookups;
+
+        try {
+            $record = $registry->lookupNip($taxId);
+        } catch (RegistryException) {
+            return [$input, []];
+        }
+
+        if ($record === null) {
+            return [$input, []];
+        }
+
+        $available = [
+            'company_name' => $record->name,
+            'address_line' => $record->addressLine,
+            'postal_code'  => $record->postalCode,
+            'city'         => $record->city,
+        ];
+
+        $filled = [];
+        foreach ($missing as $field) {
+            $value = $available[$field] ?? null;
+            if ($value !== null && $value !== '') {
+                $input[$field] = $value;
+                $filled[] = $field;
+            }
+        }
+
+        return [$input, $filled];
+    }
+
+    private function companyRegistry(): CompanyRegistry
+    {
+        return $this->registry ??= IntakeConfig::registry();
+    }
     /**
      * @param array<string, string> $data
      * @param array<string, int>    $seen
