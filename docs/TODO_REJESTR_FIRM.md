@@ -30,24 +30,36 @@ Produkcja ma kod Etapu 9 i 10 (sprawdzone: `api/registrations.php`, `api/notific
 **pliki językowe są sprzed 2026-10-23** — po przełączeniu na hiszpański sekcja „hero” na stronie
 startowej jest po angielsku („Daily renewal scanner”).
 
-- [ ] wgrać przez FTP do `htdocs/lang/`: `es.php`, `de.php`, `uk.php` (paczka: `deploy-lang-2026-10-23.zip`)
+- [ ] wgrać przez FTP paczkę `deploy-2026-10-23.zip`: `lang/es.php`, `lang/de.php`, `lang/uk.php`,
+      `deploy-pull.php`, `classes/Deploy/` — i dopisać `pull_token` do `config/deploy.local.php`
+      (od tego momentu kolejne wdrożenia idą bez FTP)
 - [ ] sprawdzić `index.php?lang=es`, `?lang=de`, `?lang=uk` — sekcja „hero” i stopka w wybranym języku
 - [ ] sprawdzić po zalogowaniu jeden ekran panelu w każdym języku (np. „Certyfikaty” i „Zadania”)
 
 Hasła FTP nie przechodzą przez agenta — pliki wgrywa autor (FileZilla, `ftpupload.net`, katalog `htdocs`).
 
-## Krok 1 — wdrożenia bez FTP (żeby kolejne poprawki szły od razu na produkcję)
+## Krok 1 — wdrożenia bez FTP ✅ ZROBIONE (2026-10-23)
 
 Cel: jedno kliknięcie zamiast ręcznego FTP przy każdej poprawce.
 
-- [ ] `deploy-pull.php` w katalogu głównym: token z `config/deploy.local.php` (jak `deploy-migrate.php`),
-      pobiera `https://codeload.github.com/llumiiss/diploma/tar.gz/refs/heads/master`, rozpakowuje
-      przez `PharData` do katalogu tymczasowego i kopiuje na miejsce
-- [ ] **nie nadpisuje**: `config/*.local.php`, `storage/`, `logs/`, `vendor/` (osobny przełącznik `&vendor=1`)
-- [ ] wypisuje listę zmienionych plików i wersję (hash commita z `master`)
-- [ ] po wdrożeniu czyści `storage/cache/`
-- [ ] opis w `docs/DEPLOY_INFINITYFREE.md` + przypomnienie o zmianie tokenu
-- [ ] test jednostkowy na logikę wykluczeń (lista plików do pominięcia), bez sieci
+`deploy-pull.php` + `classes/Deploy/` (`TarArchive` — czytnik tar.gz w czystym PHP, bo na hostingu
+nie ma `ZipArchive` i bywa wyłączony `phar`; `CodeDeployer` — reguły wykluczeń i zapis).
+Opis w `docs/DEPLOY_INFINITYFREE.md` §8a. Sprawdzone na prawdziwej paczce z GitHuba
+(`?dry=1`: 1,3 MB, 200 plików bez zmian, 78 pominiętych, 5 chronionych).
+17 testów w `tests/Unit/TarArchiveTest.php` i `tests/Unit/CodeDeployerTest.php`.
+
+- [x] `deploy-pull.php` w katalogu głównym: token `pull_token` z `config/deploy.local.php`, pobiera
+      `https://codeload.github.com/llumiiss/diploma/tar.gz/refs/heads/<ref>`, rozpakowuje własnym
+      czytnikiem tar.gz (bez `PharData` i `ZipArchive` — na hostingu bywają wyłączone)
+- [x] **nie nadpisuje**: `config/*.local.php`, `storage/`, `logs/`, `vendor/`, `.git/` — wyjątkiem są
+      `.htaccess` i `.gitkeep` pilnujące katalogów (blokada załączników musi dać się przywrócić);
+      `vendor/` zostaje przy FTP, bo paczka z GitHuba go nie zawiera
+- [x] wypisuje listę zmienionych plików, liczbę bez zmian, pominiętych i chronionych; tryb `&dry=1`
+      pokazuje zmiany bez zapisu, `&ref=` wybiera gałąź lub tag
+- [x] po wdrożeniu czyści `storage/cache/`
+- [x] opis w `docs/DEPLOY_INFINITYFREE.md` §8a + przypomnienie o zmianie tokenu
+- [x] testy bez sieci: czytnik tar (puste pliki, granica bloku, katalogi, długie nazwy GNU, nagłówek pax,
+      uszkodzone archiwum) i wdrożenie (wykluczenia, ścieżki z `..`, pliki bez zmian, podgląd, czyszczenie cache)
 
 ## Krok 2 — pobieranie danych firmy po NIP w formularzu „Firmy”
 

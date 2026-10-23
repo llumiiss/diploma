@@ -34,6 +34,7 @@ php scripts/set-password.php --email=a@b.pl --password='...'  # set a password d
 php scripts/oauth2-token.php --client-id=... --client-secret=...   # one-off: OAuth2 refresh token for mail
 php scripts/test-mail.php you@example.com        # mail smoke test
 php scripts/mailtrap-inbox.php --link            # read the Mailtrap sandbox inbox from the terminal (needs the 'mailtrap' block in config/mail.local.php)
+https://<host>/deploy-pull.php?token=…&dry=1      # production update without FTP: preview, then the same URL without &dry (docs/DEPLOY_INFINITYFREE.md §8a)
 php cron/renewals.php                            # daily: renewal scanner + due invitation reminders (logs/renewals.log)
 php cron/mail-intake.php                         # every few minutes: fetch certificate requests from the IMAP mailbox (config/intake.local.php; logs/mail-intake.log)
 php scripts/mail-pipe.php < wniosek.eml          # one request e-mail from stdin (mail server pipe / manual test); sample: docs/przyklady/wniosek.eml
