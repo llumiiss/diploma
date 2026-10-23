@@ -808,7 +808,10 @@ Co zostało zrobione:
 - usunięte 6 martwych kluczy, które zostały w es/de/uk po starszej wersji pulpitu
   (`dash.total_cost`, `dash.total_due`, `dash.annual_total`, `dash.amount`, `corporate.commitment`,
   `corporate.cost_column`) — nie ma ich ani w PL, ani w EN;
-- naprawione 38 wpisów w `lang/es.php`, które były dosłownymi kopiami polskiego tekstu;
+- sprawdzone, czy w es/de/uk nie zostały kopie polskiego tekstu — **nie zostały**: 38 trafień, które
+  zgłosił pierwszy przebieg audytu w `lang/es.php`, to fałszywy alarm (wzorzec obejmował literę „ó”,
+  wspólną dla polskiego i hiszpańskiego); z polskim plikiem pokrywają się tylko nazwy własne,
+  nazwy języków i skróty techniczne, czyli dokładnie to, co pokrywać się powinno;
 - `landing.how.step1.desc` i inne teksty opisujące logowanie zgodne z Etapem 9 (hasło + link
   potwierdzający), a nie z dawnym kodem jednorazowym.
 
