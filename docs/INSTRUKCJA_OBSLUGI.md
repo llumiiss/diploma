@@ -403,6 +403,14 @@ Trzy zakładki: certyfikaty, użytkownicy certyfikatów, płatnicy — z datą a
 
 Podgląd wykonuje dokładnie ten sam zapis co import i wycofuje go na końcu, więc pokazuje wynik, a nie prognozę — po samym podglądzie w bazie nic nie przybywa.
 
+**Uzupełnianie danych firmy z rejestru** (od 2026-10-23): jeśli wiersz płatnika ma NIP, a komórka
+z nazwą, ulicą, kodem albo miejscowością jest pusta, brakujące dane przychodzą z rejestru (Biała lista
+podatników VAT dla polskich NIP-ów, VIES dla numerów VAT z innych krajów Unii). W podglądzie widać wtedy
+pod wierszem „Uzupełnione z rejestru: …” z nazwami pól. Czego to **nie** robi: nie nadpisuje tego, co jest
+w pliku (plik to Twoja deklaracja), nie przerywa importu, gdy rejestr nie odpowiada (wiersz idzie dalej
+z danymi z pliku), i nie zadaje więcej niż 100 zapytań na jeden plik. Kolumna z nazwą firmy musi być
+w pliku — rejestr dopełnia puste komórki, nie brakujące kolumny.
+
 Co plik może zawierać: nagłówki po polsku lub angielsku w dowolnej kolejności (także „NIP”, „Data wygaśnięcia”, „Nr seryjny”), daty `RRRR-MM-DD` albo `DD.MM.RRRR`, kwoty z przecinkiem i „zł”, wartości „tak/nie”, typy i statusy kodem (`QUALIFIED_SIGNATURE`) albo etykietą („Certyfikat kwalifikowany”). Pliki zapisane przez polskiego Excela w Windows-1250 i rozdzielone przecinkami też się wczytają.
 
 **Import wiadomości e-mail (EML).** Zapisz wiadomość z programu pocztowego jako plik `.eml` i wskaż ją w sekcji **Import wiadomości e-mail**. Aplikacja czyta nagłówki i treść (także kodowane i w załącznikach wieloczęściowych) i proponuje:

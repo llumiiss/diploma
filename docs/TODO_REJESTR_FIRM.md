@@ -115,12 +115,19 @@ Największa luka: przy ręcznym dodawaniu firmy operator wpisuje wszystko sam.
       awarie, limit, adres w kilku układach) i `CompositeCompanyRegistryTest` (kierowanie, awaria
       jednego źródła, numer bez obsługi)
 
-## Krok 5 — rejestr w imporcie CSV/XML
+## Krok 5 — rejestr w imporcie CSV/XML ✅ ZROBIONE (2026-10-23)
 
-- [ ] w `ImportService`: gdy wiersz płatnika ma NIP, a brakuje nazwy lub adresu, uzupełnić z rejestru
-      (tylko w trybie zapisu, nie w podglądzie; z cache z kroku 3)
-- [ ] w podglądzie importu kolumna „źródło danych” (plik / rejestr)
-- [ ] testy: uzupełnienie, brak firmy w rejestrze, rejestr niedostępny (import nie może się wywalić)
+- [x] w `ImportService`: gdy wiersz płatnika ma NIP, a komórka z nazwą lub adresem jest pusta,
+      dane idą z rejestru. **Uzupełniamy też w podglądzie** — inaczej podgląd pokazywałby błędy
+      walidacji, których przy zapisie nie będzie, a zasada projektu mówi, że podgląd i zapis nie mogą
+      się rozjeżdżać; dzięki pamięci pośredniej z kroku 3 zapis nie pyta rejestru drugi raz.
+      Danych z pliku **nigdy nie nadpisujemy** (plik to deklaracja operatora), awaria rejestru nie
+      przerywa importu, a jeden plik to najwyżej 100 zapytań (`ImportService::MAX_REGISTRY_LOOKUPS`)
+- [x] w podglądzie importu pod szczegółami wiersza: „Uzupełnione z rejestru: …” z nazwami pól
+      (klucz `exchange.preview.from_registry` w pięciu językach)
+- [x] 5 testów w `tests/Integration/ImportServiceTest.php`: uzupełnienie luk, brak nadpisywania danych
+      z pliku, awaria rejestru nie zatrzymuje importu, nieznany NIP zostawia wiersz zwykłej walidacji,
+      kompletny wiersz wcale nie pyta rejestru
 
 ## Krok 6 — domknięcie
 

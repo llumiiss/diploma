@@ -1384,4 +1384,5 @@ return [
     'payer.registry.warning.exists_archived' => 'Die Firma mit dieser Steuernummer ist archiviert — stellen Sie sie wieder her, statt eine neue anzulegen.',
     'payer.registry.existing_name' => 'Erfasst als: :name',
     'payer.registry.existing_hidden' => 'Diese Steuernummer gehört schon einer Firma außerhalb Ihres Datenumfangs — bitten Sie eine Managerin oder einen Manager, sie Ihren Zertifikaten zuzuordnen.',
+    'exchange.preview.from_registry' => 'Aus dem Register ergänzt: :fields',
 ];

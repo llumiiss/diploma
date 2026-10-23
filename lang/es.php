@@ -1384,4 +1384,5 @@ return [
     'payer.registry.warning.exists_archived' => 'La empresa con esta identificación fiscal está archivada: restáurala en lugar de añadir una nueva.',
     'payer.registry.existing_name' => 'En el registro interno: :name',
     'payer.registry.existing_hidden' => 'Esta identificación fiscal pertenece ya a una empresa fuera de tu alcance de datos: pide a un responsable que la asigne a tus certificados.',
+    'exchange.preview.from_registry' => 'Rellenado desde el registro: :fields',
 ];

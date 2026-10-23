@@ -10,6 +10,7 @@ use App\Rbac;
 use App\Service\Actor;
 use App\Service\ImportService;
 use App\Service\ServiceException;
+use Tests\Support\FakeCompanyRegistry;
 use Tests\Support\IntegrationTestCase;
 
 final class ImportServiceTest extends IntegrationTestCase
@@ -22,9 +23,10 @@ final class ImportServiceTest extends IntegrationTestCase
         $this->admin = $this->createActor(Rbac::ADMIN, 'admin.import@example.com');
     }
 
-    private function service(): ImportService
+    private function service(?FakeCompanyRegistry $registry = null): ImportService
     {
-        return new ImportService($this->db);
+        // Bez atrapy rejestru import nie może wyjść do sieci — puste źródło odpowiada „nie znam”.
+        return new ImportService($this->db, null, $registry ?? new FakeCompanyRegistry());
     }
 
     private function tableCount(string $table): int
@@ -221,5 +223,88 @@ final class ImportServiceTest extends IntegrationTestCase
         } catch (ServiceException $e) {
             $this->assertSame(403, $e->httpStatus());
         }
+    }
+    /**
+     * Krok 5 z docs/TODO_REJESTR_FIRM.md: plik z samym NIP-em wystarcza — nazwę i adres
+     * dopełnia rejestr (Biała lista / VIES za interfejsem CompanyRegistry).
+     */
+    public function testImportFillsMissingCompanyDataFromTheRegistry(): void
+    {
+        $registry = new FakeCompanyRegistry();
+        $registry->add('6342851974', FakeCompanyRegistry::subject('NOVATECH SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', '6342851974', 'PRZEMYSŁOWA 12, 40-020 KATOWICE'));
+        // Kolumna z nazwą musi być w pliku (tego pilnuje kontrola wymaganych kolumn), ale może być pusta —
+        // właśnie takie luki dopełnia rejestr.
+        $content = self::csv(['Nazwa firmy', 'NIP', 'Osoba kontaktowa'], [['', '634-285-19-74', 'Anna Nowak']]);
+
+        $preview = $this->service($registry)->preview($this->admin, 'payers', 'firmy.csv', $content);
+
+        $this->assertSame('create', $preview['rows'][0]['status'], 'brak nazwy w pliku nie blokuje importu, bo rejestr ją zna');
+        $this->assertSame(['company_name', 'address_line', 'postal_code', 'city'], $preview['rows'][0]['registry']);
+
+        $result = $this->service($registry)->commit($this->admin, 'payers', 'firmy.csv', $content);
+        $this->assertSame(1, $result['totals']['create']);
+
+        $payer = $this->db->query("SELECT * FROM payers WHERE tax_id = '6342851974'")->fetch();
+        $this->assertSame('Przemysłowa 12', $payer['address_line']);
+        $this->assertSame('40-020', $payer['postal_code']);
+        $this->assertSame('Katowice', $payer['city']);
+        $this->assertStringContainsString('Novatech', (string) $payer['company_name']);
+    }
+
+    public function testDataFromTheFileIsNeverOverwrittenByTheRegistry(): void
+    {
+        $registry = new FakeCompanyRegistry();
+        $registry->add('6342851974', FakeCompanyRegistry::subject('NOVATECH SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', '6342851974', 'PRZEMYSŁOWA 12, 40-020 KATOWICE'));
+        $content = self::csv(['Nazwa firmy', 'NIP', 'Osoba kontaktowa', 'Miasto'], [
+            ['Novatech (oddział Gliwice)', '6342851974', 'Anna Nowak', 'Gliwice'],
+        ]);
+
+        $result = $this->service($registry)->commit($this->admin, 'payers', 'firmy.csv', $content);
+
+        $this->assertSame(1, $result['totals']['create']);
+        $this->assertSame(['address_line', 'postal_code'], $result['rows'][0]['registry'], 'rejestr dopełnia tylko luki');
+
+        $payer = $this->db->query("SELECT * FROM payers WHERE tax_id = '6342851974'")->fetch();
+        $this->assertSame('Novatech (oddział Gliwice)', $payer['company_name'], 'plik to deklaracja operatora');
+        $this->assertSame('Gliwice', $payer['city']);
+        $this->assertSame('Przemysłowa 12', $payer['address_line']);
+    }
+
+    public function testRegistryFailureDoesNotBreakTheImport(): void
+    {
+        $registry = new FakeCompanyRegistry();
+        $registry->fail('6342851974');
+        $content = self::csv(['Nazwa firmy', 'NIP', 'Osoba kontaktowa'], [['Novatech sp. z o.o.', '6342851974', 'Anna Nowak']]);
+
+        $result = $this->service($registry)->commit($this->admin, 'payers', 'firmy.csv', $content);
+
+        $this->assertSame(1, $result['totals']['create'], 'awaria rejestru nie może zatrzymać importu');
+        $this->assertSame([], $result['rows'][0]['registry']);
+        $this->assertSame('Novatech sp. z o.o.', (string) $this->db->query("SELECT company_name FROM payers WHERE tax_id = '6342851974'")->fetchColumn());
+    }
+
+    public function testUnknownCompanyLeavesTheRowToNormalValidation(): void
+    {
+        // Rejestr nie zna NIP-u, a nazwa w pliku jest pusta — wiersz musi wylądować jako błąd walidacji.
+        $content = self::csv(['Nazwa firmy', 'NIP', 'Osoba kontaktowa'], [['', '6342851974', 'Anna Nowak']]);
+
+        $preview = $this->service()->preview($this->admin, 'payers', 'firmy.csv', $content);
+
+        $this->assertSame('error', $preview['rows'][0]['status']);
+        $this->assertSame([], $preview['rows'][0]['registry']);
+        $this->assertSame(0, $this->tableCount('payers'));
+    }
+
+    public function testRegistryIsAskedOnlyOncePerCompanyAndNotAtAllWhenTheFileIsComplete(): void
+    {
+        $registry = new FakeCompanyRegistry();
+        $registry->add('6342851974', FakeCompanyRegistry::subject('NOVATECH SP. Z O.O.', '6342851974', 'PRZEMYSŁOWA 12, 40-020 KATOWICE'));
+        $complete = self::csv(['Nazwa firmy', 'NIP', 'Osoba kontaktowa', 'Ulica i numer', 'Kod pocztowy', 'Miasto'], [
+            ['Pełna S.A.', '9876543210', 'Jan Kowalski', 'Nadrzeczna 5', '43-460', 'Wisła'],
+        ]);
+
+        $this->service($registry)->commit($this->admin, 'payers', 'pelna.csv', $complete);
+
+        $this->assertSame([], $registry->queries, 'kompletny wiersz nie potrzebuje rejestru');
     }
 }

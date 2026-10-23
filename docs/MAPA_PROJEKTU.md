@@ -886,9 +886,15 @@ Dla kompletności: **KRS** (`api-krs.ms.gov.pl`) nie jest źródłem po NIP-ie �
 KRS, więc pasuje jako uzupełnienie po odpowiedzi Białej listy, nie jako kolejne `CompanyRegistry`.
 **CEIDG v3** i **GUS BIR/REGON** wymagają darmowych, ale wnioskowanych kluczy — to zadanie dla autora.
 
-**Stan prac**: 380/380 testów zielonych z integracyjnymi (MySQL uruchomiony w czasie tej sesji),
-PHPStan level 5 bez błędów, PHP-CS-Fixer 0 z 208 plików. Do zrobienia zostają kroki 5 i 6 z listy
-`docs/TODO_REJESTR_FIRM.md` oraz klik w przycisk na produkcji po wdrożeniu.
+**Krok 5 — rejestr w imporcie.** Wiersz płatnika z NIP-em i pustą nazwą lub adresem dostaje dane
+z rejestru. Danych z pliku nie nadpisujemy (plik to deklaracja operatora), awaria rejestru nie
+przerywa importu, jeden plik to najwyżej 100 zapytań, a podgląd pokazuje „Uzupełnione z rejestru: …”
+— uzupełniamy także w podglądzie, bo zasada projektu mówi, że podgląd i zapis nie mogą się rozjeżdżać
+(pamięć pośrednia z kroku 3 sprawia, że zapis nie pyta drugi raz).
+
+**Stan prac**: 385/385 testów zielonych z integracyjnymi (MySQL uruchomiony w czasie tej sesji),
+PHPStan level 5 bez błędów, PHP-CS-Fixer 0 z 208 plików. Z listy zostaje krok 6 (komunikaty wyjątków
+z `classes/Intake/*` do plików językowych, weryfikacja na produkcji) oraz klucze CEIDG i GUS po stronie autora.
 
 ---
 ## Załącznik A — Oficjalny opis pracy (dosłownie, przekazany 2026-09-16)
