@@ -777,8 +777,62 @@ wybrał opisanie **stanu aktualnego kodu** (hasło + e-mail), a nie stanu z Zał
   ponad prośbę „do 40%” — rozdział 4 to spójna całość, nie zatrzymano się w połowie).
   Pozostają rozdziały 5–8.
 
+### Część pisemna — rozdziały 3–9 po Etapie 10, ERD i zrzuty (2026-10-23)
+
+Szkic ma 60 stron i komplet rozdziałów: 3–4 przepisane pod Etap 10 (siedem ról, rabat, łańcuch
+firma → osoba → certyfikat, wnioski e-mail, powiadomienia), nowe 5 (implementacja), 6 (proces
+odnowień, wnioski e-mail, powiadomienia), 7 (testy: 318 przypadków, scenariusze, OWASP, ocena
+heurystyczna, szablon ankiety SUS), 8 (dokumentacja użytkownika), 9 (zakończenie), bibliografia,
+spisy rysunków i tabel, załączniki A–C. Spis treści ma numery stron. Diagram ERD jest rysowany z
+`docs/thesis_erd.py` (PDF + `docs/erd/certisub-erd.svg`), edytowalny odpowiednik w DBML:
+`docs/erd/certisub.dbml`. Zrzuty z folderu `SDI seminarium` są przycinane (bez paska zakładek) w
+`docs/thesis_helpers.py`. Do uzupełnienia przez autora: 14 ramek na zrzuty, wyniki ankiety SUS,
+zrzut pełnego przebiegu testów (MySQL był wyłączony 23.10.2026).
+
 ---
 
+### Tłumaczenia — uzupełnienie hiszpańskiego, niemieckiego i ukraińskiego (2026-10-23)
+
+Po przełączeniu języka na hiszpański, niemiecki lub ukraiński większość interfejsu pokazywała się
+po angielsku: `lang/pl.php` i `lang/en.php` miały po **1278 kluczy**, a `lang/es.php`, `lang/de.php`
+i `lang/uk.php` tylko **159** — brakujące 1119 kluczy (88%) dziedziczyły tekst angielski z `Translator`
+(decyzja D4 dopuszczała taki stan, autor poprosił o pełne tłumaczenia).
+
+Co zostało zrobione:
+- wszystkie trzy pliki przepisane od nowa — **1278 kluczy w każdym**, w kolejności z `lang/en.php`
+  (pliki da się porównywać wiersz po wierszu) i z nagłówkami sekcji, tak jak w plikach PL i EN;
+- przetłumaczone wszystkie obszary aplikacji: strona startowa, pulpit, ewidencja (certyfikaty,
+  użytkownicy certyfikatów, firmy), archiwum, zadania odnowień, zaproszenia i szablony, załączniki,
+  raporty i karty, wyszukiwarka, dziennik zdarzeń, import i eksport (CSV/XML/EML), filtr firm,
+  powiadomienia wewnętrzne, wnioski z poczty, konta i role, logowanie oraz komunikaty błędów;
+- usunięte 6 martwych kluczy, które zostały w es/de/uk po starszej wersji pulpitu
+  (`dash.total_cost`, `dash.total_due`, `dash.annual_total`, `dash.amount`, `corporate.commitment`,
+  `corporate.cost_column`) — nie ma ich ani w PL, ani w EN;
+- naprawione 38 wpisów w `lang/es.php`, które były dosłownymi kopiami polskiego tekstu;
+- `landing.how.step1.desc` i inne teksty opisujące logowanie zgodne z Etapem 9 (hasło + link
+  potwierdzający), a nie z dawnym kodem jednorazowym.
+
+Bez tłumaczenia (świadomie) zostają: nazwy własne (CertiSub Assistant, CertiSub Corporate), nazwy
+języków w przełączniku, skróty techniczne (SaaS, SSL, CSV, XML, EML, JSON, NIP, IMAP, webhook) oraz
+linia stosu technologicznego w stopce.
+
+Nowy test `tests/Unit/TranslationFilesTest.php` (6 przypadków, ponad 16 tys. asercji) nie przepuści
+regresji: pilnuje zgodności zestawu kluczy we wszystkich pięciu językach, pustych wartości, zgodności
+pól podstawianych (`:count`, `:name`, `:days` …), polskich znaków w plikach innych niż `pl.php` oraz
+kluczy używanych w kodzie (`__()`, `t()`), których nie ma w `lang/en.php`. `TranslatorTest` dostał
+nowe przypadki zamiast dawnego założenia, że niemiecki dziedziczy angielski.
+
+Jakość: 155/155 testów jednostkowych zielonych (325 z integracyjnymi, te pominięte — w czasie prac
+usługi Laragona były zatrzymane), PHPStan level 5 bez błędów, PHP-CS-Fixer 0 z 194 plików.
+**Do sprawdzenia przez autora po uruchomieniu Laragona**: przełączenie języka w interfejsie
+(`index.php?lang=es|de|uk`) oraz testy integracyjne z `RUN_INTEGRATION_TESTS=1`.
+
+Pozostały ślad polskiego w interfejsie: komunikaty wyjątków z `classes/Intake/*`
+(`WhiteListRegistry`, `ImapClient`, `MailboxConnector`, `StreamImapTransport`) wstawiane w przetłumaczone
+zdania przez `:message` — widzi je administrator, gdy rejestr VAT albo skrzynka IMAP nie odpowiada.
+Przeniesienie ich do plików językowych wymaga zmian w kodzie tych klas i nie weszło w ten zakres.
+
+---
 ## Załącznik A — Oficjalny opis pracy (dosłownie, przekazany 2026-09-16)
 
 ```text

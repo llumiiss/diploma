@@ -48,13 +48,35 @@ final class TranslatorTest extends TestCase
         $this->assertSame('pl', Translator::init()->locale());
     }
 
-    public function testMissingKeyFallsBackToEnglish(): void
+    /**
+     * Każdy język ma własny tekst dla wszystkich kluczy (uzupełnione 2026-10-23).
+     * Pełność zestawu kluczy pilnuje TranslationFilesTest.
+     */
+    public function testTranslationIsTakenFromTheChosenLocale(): void
     {
-        // Nowe teksty dodajemy tylko po polsku i angielsku (decyzja D4) — pozostałe języki dziedziczą EN.
         $_GET['lang'] = 'de';
         $english = require dirname(__DIR__, 2) . '/lang/en.php';
+        $german = require dirname(__DIR__, 2) . '/lang/de.php';
 
-        $this->assertSame($english['auth.error.delete_blocked'], Translator::get('auth.error.delete_blocked'));
+        $translated = Translator::get('auth.error.delete_blocked');
+
+        $this->assertSame($german['auth.error.delete_blocked'], $translated);
+        $this->assertNotSame($english['auth.error.delete_blocked'], $translated);
+    }
+
+    /**
+     * Zestaw kluczy budujemy z pliku angielskiego i nadpisujemy wybranym językiem,
+     * więc gdyby w przyszłości jakiegoś klucza w nim zabrakło, tekst będzie angielski,
+     * a nie surowa nazwa klucza.
+     */
+    public function testLocaleFileIsMergedOnTopOfEnglish(): void
+    {
+        $_GET['lang'] = 'uk';
+        $english = require dirname(__DIR__, 2) . '/lang/en.php';
+
+        $lines = Translator::init()->all();
+
+        $this->assertSame([], array_diff(array_keys($english), array_keys($lines)));
     }
 
     public function testUnknownKeyIsReturnedUnchanged(): void
