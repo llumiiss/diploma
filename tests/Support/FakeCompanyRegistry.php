@@ -38,6 +38,12 @@ final class FakeCompanyRegistry implements CompanyRegistry
         $this->subjects[$nip] = new RegistryException($message);
     }
 
+    /** Atrapa odpowiada na wszystko, co dostanie — to testy decydują, o co pytamy. */
+    public function supports(string $taxId): bool
+    {
+        return true;
+    }
+
     public function lookupNip(string $nip, ?DateTimeImmutable $date = null): ?CompanyRecord
     {
         $this->queries[] = $nip;

@@ -12,6 +12,12 @@ use DateTimeImmutable;
 interface CompanyRegistry
 {
     /**
+     * Czy to źródło potrafi odpowiedzieć na taki numer (polski NIP, numer VAT z Unii …).
+     * Pozwala trzymać kilka rejestrów za jednym interfejsem — patrz CompositeCompanyRegistry.
+     */
+    public function supports(string $taxId): bool;
+
+    /**
      * @return CompanyRecord|null null, gdy rejestr nie zna takiego NIP-u
      * @throws RegistryException gdy rejestr jest niedostępny albo odrzucił zapytanie
      */

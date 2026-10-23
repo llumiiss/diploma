@@ -19,6 +19,11 @@ return [
         'base_url' => 'https://wl-api.mf.gov.pl',
         'timeout'  => 8,
 
+        // Źródła danych o firmach, pytane w tej kolejności (pierwsze, które obsługuje numer, odpowiada):
+        //   whitelist — Biała lista podatników VAT (Ministerstwo Finansów), polski NIP, bez klucza,
+        //   vies      — VIES Komisji Europejskiej, numery VAT z pozostałych krajów Unii, bez klucza.
+        'sources' => ['whitelist', 'vies'],
+
         // Odpowiedzi rejestru trzymamy w storage/cache/registry przez tyle dni (0 wyłącza pamięć
         // pośrednią). Dane firm zmieniają się rzadko, a import pliku z wieloma płatnikami bez
         // tego oznaczałby jedno zapytanie na wiersz. Błędy rejestru nie są zapamiętywane.

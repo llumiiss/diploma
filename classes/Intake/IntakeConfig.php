@@ -62,10 +62,21 @@ final class IntakeConfig
     {
         $registry = self::section('registry');
 
-        $client = new WhiteListRegistry(
-            (string) ($registry['base_url'] ?? WhiteListRegistry::DEFAULT_BASE_URL),
-            max(1, (int) ($registry['timeout'] ?? 8))
-        );
+        $timeout = max(1, (int) ($registry['timeout'] ?? 8));
+        $sources = is_array($registry['sources'] ?? null) && $registry['sources'] !== [] ? $registry['sources'] : ['whitelist'];
+
+        $clients = [];
+        foreach ($sources as $source) {
+            $clients[] = match ((string) $source) {
+                'whitelist' => new WhiteListRegistry((string) ($registry['base_url'] ?? WhiteListRegistry::DEFAULT_BASE_URL), $timeout),
+                'vies'      => new ViesRegistry((string) ($registry['vies_base_url'] ?? ViesRegistry::DEFAULT_BASE_URL), $timeout),
+                default     => null,
+            };
+        }
+
+        /** @var list<CompanyRegistry> $clients */
+        $clients = array_values(array_filter($clients));
+        $client = count($clients) === 1 ? $clients[0] : new CompositeCompanyRegistry(...$clients);
 
         $days = (int) ($registry['cache_days'] ?? CachedCompanyRegistry::DEFAULT_TTL_DAYS);
         if ($days <= 0) {

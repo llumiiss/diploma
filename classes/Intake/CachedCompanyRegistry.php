@@ -34,21 +34,28 @@ final class CachedCompanyRegistry implements CompanyRegistry
     ) {
     }
 
+    public function supports(string $taxId): bool
+    {
+        return $this->registry->supports($taxId);
+    }
+
     public function lookupNip(string $nip, ?DateTimeImmutable $date = null): ?CompanyRecord
     {
         if ($date !== null) {
             return $this->registry->lookupNip($nip, $date);
         }
 
-        $digits = (string) preg_replace('/\D/', '', $nip);
-        $cached = $this->read($digits);
+        // Klucz zachowuje kod kraju: DE123456789 i PL1234567890 to różne firmy, a po wycięciu
+        // liter zostałyby nieodróżnialne cyfry.
+        $key = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $nip));
+        $cached = $this->read($key);
 
         if ($cached !== null) {
             return $cached['found'] ? CompanyRecord::fromArray($cached['record']) : null;
         }
 
         $record = $this->registry->lookupNip($nip);
-        $this->write($digits, $record);
+        $this->write($key, $record);
 
         return $record;
     }
@@ -56,9 +63,9 @@ final class CachedCompanyRegistry implements CompanyRegistry
     /**
      * @return array{found: bool, record: array<string, mixed>}|null
      */
-    private function read(string $nip): ?array
+    private function read(string $key): ?array
     {
-        $file = $this->file($nip);
+        $file = $this->file($key);
 
         if ($file === null || !is_file($file)) {
             return null;
@@ -82,9 +89,9 @@ final class CachedCompanyRegistry implements CompanyRegistry
         return ['found' => (bool) $data['found'], 'record' => $record];
     }
 
-    private function write(string $nip, ?CompanyRecord $record): void
+    private function write(string $key, ?CompanyRecord $record): void
     {
-        $file = $this->file($nip);
+        $file = $this->file($key);
 
         if ($file === null) {
             return;
@@ -104,12 +111,13 @@ final class CachedCompanyRegistry implements CompanyRegistry
         }
     }
 
-    private function file(string $nip): ?string
+    private function file(string $key): ?string
     {
-        if (preg_match('/^\d{8,14}$/', $nip) !== 1) {
+        // Litery kodu kraju i cyfry numeru; nazwa pliku jest jednocześnie kluczem.
+        if (preg_match('/^[A-Z0-9]{8,20}$/', $key) !== 1) {
             return null;
         }
 
-        return rtrim($this->directory, '/\\') . '/' . $nip . '.json';
+        return rtrim($this->directory, '/\\') . '/' . $key . '.json';
     }
 }
