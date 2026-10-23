@@ -1397,4 +1397,9 @@ return [
     'imap.action.mark_deleted' => 'Nie można oznaczyć wiadomości do usunięcia',
     'imap.action.expunge' => 'Nie można usunąć wiadomości ze skrzynki',
     'imap.action.logout' => 'Wylogowanie nie powiodło się',
+    'registry.error.krs_invalid' => 'Nieprawidłowy numer KRS: :krs',
+    'registry.error.krs_rate_limited' => 'Rejestr KRS odrzucił zapytanie (limit zapytań).',
+    'registry.error.krs_unavailable' => 'Rejestr KRS jest niedostępny (HTTP :status).',
+    'registry.error.krs_unreadable' => 'Nieczytelna odpowiedź rejestru KRS.',
+    'payer.registry.legal_form' => 'Forma prawna',
 ];

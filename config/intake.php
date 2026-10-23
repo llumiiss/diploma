@@ -24,6 +24,10 @@ return [
         //   vies      — VIES Komisji Europejskiej, numery VAT z pozostałych krajów Unii, bez klucza.
         'sources' => ['whitelist', 'vies'],
 
+        // Uzupełnienie z Krajowego Rejestru Sądowego (publiczne API, bez klucza) po numerze KRS,
+        // który zwraca Biała lista: forma prawna i adres rozbity na pola. false wyłącza.
+        'krs_enrich' => true,
+
         // Odpowiedzi rejestru trzymamy w storage/cache/registry przez tyle dni (0 wyłącza pamięć
         // pośrednią). Dane firm zmieniają się rzadko, a import pliku z wieloma płatnikami bez
         // tego oznaczałby jedno zapytanie na wiersz. Błędy rejestru nie są zapamiętywane.

@@ -328,12 +328,15 @@ Lista z NIP-em, osobą kontaktową, miejscowością, liczbą osób i certyfikat�
   **Pobierz z rejestru**. Aplikacja pyta publiczne API Białej listy podatników VAT (Ministerstwo
   Finansów, bez klucza i bez rejestracji) i wypełnia nazwę, ulicę, kod pocztowy i miejscowość.
   Pola, które już wypełniłeś, zostaną nadpisane dopiero po potwierdzeniu. Pod polami pojawia się
-  panel z danymi rejestrowymi: nazwa rejestrowa, status VAT, REGON, KRS i data rejestracji —
+  panel z danymi rejestrowymi: nazwa rejestrowa, forma prawna (z KRS), status VAT, REGON, KRS i data rejestracji —
   tych danych nie zapisujemy w bazie, służą do sprawdzenia, czy to właściwa firma. Ostrzeżenia:
   firmy nie ma w rejestrze, nie jest czynnym podatnikiem VAT, adres jest niepełny, albo firma
   z tym NIP-em już jest w ewidencji (osobny komunikat dla archiwum i dla firmy poza Twoim zakresem danych).
   Odpowiedzi rejestru są pamiętane 7 dni (`registry.cache_days` w `config/intake.php`), a jedno konto
-  może zadać 20 zapytań na godzinę — to samo źródło wypełnia wnioski z poczty.
+  może zadać 20 zapytań na godzinę — to samo źródło wypełnia wnioski z poczty. Numer VAT z innego
+  kraju Unii (np. `DE123456789`) idzie do **VIES** Komisji Europejskiej, a gdy Biała lista zwróci numer
+  KRS, aplikacja dokłada z **Krajowego Rejestru Sądowego** formę prawną i adres rozbity na pola
+  (dane reprezentacji celowo pomijamy — to dane osobowe).
 
 ### Raporty — perspektywy Użytkownika, Płatnika i Administratora
 

@@ -86,6 +86,27 @@ final class IntakeConfig
         return new CachedCompanyRegistry($client, dirname(__DIR__, 2) . '/storage/cache/registry', $days * 86400);
     }
 
+    /**
+     * Uzupełnienie z KRS — albo null, gdy wyłączone w konfiguracji.
+     */
+    public static function krsRegistry(): ?KrsRegistry
+    {
+        $registry = self::section('registry');
+
+        if (($registry['krs_enrich'] ?? true) === false) {
+            return null;
+        }
+
+        $days = (int) ($registry['cache_days'] ?? KrsRegistry::DEFAULT_TTL_DAYS);
+
+        return new KrsRegistry(
+            (string) ($registry['krs_base_url'] ?? KrsRegistry::DEFAULT_BASE_URL),
+            max(1, (int) ($registry['timeout'] ?? 8)) + 2,
+            null,
+            max(0, $days) * 86400
+        );
+    }
+
     public static function imapEnabled(): bool
     {
         $imap = self::section('imap');
