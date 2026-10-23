@@ -113,10 +113,50 @@ Jeżeli SMTP okaże się zablokowany na darmowym planie: **nie blokuje to reszty
 2. Nowe zadanie: URL = `https://twoja-domena/deploy-cron.php?token=TWÓJ_CRON_TOKEN`, harmonogram: codziennie (np. 7:00).
 3. Pierwsze uruchomienie możesz też wywołać ręcznie, wchodząc na ten URL w przeglądarce — odpowiedź pokaże, ile zadań/przypomnień utworzył.
 
+## 8a. Aktualizacja kodu bez FTP (`deploy-pull.php`)
+
+Pierwsze wdrożenie idzie przez FTP (krok 5), ale **każda kolejna poprawka może wejść jednym kliknięciem**:
+`deploy-pull.php` pobiera paczkę gałęzi z GitHuba, rozpakowuje ją w pamięci (własny czytnik tar.gz —
+nie wymaga `phar` ani `ZipArchive`) i podmienia pliki aplikacji.
+
+**Przygotowanie (raz):**
+
+1. Wgraj przez FTP: `deploy-pull.php` oraz katalog `classes/Deploy/`.
+2. Dopisz do `config/deploy.local.php` na serwerze token (długi i losowy):
+
+   ```php
+   'pull_token' => 'tu-wklej-wygenerowany-token',
+   ```
+
+   Token generujesz lokalnie: `php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"`
+
+**Użycie:**
+
+| Adres | Co robi |
+|---|---|
+| `…/deploy-pull.php?token=…&dry=1` | **podgląd** — wypisuje, które pliki by się zmieniły, nic nie zapisuje |
+| `…/deploy-pull.php?token=…` | wdrożenie gałęzi `master` |
+| `…/deploy-pull.php?token=…&ref=etap-11-rejestry` | wdrożenie innej gałęzi lub tagu |
+
+Zawsze zacznij od `&dry=1` — lista plików od razu pokazuje, czy paczka jest ta, o którą Ci chodzi.
+
+**Czego skrypt nie rusza:** `config/*.local.php` (sekrety), `storage/` i `logs/` (dane i logi; wyjątkiem są
+pliki pilnujące katalogów `.htaccess` i `.gitkeep`, żeby dało się przywrócić blokadę załączników),
+`vendor/` oraz `.git/`. **Czego nie wgrywa:** `tests/`, `docs/` i plików narzędzi deweloperskich
+(`phpunit.xml.dist`, `composer.*`, `package*.json`, `phpstan.neon`). **Czego nie robi:** nie usuwa plików,
+których nie ma w paczce, i nie uruchamia migracji — po wdrożeniu zmieniającym bazę wejdź jeszcze na
+`deploy-migrate.php?token=…`.
+
+Po wdrożeniu skrypt czyści `storage/cache/`, żeby nowy kod nie czytał wyników policzonych starym.
+
+**Gdy biblioteki się zmienią** (inny `composer.lock`): `vendor/` wgraj przez FTP — paczka z GitHuba go nie zawiera.
+
+**Bezpieczeństwo:** bez `pull_token` skrypt odpowiada 403. Po zakończeniu prac zmień token na nowy albo
+usuń plik z serwera — tak samo jak `deploy-migrate.php`.
 ## 9. Ostatnie porządki
 
 - Po udanej migracji **usuń `deploy-migrate.php` z serwera przez FTP** (albo przynajmniej zmień token w `config/deploy.local.php` na nowy losowy) — endpoint z opcją `&fresh=1` kasuje całą bazę, nie powinien zostać dostępny z aktywnym starym tokenem.
-- `deploy-cron.php` może zostać (potrzebny cron-job.org), token go chroni.
+- `deploy-cron.php` i `deploy-pull.php` mogą zostać (pierwszy jest potrzebny dla cron-job.org, drugi do aktualizacji kodu), tokeny ich chronią.
 - Sprawdź, że `config/database.php`, `config/mail.local.php`, `config/deploy.local.php` z **prawdziwymi danymi** zostały tylko na hostingu — **nigdy nie commituj ich z powrotem do repozytorium** (to publiczne repo na GitHubie).
 
 ## 10. Link dla promotora
