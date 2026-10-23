@@ -129,16 +129,20 @@ Największa luka: przy ręcznym dodawaniu firmy operator wpisuje wszystko sam.
       z pliku, awaria rejestru nie zatrzymuje importu, nieznany NIP zostawia wiersz zwykłej walidacji,
       kompletny wiersz wcale nie pyta rejestru
 
-## Krok 6 — domknięcie
+## Krok 6 — domknięcie ✅ CZĘŚCIOWO (2026-10-23)
 
-- [ ] komunikaty wyjątków z `classes/Intake/*` (`WhiteListRegistry`, `ImapClient`, `MailboxConnector`,
-      `StreamImapTransport`) przeniesione do plików językowych — dziś wchodzą po polsku w przetłumaczone
-      zdania przez `:message` (≈27 komunikatów × 5 języków)
-- [ ] sprawdzenie na produkcji, czy wychodzące HTTPS do `wl-api.mf.gov.pl` działa na InfinityFree
-      (poczta idzie tam przez HTTPS, więc powinno) — przycisk „Pobierz z rejestru” na żywo
-- [ ] `docs/MAPA_PROJEKTU.md` (dziennik zmian), `docs/BAZA_DANYCH.md` (jeśli dojdą kolumny),
-      `docs/INSTRUKCJA_OBSLUGI.md` (rozdział o rejestrach), `CLAUDE.md` (zasady)
-- [ ] pełna bramka jakości: `composer test` z integracyjnymi, `composer stan`, `composer cs`
+- [x] komunikaty wyjątków z `classes/Intake/*` w plikach językowych: 34 klucze `registry.error.*`
+      i `imap.*` w pięciu językach (1334 klucze w każdym pliku). Polskie brzmienie zostało identyczne,
+      więc testy sprawdzające fragmenty komunikatów przechodzą bez zmian; sprawdzone, że ten sam błąd
+      wychodzi po polsku, angielsku, hiszpańsku, niemiecku i ukraińsku
+- [ ] **czeka na wdrożenie przez autora** (FTP): sprawdzenie na produkcji, czy wychodzące HTTPS do
+      `wl-api.mf.gov.pl` i `ec.europa.eu` działa na InfinityFree — przycisk „Pobierz z rejestru” na żywo.
+      Stan na 2026-10-23: produkcja ma jeszcze stare pliki językowe i nie ma `deploy-pull.php`
+- [x] `docs/MAPA_PROJEKTU.md` (dziennik zmian), `docs/INSTRUKCJA_OBSLUGI.md` (przycisk w firmach,
+      uzupełnianie w imporcie), `docs/DEPLOY_INFINITYFREE.md` §8a, `CLAUDE.md` (zasady rejestrów
+      i wdrożeń). `docs/BAZA_DANYCH.md` bez zmian — rejestry nie dodają kolumn
+- [x] pełna bramka jakości: 385/385 testów z integracyjnymi, PHPStan level 5 bez błędów,
+      PHP-CS-Fixer 0 z 208 plików, `npm run css` bez zmian (użyte klasy już były w arkuszu)
 
 ---
 

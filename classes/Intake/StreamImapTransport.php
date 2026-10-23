@@ -25,10 +25,10 @@ final class StreamImapTransport implements ImapTransport
     {
         $encryption = strtolower($encryption);
         if ($encryption === 'none' && !in_array(strtolower($host), ['localhost', '127.0.0.1', '::1'], true)) {
-            throw new ImapException('Połączenie IMAP bez szyfrowania jest dozwolone tylko z localhost.');
+            throw new ImapException(\__('imap.error.plain_not_local'));
         }
         if (!in_array($encryption, ['ssl', 'none'], true)) {
-            throw new ImapException('Nieznany rodzaj szyfrowania IMAP: ' . $encryption . ' (dozwolone: ssl, none).');
+            throw new ImapException(\__('imap.error.unknown_encryption', ['encryption' => $encryption]));
         }
 
         $context = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true]]);
@@ -41,7 +41,7 @@ final class StreamImapTransport implements ImapTransport
             $context
         );
         if ($stream === false) {
-            throw new ImapException('Nie można połączyć się z serwerem IMAP ' . $host . ':' . $port . ' (' . $errorMessage . ').');
+            throw new ImapException(\__('imap.error.connect_failed', ['host' => $host, 'port' => $port, 'error' => $errorMessage]));
         }
         stream_set_timeout($stream, $timeout);
 
@@ -64,7 +64,7 @@ final class StreamImapTransport implements ImapTransport
         while ($this->stream !== null && strlen($data) < $length) {
             $chunk = fread($this->stream, $length - strlen($data));
             if ($chunk === false || $chunk === '') {
-                throw new ImapException('Połączenie IMAP przerwane w trakcie pobierania wiadomości.');
+                throw new ImapException(\__('imap.error.read_interrupted'));
             }
             $data .= $chunk;
         }
@@ -75,7 +75,7 @@ final class StreamImapTransport implements ImapTransport
     public function write(string $data): void
     {
         if ($this->stream === null || fwrite($this->stream, $data) === false) {
-            throw new ImapException('Nie można wysłać polecenia do serwera IMAP.');
+            throw new ImapException(\__('imap.error.write_failed'));
         }
     }
 

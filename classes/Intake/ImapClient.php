@@ -28,13 +28,13 @@ final class ImapClient
     {
         $line = $this->transport->readLine();
         if ($line === null || stripos($line, '* OK') !== 0 && stripos($line, '* PREAUTH') !== 0) {
-            throw new ImapException('Serwer IMAP nie przywitał się poprawnie.');
+            throw new ImapException(\__('imap.error.greeting'));
         }
     }
 
     public function loginPassword(string $user, string $password): void
     {
-        $this->command('LOGIN ' . self::quote($user) . ' ' . self::quote($password), 'Logowanie IMAP nie powiodło się');
+        $this->command('LOGIN ' . self::quote($user) . ' ' . self::quote($password), \__('imap.action.login'));
     }
 
     /**
@@ -43,12 +43,12 @@ final class ImapClient
     public function authenticateXOAuth2(string $user, string $accessToken): void
     {
         $initial = base64_encode('user=' . $user . "\001auth=Bearer " . $accessToken . "\001\001");
-        $this->command('AUTHENTICATE XOAUTH2 ' . $initial, 'Logowanie IMAP (XOAUTH2) nie powiodło się');
+        $this->command('AUTHENTICATE XOAUTH2 ' . $initial, \__('imap.action.login_xoauth2'));
     }
 
     public function select(string $mailbox): void
     {
-        $this->command('SELECT ' . self::quote($mailbox), 'Nie można otworzyć skrzynki');
+        $this->command('SELECT ' . self::quote($mailbox), \__('imap.action.select'));
     }
 
     /**
@@ -58,7 +58,7 @@ final class ImapClient
      */
     public function searchUnseen(int $limit): array
     {
-        $response = $this->command('UID SEARCH UNSEEN', 'Wyszukiwanie wiadomości nie powiodło się');
+        $response = $this->command('UID SEARCH UNSEEN', \__('imap.action.search'));
         $uids = [];
         foreach ($response['untagged'] as $line) {
             if (preg_match('/^\* SEARCH\s*(.*)$/i', $line, $m) === 1) {
@@ -74,7 +74,7 @@ final class ImapClient
 
     public function messageSize(int $uid): ?int
     {
-        $response = $this->command('UID FETCH ' . $uid . ' (RFC822.SIZE)', 'Nie można odczytać rozmiaru wiadomości');
+        $response = $this->command('UID FETCH ' . $uid . ' (RFC822.SIZE)', \__('imap.action.size'));
         foreach ($response['untagged'] as $line) {
             if (preg_match('/RFC822\.SIZE\s+(\d+)/i', $line, $m) === 1) {
                 return (int) $m[1];
@@ -89,9 +89,9 @@ final class ImapClient
      */
     public function fetchRaw(int $uid): string
     {
-        $response = $this->command('UID FETCH ' . $uid . ' (BODY.PEEK[])', 'Nie można pobrać wiadomości');
+        $response = $this->command('UID FETCH ' . $uid . ' (BODY.PEEK[])', \__('imap.action.fetch'));
         if ($response['literals'] === []) {
-            throw new ImapException('Serwer nie zwrócił treści wiadomości.');
+            throw new ImapException(\__('imap.error.no_body'));
         }
 
         return $response['literals'][0];
@@ -99,7 +99,7 @@ final class ImapClient
 
     public function markSeen(int $uid): void
     {
-        $this->command('UID STORE ' . $uid . ' +FLAGS.SILENT (\\Seen)', 'Nie można oznaczyć wiadomości jako przeczytanej');
+        $this->command('UID STORE ' . $uid . ' +FLAGS.SILENT (\\Seen)', \__('imap.action.mark_seen'));
     }
 
     /**
@@ -107,15 +107,15 @@ final class ImapClient
      */
     public function moveTo(int $uid, string $mailbox): void
     {
-        $this->command('UID COPY ' . $uid . ' ' . self::quote($mailbox), 'Nie można przenieść wiadomości');
-        $this->command('UID STORE ' . $uid . ' +FLAGS.SILENT (\\Deleted)', 'Nie można oznaczyć wiadomości do usunięcia');
-        $this->command('EXPUNGE', 'Nie można usunąć wiadomości ze skrzynki');
+        $this->command('UID COPY ' . $uid . ' ' . self::quote($mailbox), \__('imap.action.copy'));
+        $this->command('UID STORE ' . $uid . ' +FLAGS.SILENT (\\Deleted)', \__('imap.action.mark_deleted'));
+        $this->command('EXPUNGE', \__('imap.action.expunge'));
     }
 
     public function logout(): void
     {
         try {
-            $this->command('LOGOUT', 'Wylogowanie nie powiodło się');
+            $this->command('LOGOUT', \__('imap.action.logout'));
         } catch (ImapException) {
             // Zamykamy połączenie niezależnie od odpowiedzi serwera.
         }
@@ -137,7 +137,7 @@ final class ImapClient
         while (true) {
             $line = $this->transport->readLine();
             if ($line === null) {
-                throw new ImapException($failure . ': serwer zamknął połączenie.');
+                throw new ImapException(\__('imap.error.connection_closed', ['action' => $failure]));
             }
 
             // Literał: {N} na końcu linii — N bajtów treści, po nich zwykle jeszcze koniec odpowiedzi w nowej linii.
@@ -159,7 +159,7 @@ final class ImapClient
                     return ['text' => trim(substr($rest, 2)), 'untagged' => $untagged, 'literals' => $literals];
                 }
 
-                throw new ImapException($failure . ': ' . trim($rest));
+                throw new ImapException(\__('imap.error.command_failed', ['action' => $failure, 'response' => trim($rest)]));
             }
 
             $untagged[] = $line;

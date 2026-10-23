@@ -61,28 +61,28 @@ final class ViesRegistry implements CompanyRegistry
         [$country, $number] = self::split($taxId);
 
         if ($country === null || $number === '') {
-            throw new RegistryException('VIES: numer bez kodu kraju Unii — ' . $taxId);
+            throw new RegistryException(\__('registry.error.vies_no_country', ['number' => $taxId]));
         }
 
         $payload = (string) json_encode(['countryCode' => $country, 'vatNumber' => $number]);
         [$status, $body] = ($this->transport)(rtrim($this->baseUrl, '/') . '/check-vat-number', $payload);
 
         if ($status === 429) {
-            throw new RegistryException('VIES odrzucił zapytanie (limit zapytań).');
+            throw new RegistryException(\__('registry.error.vies_rate_limited'));
         }
         if ($status >= 500 || $status === 0) {
-            throw new RegistryException('VIES jest niedostępny (HTTP ' . $status . ').');
+            throw new RegistryException(\__('registry.error.vies_unavailable', ['status' => $status]));
         }
 
         /** @var mixed $data */
         $data = json_decode($body, true);
 
         if (!is_array($data)) {
-            throw new RegistryException('Nieczytelna odpowiedź VIES.');
+            throw new RegistryException(\__('registry.error.vies_unreadable'));
         }
 
         if ($status >= 400 || isset($data['errorWrappers'])) {
-            throw new RegistryException('VIES odrzucił zapytanie: ' . self::errorMessage($data, $status));
+            throw new RegistryException(\__('registry.error.vies_rejected', ['message' => self::errorMessage($data, $status)]));
         }
 
         // REST API zwraca pole „valid” (SOAP tak samo); „isValid” zostaje jako zapas,

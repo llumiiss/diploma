@@ -892,9 +892,22 @@ przerywa importu, jeden plik to najwyżej 100 zapytań, a podgląd pokazuje „U
 — uzupełniamy także w podglądzie, bo zasada projektu mówi, że podgląd i zapis nie mogą się rozjeżdżać
 (pamięć pośrednia z kroku 3 sprawia, że zapis nie pyta drugi raz).
 
-**Stan prac**: 385/385 testów zielonych z integracyjnymi (MySQL uruchomiony w czasie tej sesji),
-PHPStan level 5 bez błędów, PHP-CS-Fixer 0 z 208 plików. Z listy zostaje krok 6 (komunikaty wyjątków
-z `classes/Intake/*` do plików językowych, weryfikacja na produkcji) oraz klucze CEIDG i GUS po stronie autora.
+**Krok 6 — domknięcie.** Komunikaty wyjątków z `classes/Intake/*` (rejestry i skrzynka IMAP) trafiły
+do plików językowych: 34 klucze `registry.error.*` i `imap.*` w pięciu językach (1334 klucze w każdym).
+Dotąd wchodziły po polsku w przetłumaczone zdania przez `:message` — operator pracujący po angielsku
+widział polski komunikat rejestru. Polskie brzmienie zostało co do znaku, więc testy sprawdzające
+fragmenty komunikatów przeszły bez zmian.
+
+**Stan prac**: 385/385 testów zielonych z integracyjnymi (MySQL uruchomiony polecenia `mysqld` w tej
+sesji, bo Laragon nie startuje z wiersza poleceń), PHPStan level 5 bez błędów, PHP-CS-Fixer 0 z 208
+plików, `npm run css` bez zmian (użyte klasy już były w arkuszu).
+
+**Czeka na autora**: (1) wgranie przez FTP paczki z tłumaczeniami i `deploy-pull.php` — produkcja ma
+jeszcze pliki językowe sprzed 2026-10-23 (sprawdzone przeglądarką: sekcja „hero” po hiszpańsku
+pokazuje angielskie teksty); po tym jednym razie kolejne wdrożenia idą bez FTP; (2) klik w „Pobierz
+z rejestru” na produkcji, żeby potwierdzić, że InfinityFree przepuszcza wychodzące HTTPS do
+`wl-api.mf.gov.pl` i `ec.europa.eu`; (3) darmowe, ale wnioskowane klucze do CEIDG v3 i GUS BIR/REGON,
+jeśli chcemy te dwa źródła.
 
 ---
 ## Załącznik A — Oficjalny opis pracy (dosłownie, przekazany 2026-09-16)
