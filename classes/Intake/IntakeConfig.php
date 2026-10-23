@@ -62,10 +62,17 @@ final class IntakeConfig
     {
         $registry = self::section('registry');
 
-        return new WhiteListRegistry(
+        $client = new WhiteListRegistry(
             (string) ($registry['base_url'] ?? WhiteListRegistry::DEFAULT_BASE_URL),
             max(1, (int) ($registry['timeout'] ?? 8))
         );
+
+        $days = (int) ($registry['cache_days'] ?? CachedCompanyRegistry::DEFAULT_TTL_DAYS);
+        if ($days <= 0) {
+            return $client;
+        }
+
+        return new CachedCompanyRegistry($client, dirname(__DIR__, 2) . '/storage/cache/registry', $days * 86400);
     }
 
     public static function imapEnabled(): bool

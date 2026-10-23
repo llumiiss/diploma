@@ -18,6 +18,11 @@ return [
     'registry' => [
         'base_url' => 'https://wl-api.mf.gov.pl',
         'timeout'  => 8,
+
+        // Odpowiedzi rejestru trzymamy w storage/cache/registry przez tyle dni (0 wyłącza pamięć
+        // pośrednią). Dane firm zmieniają się rzadko, a import pliku z wieloma płatnikami bez
+        // tego oznaczałby jedno zapytanie na wiersz. Błędy rejestru nie są zapamiętywane.
+        'cache_days' => 7,
     ],
 
     // Webhook: pusty token wyłącza punkt wejścia api/inbound-mail.php. Wygeneruj długi losowy ciąg, np.:

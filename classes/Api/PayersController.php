@@ -51,6 +51,7 @@ final class PayersController
             'update'  => ['payer' => $this->service->update($actor, Params::requireId($id), $request->data())],
             'archive' => ['payer' => $this->service->archive($actor, Params::requireId($id))],
             'restore' => ['payer' => $this->service->restore($actor, Params::requireId($id))],
+            'lookup_tax_id' => ['lookup' => $this->service->lookupTaxId($actor, (string) ($request->body['tax_id'] ?? ''))],
             default   => throw Params::unknownAction(),
         };
     }

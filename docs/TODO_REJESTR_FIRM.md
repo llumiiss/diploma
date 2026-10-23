@@ -61,26 +61,37 @@ Opis w `docs/DEPLOY_INFINITYFREE.md` §8a. Sprawdzone na prawdziwej paczce z Git
 - [x] testy bez sieci: czytnik tar (puste pliki, granica bloku, katalogi, długie nazwy GNU, nagłówek pax,
       uszkodzone archiwum) i wdrożenie (wykluczenia, ścieżki z `..`, pliki bez zmian, podgląd, czyszczenie cache)
 
-## Krok 2 — pobieranie danych firmy po NIP w formularzu „Firmy”
+## Krok 2 — pobieranie danych firmy po NIP w formularzu „Firmy” ✅ ZROBIONE (2026-10-23)
 
 Największa luka: przy ręcznym dodawaniu firmy operator wpisuje wszystko sam.
 
-- [ ] akcja `lookup_tax_id` w `api/payers.php` (uprawnienie `payers.manage`; limit: 20 zapytań na konto na godzinę)
-- [ ] `PayerService::lookupRegistry(Actor, string $taxId): array` — korzysta z `CompanyRegistry` z `IntakeConfig`
-- [ ] w formularzu firmy (`assets/js/views/payers.js`) przycisk „Pobierz z rejestru” przy polu NIP:
-      wypełnia nazwę, ulicę, kod, miasto; nie nadpisuje pól, w których operator już coś wpisał (pyta)
-- [ ] pokazanie statusu VAT i REGON/KRS jako informacji (bez zapisu — w bazie nie ma na nie kolumn)
-- [ ] ostrzeżenie, gdy firmy nie ma w rejestrze albo status VAT jest nieczynny
-- [ ] klucze i18n w **pięciu** plikach językowych (`payer.registry.*`)
-- [ ] testy: trafienie, brak firmy, błąd rejestru (atrapa), brak uprawnienia, limit zapytań
+- [x] akcja `lookup_tax_id` w `api/payers.php` (wymaga `payers.create` albo `payers.update`; limit 20 zapytań
+      na konto na godzinę przez `App\Service\LookupThrottle`)
+- [x] `PayerService::lookupTaxId(Actor, string $taxId): array` — korzysta z `CompanyRegistry` z `IntakeConfig`,
+      zwraca pola do formularza, dane rejestrowe (status VAT, REGON, KRS, data rejestracji), informację
+      o firmie już obecnej w ewidencji i listę ostrzeżeń
+- [x] w formularzu firmy (`assets/js/views/payers.js`) przycisk „Pobierz z rejestru” przy polu NIP:
+      wypełnia nazwę, ulicę, kod i miasto; pola już wypełnione nadpisuje dopiero po potwierdzeniu
+- [x] panel z danymi rejestrowymi: nazwa rejestrowa, status VAT, REGON, KRS, data rejestracji (bez zapisu
+      — w bazie nie ma na nie kolumn)
+- [x] ostrzeżenia: brak firmy w rejestrze, nieczynny status VAT, niepełny adres, firma już w ewidencji
+      (osobno: w archiwum, poza zakresem danych operatora — bez pokazywania nazwy)
+- [x] 21 kluczy `payer.registry.*` w **pięciu** plikach językowych (1299 kluczy w każdym)
+- [x] 9 testów w `tests/Integration/PayerServiceTest.php`: trafienie, nieczynny VAT, brak firmy, firma
+      w ewidencji, firma poza zakresem danych, zły NIP (bez pytania rejestru), awaria rejestru,
+      limit zapytań, brak uprawnienia (EMPLOYEE) — **czekają na uruchomienie MySQL**
 
-## Krok 3 — cache i limit zapytań do rejestru
+## Krok 3 — cache i limit zapytań do rejestru ✅ ZROBIONE (2026-10-23)
 
-- [ ] `CachedCompanyRegistry` (dekorator `CompanyRegistry`): odpowiedzi w `storage/cache` na 7 dni,
-      osobno zapamiętane „nie ma takiego NIP-u”
-- [ ] licznik zapytań na dobę w bazie lub w cache — ochrona przed limitem MF i przed pętlą w imporcie
-- [ ] `IntakeConfig::registry()` zwraca dekorator; przełącznik `registry.cache_days` w `config/intake.php`
-- [ ] testy: drugie zapytanie nie rusza transportu, wygaśnięcie wpisu, limit dobowy
+- [x] `CachedCompanyRegistry` (dekorator `CompanyRegistry`): odpowiedzi w `storage/cache/registry` na 7 dni,
+      „nie ma takiego NIP-u” też zapamiętane, błędy rejestru **nie** (awaria ma prawo minąć),
+      zapytanie z konkretną datą omija pamięć
+- [x] licznik zapytań na konto (`LookupThrottle`, 20/godzinę, pliki w `storage/cache/lookups`) — ochrona
+      przed limitem MF i przed pętlą; brak katalogu do zapisu nie blokuje funkcji
+- [x] `IntakeConfig::registry()` zwraca dekorator; przełącznik `registry.cache_days` w `config/intake.php` (0 wyłącza)
+- [x] 11 testów jednostkowych (`CachedCompanyRegistryTest`, `LookupThrottleTest`): drugie zapytanie z pamięci,
+      zapamiętany brak firmy, błąd nie trafia do pamięci, wygaśnięcie wpisu, uszkodzony plik, osobne
+      liczniki kont, reset okna
 
 ## Krok 4 — kolejne otwarte źródła za tym samym interfejsem
 

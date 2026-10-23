@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Integration;
 
 use App\Rbac;
+use App\Service\LookupThrottle;
 use App\Service\PayerService;
 use App\Service\ServiceException;
+use Tests\Support\FakeCompanyRegistry;
 use Tests\Support\IntegrationTestCase;
 
 final class PayerServiceTest extends IntegrationTestCase
@@ -140,5 +142,152 @@ final class PayerServiceTest extends IntegrationTestCase
         $changes = json_decode((string) $payload, true)['changes'];
         // MySQL porządkuje klucze obiektów JSON po swojemu, więc porównujemy bez kolejności.
         $this->assertEquals(['contact_person' => ['from' => 'Stara Osoba', 'to' => 'Nowa Osoba']], $changes);
+    }
+    /**
+     * Pobieranie danych firmy po NIP-ie z publicznego rejestru (krok 2 z docs/TODO_REJESTR_FIRM.md).
+     * Rejestr jest podstawiony atrapą — testy nie wychodzą do sieci.
+     */
+    private function serviceWithRegistry(FakeCompanyRegistry $registry, ?LookupThrottle $throttle = null): PayerService
+    {
+        return new PayerService($this->db, null, $registry, $throttle ?? new LookupThrottle(sys_get_temp_dir() . '/certisub-test-throttle-' . bin2hex(random_bytes(4))));
+    }
+
+    public function testRegistryLookupFillsCompanyFieldsAndReportsVatStatus(): void
+    {
+        $operator = $this->createActor(Rbac::OPERATOR);
+        $registry = new FakeCompanyRegistry();
+        $registry->add(self::VALID_NIP, FakeCompanyRegistry::subject('NOVATECH SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', self::VALID_NIP, 'PRZEMYSŁOWA 12, 40-020 KATOWICE'));
+
+        $result = $this->serviceWithRegistry($registry)->lookupTaxId($operator, '634-285-19-74');
+
+        $this->assertTrue($result['found']);
+        $this->assertSame(self::VALID_NIP, $result['tax_id'], 'NIP wraca znormalizowany — same cyfry');
+        $this->assertSame('Przemysłowa 12', $result['company']['address_line']);
+        $this->assertSame('40-020', $result['company']['postal_code']);
+        $this->assertSame('Katowice', $result['company']['city']);
+        $this->assertStringContainsString('Novatech', $result['company']['company_name']);
+        $this->assertTrue($result['registry']['active_vat']);
+        $this->assertSame('123456785', $result['registry']['regon']);
+        $this->assertNull($result['existing']);
+        $this->assertSame([], $result['warnings']);
+    }
+
+    public function testRegistryLookupWarnsAboutAnInactiveVatPayer(): void
+    {
+        $operator = $this->createActor(Rbac::OPERATOR);
+        $registry = new FakeCompanyRegistry();
+        $registry->add(self::VALID_NIP, FakeCompanyRegistry::subject('WISŁA SPÓŁKA AKCYJNA', self::VALID_NIP, 'NADRZECZNA 5, 43-460 WISŁA', 'Niezarejestrowany'));
+
+        $result = $this->serviceWithRegistry($registry)->lookupTaxId($operator, self::VALID_NIP);
+
+        $this->assertTrue($result['found']);
+        $this->assertFalse($result['registry']['active_vat']);
+        $this->assertContains('payer.registry.warning.vat_inactive', $result['warnings']);
+    }
+
+    public function testRegistryLookupReportsUnknownTaxId(): void
+    {
+        $operator = $this->createActor(Rbac::OPERATOR);
+
+        $result = $this->serviceWithRegistry(new FakeCompanyRegistry())->lookupTaxId($operator, self::VALID_NIP);
+
+        $this->assertFalse($result['found']);
+        $this->assertNull($result['registry']);
+        $this->assertContains('payer.registry.warning.not_found', $result['warnings']);
+        $this->assertSame(['tax_id' => self::VALID_NIP], $result['company'], 'przy braku firmy wstawiamy do formularza tylko NIP');
+    }
+
+    public function testRegistryLookupPointsToACompanyAlreadyOnRecord(): void
+    {
+        $manager = $this->createActor(Rbac::MANAGER);
+        $service = new PayerService($this->db);
+        $existing = $service->create($manager, ['company_name' => 'Novatech sp. z o.o.', 'contact_person' => 'Anna Nowak', 'tax_id' => self::VALID_NIP]);
+
+        $registry = new FakeCompanyRegistry();
+        $registry->add(self::VALID_NIP, FakeCompanyRegistry::subject('NOVATECH SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', self::VALID_NIP, 'PRZEMYSŁOWA 12, 40-020 KATOWICE'));
+
+        $result = $this->serviceWithRegistry($registry)->lookupTaxId($manager, self::VALID_NIP);
+
+        $this->assertContains('payer.registry.warning.exists', $result['warnings']);
+        $this->assertNotNull($result['existing']);
+        $this->assertSame($existing['id'], $result['existing']['id']);
+        $this->assertSame('Novatech sp. z o.o.', $result['existing']['company_name']);
+    }
+
+    public function testRegistryLookupHidesTheNameOfACompanyOutsideTheOperatorScope(): void
+    {
+        $manager = $this->createActor(Rbac::MANAGER);
+        $operator = $this->createActor(Rbac::OPERATOR);
+        (new PayerService($this->db))->create($manager, ['company_name' => 'Cudza S.A.', 'contact_person' => 'Jan Kowalski', 'tax_id' => self::VALID_NIP]);
+
+        $registry = new FakeCompanyRegistry();
+        $registry->add(self::VALID_NIP, FakeCompanyRegistry::subject('CUDZA SPÓŁKA AKCYJNA', self::VALID_NIP, 'NADRZECZNA 5, 43-460 WISŁA'));
+
+        $result = $this->serviceWithRegistry($registry)->lookupTaxId($operator, self::VALID_NIP);
+
+        $this->assertNotNull($result['existing']);
+        $this->assertFalse($result['existing']['visible']);
+        $this->assertNull($result['existing']['company_name'], 'operator nie poznaje nazwy firmy poza swoim zakresem');
+        $this->assertNull($result['existing']['id']);
+    }
+
+    public function testRegistryLookupRejectsAnInvalidTaxIdWithoutAskingTheRegistry(): void
+    {
+        $operator = $this->createActor(Rbac::OPERATOR);
+        $registry = new FakeCompanyRegistry();
+
+        try {
+            $this->serviceWithRegistry($registry)->lookupTaxId($operator, '1234567890');
+            $this->fail('oczekiwano ServiceException');
+        } catch (ServiceException $e) {
+            $this->assertArrayHasKey('tax_id', $e->errors());
+        }
+
+        $this->assertSame([], $registry->queries);
+    }
+
+    public function testRegistryFailureIsReportedAsAConflict(): void
+    {
+        $operator = $this->createActor(Rbac::OPERATOR);
+        $registry = new FakeCompanyRegistry();
+        $registry->fail(self::VALID_NIP);
+
+        $this->expectException(ServiceException::class);
+        $this->serviceWithRegistry($registry)->lookupTaxId($operator, self::VALID_NIP);
+    }
+
+    public function testRegistryLookupIsRateLimitedPerAccount(): void
+    {
+        $operator = $this->createActor(Rbac::OPERATOR);
+        $registry = new FakeCompanyRegistry();
+        $registry->add(self::VALID_NIP, FakeCompanyRegistry::subject('NOVATECH SP. Z O.O.', self::VALID_NIP, 'PRZEMYSŁOWA 12, 40-020 KATOWICE'));
+        $directory = sys_get_temp_dir() . '/certisub-test-throttle-' . bin2hex(random_bytes(4));
+        $service = $this->serviceWithRegistry($registry, new LookupThrottle($directory, 2, 3600));
+
+        $service->lookupTaxId($operator, self::VALID_NIP);
+        $service->lookupTaxId($operator, self::VALID_NIP);
+
+        try {
+            $service->lookupTaxId($operator, self::VALID_NIP);
+            $this->fail('oczekiwano ServiceException po przekroczeniu limitu');
+        } catch (ServiceException $e) {
+            $this->assertStringContainsString('rejestru', $e->getMessage());
+        } finally {
+            foreach (glob($directory . '/*') ?: [] as $file) {
+                @unlink($file);
+            }
+            @rmdir($directory);
+        }
+
+        $this->assertCount(2, $registry->queries, 'odrzucone zapytanie nie idzie do rejestru');
+    }
+
+    public function testEmployeeCannotUseTheRegistryLookup(): void
+    {
+        $employee = $this->createActor(Rbac::EMPLOYEE);
+        $registry = new FakeCompanyRegistry();
+
+        $this->expectException(ServiceException::class);
+        $this->serviceWithRegistry($registry)->lookupTaxId($employee, self::VALID_NIP);
     }
 }
