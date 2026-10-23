@@ -898,8 +898,17 @@ Dotąd wchodziły po polsku w przetłumaczone zdania przez `:message` — operat
 widział polski komunikat rejestru. Polskie brzmienie zostało co do znaku, więc testy sprawdzające
 fragmenty komunikatów przeszły bez zmian.
 
-**Stan prac**: 385/385 testów zielonych z integracyjnymi (MySQL uruchomiony polecenia `mysqld` w tej
-sesji, bo Laragon nie startuje z wiersza poleceń), PHPStan level 5 bez błędów, PHP-CS-Fixer 0 z 208
+**Uzupełnienie z KRS.** Publiczne API Ministerstwa Sprawiedliwości (bez klucza) nie odpowiada na
+pytanie o NIP — przyjmuje tylko numer KRS, więc nie jest kolejnym `CompanyRegistry`, ale świetnie
+uzupełnia Białą listę: `KrsRegistry::lookupKrs()` dokłada **formę prawną** i **adres rozbity na pola**
+(Biała lista podaje adres jednym ciągiem). Odpis waży ok. 60 kB, więc wynik — także „nie ma takiego
+numeru” — jest pamiętany, a błędy nie. Działu 2 z reprezentacją świadomie nie czytamy: to dane
+osobowe, w odpowiedzi i tak zamaskowane, a ewidencji certyfikatów niepotrzebne. Przełącznik:
+`registry.krs_enrich`. Sprawdzone na żywo: Orlen → „Spółka Akcyjna, Chemików 7, 09-411 Płock”,
+Allegro → „Spółka z Ograniczoną Odpowiedzialnością, ul. Wierzbięcice 1b, 61-569 Poznań”.
+
+**Stan prac**: 393/393 testy zielone z integracyjnymi (MySQL uruchomiony polecenia `mysqld` w tej
+sesji, bo Laragon nie startuje z wiersza poleceń), PHPStan level 5 bez błędów, PHP-CS-Fixer 0 z 210
 plików, `npm run css` bez zmian (użyte klasy już były w arkuszu).
 
 **Czeka na autora**: (1) wgranie przez FTP paczki z tłumaczeniami i `deploy-pull.php` — produkcja ma

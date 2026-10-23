@@ -1409,4 +1409,9 @@ return [
     'imap.action.mark_deleted' => 'Cannot mark the message for deletion',
     'imap.action.expunge' => 'Cannot remove the message from the mailbox',
     'imap.action.logout' => 'Sign-out failed',
+    'registry.error.krs_invalid' => 'Invalid KRS number: :krs',
+    'registry.error.krs_rate_limited' => 'The KRS registry rejected the request (query limit).',
+    'registry.error.krs_unavailable' => 'The KRS registry is unavailable (HTTP :status).',
+    'registry.error.krs_unreadable' => 'Unreadable answer from the KRS registry.',
+    'payer.registry.legal_form' => 'Legal form',
 ];

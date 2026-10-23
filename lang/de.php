@@ -1421,4 +1421,9 @@ return [
     'imap.action.mark_deleted' => 'Die Nachricht lässt sich nicht zum Löschen markieren',
     'imap.action.expunge' => 'Die Nachricht lässt sich nicht aus dem Postfach entfernen',
     'imap.action.logout' => 'Die Abmeldung ist fehlgeschlagen',
+    'registry.error.krs_invalid' => 'Ungültige KRS-Nummer: :krs',
+    'registry.error.krs_rate_limited' => 'Das KRS-Register hat die Abfrage abgewiesen (Abfragelimit).',
+    'registry.error.krs_unavailable' => 'Das KRS-Register ist nicht erreichbar (HTTP :status).',
+    'registry.error.krs_unreadable' => 'Unlesbare Antwort des KRS-Registers.',
+    'payer.registry.legal_form' => 'Rechtsform',
 ];

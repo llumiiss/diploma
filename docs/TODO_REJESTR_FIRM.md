@@ -103,9 +103,13 @@ Największa luka: przy ręcznym dodawaniu firmy operator wpisuje wszystko sam.
       numery unijne, a `supports()` kieruje polski NIP do Białej listy. Sprawdzone na żywo:
       IE6388047V (Google Ireland) wraca z nazwą i adresem, DE811907980 jest ważny, ale Niemcy nie
       ujawniają danych („---” → puste pola), DE000000000 nieważny
-- [ ] **KRS** (`api-krs.ms.gov.pl`, bez klucza) — **nie jest źródłem po NIP-ie**: API przyjmuje tylko
-      numer KRS, więc nie pasuje do `CompanyRegistry`. Sens ma jako **uzupełnienie** po tym, jak Biała
-      lista zwróci KRS (forma prawna, reprezentacja) — osobny interfejs, osobne zadanie
+- [x] **KRS** (`api-krs.ms.gov.pl`, bez klucza) — zrobione jako **uzupełnienie**, nie jako źródło po
+      NIP-ie (API przyjmuje tylko numer KRS). `KrsRegistry::lookupKrs()` dokłada **formę prawną**
+      i **adres rozbity na pola** po numerze KRS z Białej listy; odpis waży ok. 60 kB, więc wynik
+      (także „nie ma takiego numeru”) jest pamiętany, a błędy nie. Reprezentacji (dział 2) świadomie
+      nie czytamy: to dane osobowe, w odpowiedzi i tak zamaskowane. Przełącznik `registry.krs_enrich`.
+      Sprawdzone na żywo: Orlen → „Spółka Akcyjna, Chemików 7, 09-411 Płock”, Allegro → „Spółka
+      z Ograniczoną Odpowiedzialnością, ul. Wierzbięcice 1b, 61-569 Poznań”
 - [ ] **CEIDG v3** — wymaga darmowego tokenu z wnioskiem do ministerstwa; **blokada po stronie autora**:
       bez tokenu nie da się ani wdrożyć, ani przetestować na żywo
 - [ ] **GUS BIR/REGON** — wymaga darmowego klucza z rejestracji w GUS; **blokada po stronie autora**

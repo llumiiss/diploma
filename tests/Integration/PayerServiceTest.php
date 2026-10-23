@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration;
 
+use App\Intake\KrsRegistry;
 use App\Rbac;
 use App\Service\LookupThrottle;
 use App\Service\PayerService;
@@ -170,6 +171,27 @@ final class PayerServiceTest extends IntegrationTestCase
         $this->assertSame('123456785', $result['registry']['regon']);
         $this->assertNull($result['existing']);
         $this->assertSame([], $result['warnings']);
+    }
+
+    public function testRegistryLookupAddsLegalFormFromKrs(): void
+    {
+        $operator = $this->createActor(Rbac::OPERATOR);
+        $registry = new FakeCompanyRegistry();
+        $registry->add(self::VALID_NIP, FakeCompanyRegistry::subject('NOVATECH SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', self::VALID_NIP, 'PRZEMYSŁOWA 12, 40-020 KATOWICE'));
+
+        // KRS dokłada formę prawną; Biała lista jej nie zwraca.
+        $krs = new KrsRegistry('https://api-krs.ms.gov.pl', 5, null, 0, static fn (string $url): array => [200, (string) json_encode([
+            'odpis' => ['dane' => ['dzial1' => [
+                'danePodmiotu'   => ['nazwa' => 'NOVATECH SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ', 'formaPrawna' => 'SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ'],
+                'siedzibaIAdres' => ['adres' => ['ulica' => 'PRZEMYSŁOWA', 'nrDomu' => '12', 'kodPocztowy' => '40-020', 'miejscowosc' => 'KATOWICE']],
+            ]]],
+        ])]);
+
+        $service = new PayerService($this->db, null, $registry, new LookupThrottle(sys_get_temp_dir() . '/certisub-test-throttle-' . bin2hex(random_bytes(4))), $krs);
+        $result = $service->lookupTaxId($operator, self::VALID_NIP);
+
+        $this->assertSame('Spółka z Ograniczoną Odpowiedzialnością', $result['registry']['legal_form']);
+        $this->assertSame('Przemysłowa 12', $result['company']['address_line']);
     }
 
     public function testRegistryLookupWarnsAboutAnInactiveVatPayer(): void

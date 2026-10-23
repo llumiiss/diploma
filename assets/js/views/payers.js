@@ -393,6 +393,10 @@
                                 <dt class="inline text-slate-500">{{ t('payer.registry.official_name') }}:</dt>
                                 <dd class="inline ml-1">{{ lookup.registry.official_name }}</dd>
                             </div>
+                            <div v-if="lookup.registry.legal_form">
+                                <dt class="inline text-slate-500">{{ t('payer.registry.legal_form') }}:</dt>
+                                <dd class="inline ml-1">{{ lookup.registry.legal_form }}</dd>
+                            </div>
                             <div v-if="lookup.registry.status_vat">
                                 <dt class="inline text-slate-500">{{ t('payer.registry.status_vat') }}:</dt>
                                 <dd class="inline ml-1" :class="lookup.registry.active_vat ? '' : 'font-semibold text-amber-700'">{{ lookup.registry.status_vat }}</dd>

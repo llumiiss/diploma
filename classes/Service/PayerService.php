@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Intake\CompanyRecord;
 use App\Intake\CompanyRegistry;
 use App\Intake\IntakeConfig;
+use App\Intake\KrsRegistry;
 use App\Intake\RegistryException;
 use PDO;
 use PDOException;
@@ -23,18 +24,23 @@ final class PayerService
     private readonly EventLogger $events;
     private ?CompanyRegistry $registry;
     private ?LookupThrottle $throttle;
+    private ?KrsRegistry $krs;
+    private bool $krsResolved = false;
 
     public function __construct(
         private readonly PDO $db,
         ?EventLogger $events = null,
         ?CompanyRegistry $registry = null,
         ?LookupThrottle $throttle = null,
+        ?KrsRegistry $krs = null,
     ) {
         $this->events = $events ?? new EventLogger($db);
         // Rejestr i licznik zapytań tworzymy dopiero przy pierwszym użyciu (lookupTaxId) —
         // lista i zapis płatników nie mają nic do rejestru i nie powinny go dotykać.
         $this->registry = $registry;
         $this->throttle = $throttle;
+        $this->krs = $krs;
+        $this->krsResolved = $krs !== null;
     }
 
     /**
@@ -358,15 +364,26 @@ final class PayerService
             $warnings[] = 'payer.registry.warning.vat_inactive';
         }
 
-        if ($record->addressLine === null || $record->city === null) {
+        // KRS dokłada to, czego Biała lista nie ma: formę prawną i adres rozbity na pola.
+        $krs = $this->krsDetails($record->krs);
+        $company = self::formValues($record, $digits);
+
+        foreach (['address_line', 'postal_code', 'city'] as $field) {
+            if (($company[$field] ?? '') === '' && ($krs[$field] ?? null) !== null) {
+                $company[$field] = (string) $krs[$field];
+            }
+        }
+
+        if (($company['address_line'] ?? '') === '' || ($company['city'] ?? '') === '') {
             $warnings[] = 'payer.registry.warning.address_incomplete';
         }
 
         return [
             'found'    => true,
             'tax_id'   => $digits,
-            'company'  => self::formValues($record, $digits),
+            'company'  => $company,
             'registry' => [
+                'legal_form'        => $krs['legal_form'] ?? null,
                 'official_name'     => $record->officialName,
                 'status_vat'        => $record->statusVat,
                 'active_vat'        => $record->isActiveVatPayer(),
@@ -434,6 +451,34 @@ final class PayerService
             return true;
         } catch (ServiceException) {
             return false;
+        }
+    }
+
+    /**
+     * Dane z KRS albo pusta tablica, gdy numeru nie ma, uzupełnienie jest wyłączone
+     * albo rejestr nie odpowiedział (to tylko dodatek — nie może zepsuć pobierania po NIP-ie).
+     *
+     * @return array<string, string|null>
+     */
+    private function krsDetails(?string $krs): array
+    {
+        if ($krs === null || $krs === '') {
+            return [];
+        }
+
+        if (!$this->krsResolved) {
+            $this->krs = IntakeConfig::krsRegistry();
+            $this->krsResolved = true;
+        }
+
+        if ($this->krs === null) {
+            return [];
+        }
+
+        try {
+            return $this->krs->lookupKrs($krs) ?? [];
+        } catch (RegistryException) {
+            return [];
         }
     }
 

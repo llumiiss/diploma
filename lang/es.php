@@ -1421,4 +1421,9 @@ return [
     'imap.action.mark_deleted' => 'No se puede marcar el mensaje para eliminar',
     'imap.action.expunge' => 'No se puede quitar el mensaje del buzón',
     'imap.action.logout' => 'El cierre de sesión ha fallado',
+    'registry.error.krs_invalid' => 'Número KRS no válido: :krs',
+    'registry.error.krs_rate_limited' => 'El registro KRS ha rechazado la consulta (límite de consultas).',
+    'registry.error.krs_unavailable' => 'El registro KRS no está disponible (HTTP :status).',
+    'registry.error.krs_unreadable' => 'Respuesta del registro KRS ilegible.',
+    'payer.registry.legal_form' => 'Forma jurídica',
 ];

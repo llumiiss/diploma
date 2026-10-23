@@ -1421,4 +1421,9 @@ return [
     'imap.action.mark_deleted' => 'Не вдається позначити лист на видалення',
     'imap.action.expunge' => 'Не вдається видалити лист зі скриньки',
     'imap.action.logout' => 'Вихід не вдався',
+    'registry.error.krs_invalid' => 'Неправильний номер KRS: :krs',
+    'registry.error.krs_rate_limited' => 'Реєстр KRS відхилив запит (обмеження запитів).',
+    'registry.error.krs_unavailable' => 'Реєстр KRS недоступний (HTTP :status).',
+    'registry.error.krs_unreadable' => 'Нечитна відповідь реєстру KRS.',
+    'payer.registry.legal_form' => 'Правова форма',
 ];
