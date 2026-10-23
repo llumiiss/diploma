@@ -836,6 +836,45 @@ zdania przez `:message` — widzi je administrator, gdy rejestr VAT albo skrzynk
 Przeniesienie ich do plików językowych wymaga zmian w kodzie tych klas i nie weszło w ten zakres.
 
 ---
+### Rejestry firm i wdrożenia bez FTP (2026-10-23)
+
+Autor zapytał, czy aplikacja rozpoznaje firmy z otwartych źródeł. Odpowiedź: Biała lista podatników
+VAT (publiczne API Ministerstwa Finansów, bez klucza) była w kodzie od Etapu 10, ale **tylko
+w ścieżce wniosków z poczty**. Plan dalszych prac: `docs/TODO_REJESTR_FIRM.md`.
+
+**Krok 1 — `deploy-pull.php`.** Hosting nie ma SSH, więc każda poprawka szła przez FTP. Teraz
+wystarczy otworzyć adres z tokenem: skrypt pobiera paczkę gałęzi z GitHuba, rozpakowuje ją własnym
+czytnikiem (`App\Deploy\TarArchive` — na współdzielonym hostingu nie ma `ZipArchive`, a `phar` bywa
+wyłączony) i podmienia pliki (`App\Deploy\CodeDeployer`). Nie nadpisuje `config/*.local.php`,
+`storage/`, `logs/`, `vendor/` ani `.git/` (wyjątek: `.htaccess` i `.gitkeep` pilnujące katalogów),
+nie wgrywa `tests/`, `docs/` ani narzędzi deweloperskich, odrzuca ścieżki wychodzące z katalogu
+aplikacji, pomija pliki bez zmian i zapisuje „obok i podmień”. Tryb `&dry=1` pokazuje zmiany bez
+zapisu. Opis: `docs/DEPLOY_INFINITYFREE.md` §8a.
+
+**Krok 2 — rejestr w formularzu „Firmy”.** `PayerService::lookupTaxId()` + akcja `lookup_tax_id`
+w `api/payers.php` + przycisk „Pobierz z rejestru” przy polu NIP. Wypełnia nazwę, ulicę, kod i miasto
+(pola już wypełnione dopiero po potwierdzeniu), pokazuje nazwę rejestrową, status VAT, REGON, KRS
+i datę rejestracji, ostrzega o nieczynnym VAT, niepełnym adresie i o firmie, która już jest
+w ewidencji — z osobnym komunikatem dla archiwum i dla firmy poza zakresem danych operatora
+(bez pokazywania nazwy, ta sama zasada co w `assertTaxIdAvailable`). Dostęp: `payers.create`
+albo `payers.update`, więc EMPLOYEE i ACCOUNTANT bez prawa zapisu go nie mają.
+
+**Krok 3 — pamięć pośrednia i limit.** `CachedCompanyRegistry` trzyma odpowiedzi w
+`storage/cache/registry` przez `registry.cache_days` (domyślnie 7); zapamiętuje też „nie ma takiego
+NIP-u”, ale **nie** zapamiętuje błędów, bo awaria ma prawo minąć. `LookupThrottle` ogranicza
+zapytania do 20 na konto na godzinę (pliki w `storage/cache/lookups`). Bez tego import pliku
+z 200 płatnikami oznaczałby 200 zapytań do Ministerstwa Finansów.
+
+**Jakość**: 183 testy jednostkowe zielone (nowe: `TarArchiveTest`, `CodeDeployerTest`,
+`CachedCompanyRegistryTest`, `LookupThrottleTest`), PHPStan level 5 bez błędów, PHP-CS-Fixer
+0 z 204 plików, `node --check` dla zmienionego widoku. Rejestr sprawdzony na żywo: Orlen
+(`7740001454`) i Allegro (`5252674798`) wracają z nazwą, statusem VAT, REGON-em, KRS-em i adresem;
+`deploy-pull.php` sprawdzony na prawdziwej paczce z GitHuba w trybie podglądu.
+
+**Czeka na autora**: 9 nowych testów integracyjnych `PayerServiceTest` (potrzebny MySQL — w czasie
+prac usługi Laragona były zatrzymane) i klik w przycisk na produkcji po wdrożeniu.
+
+---
 ## Załącznik A — Oficjalny opis pracy (dosłownie, przekazany 2026-09-16)
 
 ```text

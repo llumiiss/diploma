@@ -262,7 +262,7 @@
         },
         emits: ['close', 'saved'],
         data() {
-            return { form: emptyPayerForm(), loading: false, saving: false, errors: {}, message: '', existing: null };
+            return { form: emptyPayerForm(), loading: false, saving: false, errors: {}, message: '', existing: null, lookup: null, lookingUp: false };
         },
         computed: {
             isEdit() {
@@ -311,8 +311,57 @@
                     this.saving = false;
                 }
             },
+            async fetchFromRegistry() {
+                if (!this.form.tax_id || this.lookingUp) {
+                    return;
+                }
+                this.lookingUp = true;
+                this.message = '';
+                this.errors = {};
+                try {
+                    const result = await api.post(endpoints.payers, { action: 'lookup_tax_id', tax_id: this.form.tax_id });
+                    const lookup = result.lookup;
+                    this.lookup = lookup;
+
+                    // Pola już wypełnione nadpisujemy tylko za zgodą — operator mógł poprawić dane świadomie.
+                    const incoming = lookup.company || {};
+                    const clashing = Object.keys(incoming)
+                        .filter((key) => this.form[key] && this.form[key] !== incoming[key])
+                        .map((key) => t('field.' + key) || key);
+
+                    if (clashing.length > 0) {
+                        const ok = await CertiSub.confirm({
+                            title: t('payer.registry.overwrite_title'),
+                            message: t('payer.registry.overwrite_confirm', { fields: clashing.join(', ') }),
+                            confirmLabel: t('common.confirm'),
+                        });
+                        if (!ok) {
+                            return;
+                        }
+                    }
+
+                    Object.keys(incoming).forEach((key) => {
+                        if (key in this.form) {
+                            this.form[key] = incoming[key];
+                        }
+                    });
+
+                    if (lookup.found) {
+                        CertiSub.notify(t('payer.registry.filled'));
+                    }
+                } catch (error) {
+                    this.errors = error.errors || {};
+                    this.message = error.message;
+                } finally {
+                    this.lookingUp = false;
+                }
+            },
             openExisting() {
                 CertiSub.openDrawer('payer', this.existing.id);
+                this.$emit('close');
+            },
+            openRegistryExisting() {
+                CertiSub.openDrawer('payer', this.lookup.existing.id);
                 this.$emit('close');
             },
         },
@@ -328,9 +377,48 @@
                     <FormField class="md:col-span-2" :label="t('payer.company_name')" :error="errors.company_name" required>
                         <input v-model="form.company_name" type="text" maxlength="255" :class="['input', errors.company_name ? 'input-error' : '']">
                     </FormField>
-                    <FormField :label="t('field.tax_id')" :error="errors.tax_id" :hint="t('payer.hint.tax_id')">
-                        <input v-model="form.tax_id" type="text" maxlength="20" :class="['input font-mono', errors.tax_id ? 'input-error' : '']">
+                    <FormField :label="t('field.tax_id')" :error="errors.tax_id" :hint="t('payer.registry.hint')">
+                        <div class="flex gap-2">
+                            <input v-model="form.tax_id" type="text" maxlength="20" :class="['input font-mono', errors.tax_id ? 'input-error' : '']">
+                            <button type="button" class="btn-secondary whitespace-nowrap" :disabled="!form.tax_id || lookingUp" @click="fetchFromRegistry">
+                                {{ lookingUp ? t('payer.registry.fetching') : t('payer.registry.fetch') }}
+                            </button>
+                        </div>
                     </FormField>
+                    <div v-if="lookup" class="md:col-span-2 px-4 py-3 rounded-lg border text-sm"
+                         :class="lookup.found ? 'bg-brand-50 border-brand-200 text-brand-900' : 'bg-amber-50 border-amber-200 text-amber-900'">
+                        <p v-if="lookup.found" class="font-semibold">{{ t('payer.registry.from_registry') }}</p>
+                        <dl v-if="lookup.registry" class="mt-1 grid sm:grid-cols-2 gap-x-6 gap-y-1">
+                            <div v-if="lookup.registry.official_name" class="sm:col-span-2">
+                                <dt class="inline text-slate-500">{{ t('payer.registry.official_name') }}:</dt>
+                                <dd class="inline ml-1">{{ lookup.registry.official_name }}</dd>
+                            </div>
+                            <div v-if="lookup.registry.status_vat">
+                                <dt class="inline text-slate-500">{{ t('payer.registry.status_vat') }}:</dt>
+                                <dd class="inline ml-1" :class="lookup.registry.active_vat ? '' : 'font-semibold text-amber-700'">{{ lookup.registry.status_vat }}</dd>
+                            </div>
+                            <div v-if="lookup.registry.registration_date">
+                                <dt class="inline text-slate-500">{{ t('payer.registry.registered_since') }}:</dt>
+                                <dd class="inline ml-1">{{ lookup.registry.registration_date }}</dd>
+                            </div>
+                            <div v-if="lookup.registry.regon">
+                                <dt class="inline text-slate-500">{{ t('payer.registry.regon') }}:</dt>
+                                <dd class="inline ml-1 font-mono text-xs">{{ lookup.registry.regon }}</dd>
+                            </div>
+                            <div v-if="lookup.registry.krs">
+                                <dt class="inline text-slate-500">{{ t('payer.registry.krs') }}:</dt>
+                                <dd class="inline ml-1 font-mono text-xs">{{ lookup.registry.krs }}</dd>
+                            </div>
+                        </dl>
+                        <ul v-if="lookup.warnings && lookup.warnings.length" class="mt-2 space-y-1">
+                            <li v-for="warning in lookup.warnings" :key="warning">⚠ {{ t(warning) }}</li>
+                        </ul>
+                        <p v-if="lookup.existing && lookup.existing.company_name" class="mt-2">
+                            {{ t('payer.registry.existing_name', { name: lookup.existing.company_name }) }}
+                            <button v-if="lookup.existing.id" type="button" class="ml-1 font-semibold underline" @click="openRegistryExisting">{{ t('payer.open_existing') }}</button>
+                        </p>
+                        <p v-else-if="lookup.existing && !lookup.existing.visible" class="mt-2">{{ t('payer.registry.existing_hidden') }}</p>
+                    </div>
                     <FormField :label="t('field.contact_person')" :error="errors.contact_person" required>
                         <input v-model="form.contact_person" type="text" maxlength="200" :class="['input', errors.contact_person ? 'input-error' : '']">
                     </FormField>

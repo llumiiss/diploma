@@ -324,6 +324,16 @@ Lista z NIP-em, osobą kontaktową, miejscowością, liczbą osób i certyfikat�
 
 - **NIP** jest sprawdzany sumą kontrolną (można wpisać go z kreskami lub z prefiksem PL) i musi być unikalny. Przy próbie dodania istniejącego NIP-u formularz pokazuje nazwę istniejącego płatnika i odnośnik do niego — operator, który tego płatnika nie widzi, dostaje komunikat bez szczegółów.
 - Płatnika z aktywnymi certyfikatami lub osobami **nie da się zarchiwizować** (komunikat podaje liczby).
+- **Pobieranie danych z rejestru** (od 2026-10-23): w formularzu firmy obok pola NIP jest przycisk
+  **Pobierz z rejestru**. Aplikacja pyta publiczne API Białej listy podatników VAT (Ministerstwo
+  Finansów, bez klucza i bez rejestracji) i wypełnia nazwę, ulicę, kod pocztowy i miejscowość.
+  Pola, które już wypełniłeś, zostaną nadpisane dopiero po potwierdzeniu. Pod polami pojawia się
+  panel z danymi rejestrowymi: nazwa rejestrowa, status VAT, REGON, KRS i data rejestracji —
+  tych danych nie zapisujemy w bazie, służą do sprawdzenia, czy to właściwa firma. Ostrzeżenia:
+  firmy nie ma w rejestrze, nie jest czynnym podatnikiem VAT, adres jest niepełny, albo firma
+  z tym NIP-em już jest w ewidencji (osobny komunikat dla archiwum i dla firmy poza Twoim zakresem danych).
+  Odpowiedzi rejestru są pamiętane 7 dni (`registry.cache_days` w `config/intake.php`), a jedno konto
+  może zadać 20 zapytań na godzinę — to samo źródło wypełnia wnioski z poczty.
 
 ### Raporty — perspektywy Użytkownika, Płatnika i Administratora
 

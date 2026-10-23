@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Intake\CompanyRecord;
+use App\Intake\CompanyRegistry;
+use App\Intake\IntakeConfig;
+use App\Intake\RegistryException;
 use PDO;
 use PDOException;
 
@@ -17,10 +21,20 @@ final class PayerService
     public const FIELDS = ['company_name', 'contact_person', 'tax_id', 'email', 'phone', 'address_line', 'postal_code', 'city'];
 
     private readonly EventLogger $events;
+    private ?CompanyRegistry $registry;
+    private ?LookupThrottle $throttle;
 
-    public function __construct(private readonly PDO $db, ?EventLogger $events = null)
-    {
+    public function __construct(
+        private readonly PDO $db,
+        ?EventLogger $events = null,
+        ?CompanyRegistry $registry = null,
+        ?LookupThrottle $throttle = null,
+    ) {
         $this->events = $events ?? new EventLogger($db);
+        // Rejestr i licznik zapytań tworzymy dopiero przy pierwszym użyciu (lookupTaxId) —
+        // lista i zapis płatników nie mają nic do rejestru i nie powinny go dotykać.
+        $this->registry = $registry;
+        $this->throttle = $throttle;
     }
 
     /**
@@ -280,6 +294,155 @@ final class PayerService
      * @param array<string, mixed> $data
      * @return array{company_name: ?string, contact_person: ?string, tax_id: ?string, email: ?string, phone: ?string, address_line: ?string, postal_code: ?string, city: ?string}
      */
+    /**
+     * Dane firmy po NIP-ie z publicznego rejestru (Biała lista podatników VAT), gotowe do wstawienia
+     * w formularz. Nic nie zapisuje — decyzję podejmuje operator, tak samo jak przy wnioskach z poczty.
+     *
+     * Zwracamy też, czy taki NIP jest już w ewidencji: bez tego operator wypełniłby formularz,
+     * kliknął „Zapisz” i dopiero wtedy dowiedział się o duplikacie (NIP jest unikalny w całej bazie).
+     *
+     * @return array{
+     *     found: bool,
+     *     tax_id: string,
+     *     company: array<string, string>,
+     *     registry: array<string, string|null|bool>|null,
+     *     existing: array<string, mixed>|null,
+     *     warnings: list<string>
+     * }
+     *
+     * @throws ServiceException
+     */
+    public function lookupTaxId(Actor $actor, string $taxId): array
+    {
+        if (!$actor->can('payers.create') && !$actor->can('payers.update')) {
+            $actor->authorize('payers.update');
+        }
+
+        $digits = (string) preg_replace('/\D/', '', $taxId);
+        if (preg_match('/^\d{10}$/', $digits) !== 1 || !Validator::isValidTaxId($digits)) {
+            throw ServiceException::validation(['tax_id' => \__('validation.tax_id')]);
+        }
+
+        if (!$this->lookupThrottle()->allow('payer-registry-' . $actor->id)) {
+            throw ServiceException::conflict(\__('payer.registry.rate_limited'));
+        }
+
+        try {
+            $record = $this->companyRegistry()->lookupNip($digits);
+        } catch (RegistryException $e) {
+            throw ServiceException::conflict(\__('payer.registry.unavailable'), ['detail' => $e->getMessage()]);
+        }
+
+        $existing = $this->findByTaxId($actor, $digits);
+        $warnings = [];
+
+        if ($existing !== null) {
+            $warnings[] = $existing['archived'] ? 'payer.registry.warning.exists_archived' : 'payer.registry.warning.exists';
+        }
+
+        if ($record === null) {
+            return [
+                'found'    => false,
+                'tax_id'   => $digits,
+                'company'  => ['tax_id' => $digits],
+                'registry' => null,
+                'existing' => $existing,
+                'warnings' => array_merge($warnings, ['payer.registry.warning.not_found']),
+            ];
+        }
+
+        if (!$record->isActiveVatPayer()) {
+            $warnings[] = 'payer.registry.warning.vat_inactive';
+        }
+
+        if ($record->addressLine === null || $record->city === null) {
+            $warnings[] = 'payer.registry.warning.address_incomplete';
+        }
+
+        return [
+            'found'    => true,
+            'tax_id'   => $digits,
+            'company'  => self::formValues($record, $digits),
+            'registry' => [
+                'official_name'     => $record->officialName,
+                'status_vat'        => $record->statusVat,
+                'active_vat'        => $record->isActiveVatPayer(),
+                'regon'             => $record->regon,
+                'krs'               => $record->krs,
+                'registration_date' => $record->registrationDate,
+                'raw_address'       => $record->rawAddress,
+            ],
+            'existing' => $existing,
+            'warnings' => $warnings,
+        ];
+    }
+
+    /**
+     * Pola formularza płatnika wypełnione danymi z rejestru. Pustych wartości nie wstawiamy,
+     * żeby nie czyścić tego, co operator już wpisał.
+     *
+     * @return array<string, string>
+     */
+    private static function formValues(CompanyRecord $record, string $taxId): array
+    {
+        $values = [
+            'company_name' => $record->name,
+            'tax_id'       => $taxId,
+            'address_line' => $record->addressLine,
+            'postal_code'  => $record->postalCode,
+            'city'         => $record->city,
+        ];
+
+        return array_filter($values, static fn (?string $value): bool => $value !== null && $value !== '');
+    }
+
+    /**
+     * Płatnik o tym NIP-ie, jeśli już jest w ewidencji. Nazwę pokazujemy tylko kontu, które i tak
+     * widzi ten rekord — inaczej formularz zdradzałby cudze dane (ta sama zasada co w assertTaxIdAvailable).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function findByTaxId(Actor $actor, string $taxId): ?array
+    {
+        $stmt = $this->db->prepare('SELECT id, company_name, archived_at FROM payers WHERE tax_id = :tax_id LIMIT 1');
+        $stmt->execute(['tax_id' => $taxId]);
+        $row = $stmt->fetch();
+
+        if ($row === false) {
+            return null;
+        }
+
+        $id = (int) $row['id'];
+        $visible = $actor->seesAllRecords() || $this->findVisibleQuietly($actor, $id);
+
+        return [
+            'id'           => $visible ? $id : null,
+            'company_name' => $visible ? (string) $row['company_name'] : null,
+            'archived'     => $row['archived_at'] !== null,
+            'visible'      => $visible,
+        ];
+    }
+
+    private function findVisibleQuietly(Actor $actor, int $id): bool
+    {
+        try {
+            $this->findVisible($actor, $id, true);
+
+            return true;
+        } catch (ServiceException) {
+            return false;
+        }
+    }
+
+    private function companyRegistry(): CompanyRegistry
+    {
+        return $this->registry ??= IntakeConfig::registry();
+    }
+
+    private function lookupThrottle(): LookupThrottle
+    {
+        return $this->throttle ??= new LookupThrottle(dirname(__DIR__, 2) . '/storage/cache/lookups');
+    }
     public function validate(array $data): array
     {
         $v = new Validator($data);
