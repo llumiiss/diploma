@@ -67,7 +67,7 @@ final class CompositeCompanyRegistry implements CompanyRegistry
         }
 
         if (!$asked) {
-            throw new RegistryException('Żaden rejestr nie obsługuje numeru ' . $taxId . ' — wpisz dane firmy ręcznie.');
+            throw new RegistryException(\__('registry.error.unsupported', ['number' => $taxId]));
         }
 
         return null;

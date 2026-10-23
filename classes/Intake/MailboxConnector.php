@@ -21,7 +21,7 @@ final class MailboxConnector
     {
         $user = trim((string) ($imap['username'] ?? ''));
         if ($user === '') {
-            throw new ImapException('Brak nazwy użytkownika skrzynki IMAP (imap.username w config/intake.local.php).');
+            throw new ImapException(\__('imap.error.no_username'));
         }
 
         $transport ??= StreamImapTransport::open(
@@ -39,13 +39,13 @@ final class MailboxConnector
                 try {
                     $token = (new OAuth2TokenProvider($oauth2))->accessToken();
                 } catch (RuntimeException $e) {
-                    throw new ImapException('Nie udało się pobrać tokenu OAuth2 dla skrzynki IMAP: ' . $e->getMessage());
+                    throw new ImapException(\__('imap.error.oauth2_failed', ['message' => $e->getMessage()]));
                 }
                 $client->authenticateXOAuth2($user, $token);
             } else {
                 $password = (string) ($imap['password'] ?? '');
                 if ($password === '') {
-                    throw new ImapException('Brak hasła skrzynki IMAP (imap.password w config/intake.local.php).');
+                    throw new ImapException(\__('imap.error.no_password'));
                 }
                 $client->loginPassword($user, $password);
             }

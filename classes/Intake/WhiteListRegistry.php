@@ -46,7 +46,7 @@ final class WhiteListRegistry implements CompanyRegistry
     {
         $nip = (string) preg_replace('/\D/', '', $nip);
         if (preg_match('/^\d{10}$/', $nip) !== 1) {
-            throw new RegistryException('Nieprawidłowy NIP: ' . $nip);
+            throw new RegistryException(\__('registry.error.invalid_nip', ['nip' => $nip]));
         }
 
         $date ??= new DateTimeImmutable('now', new DateTimeZone(date_default_timezone_get()));
@@ -55,20 +55,20 @@ final class WhiteListRegistry implements CompanyRegistry
         [$status, $body] = ($this->transport)($url);
 
         if ($status === 429) {
-            throw new RegistryException('Rejestr odrzucił zapytanie (limit zapytań).');
+            throw new RegistryException(\__('registry.error.rate_limited'));
         }
         if ($status >= 500 || $status === 0) {
-            throw new RegistryException('Rejestr jest niedostępny (HTTP ' . $status . ').');
+            throw new RegistryException(\__('registry.error.unavailable', ['status' => $status]));
         }
 
         /** @var mixed $data */
         $data = json_decode($body, true);
         if ($status >= 400) {
             $message = is_array($data) && isset($data['message']) && is_string($data['message']) ? $data['message'] : 'HTTP ' . $status;
-            throw new RegistryException('Rejestr odrzucił zapytanie: ' . $message);
+            throw new RegistryException(\__('registry.error.rejected', ['message' => $message]));
         }
         if (!is_array($data) || !is_array($data['result'] ?? null)) {
-            throw new RegistryException('Nieczytelna odpowiedź rejestru.');
+            throw new RegistryException(\__('registry.error.unreadable'));
         }
 
         $subject = $data['result']['subject'] ?? null;
