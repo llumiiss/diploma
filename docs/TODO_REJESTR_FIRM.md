@@ -93,18 +93,27 @@ Największa luka: przy ręcznym dodawaniu firmy operator wpisuje wszystko sam.
       zapamiętany brak firmy, błąd nie trafia do pamięci, wygaśnięcie wpisu, uszkodzony plik, osobne
       liczniki kont, reset okna
 
-## Krok 4 — kolejne otwarte źródła za tym samym interfejsem
+## Krok 4 — kolejne otwarte źródła ✅ CZĘŚCIOWO (2026-10-23)
 
-- [ ] `CompositeCompanyRegistry` — pyta po kolei, pierwsza odpowiedź wygrywa, błąd jednego źródła
-      nie przerywa łańcucha
-- [ ] **VIES** (`ec.europa.eu/taxation_customs/vies`, REST, bez klucza) — firmy z UE, bo dziś obsługujemy
-      tylko polski NIP; pole „kraj” przy NIP-ie
-- [ ] **KRS** (`api-krs.ms.gov.pl`, bez klucza) — dane rejestrowe spółki po numerze KRS z Białej listy
-      (forma prawna, adres, reprezentacja)
-- [ ] **CEIDG v3** (darmowy token) — jednoosobowe działalności, których Biała lista opisuje szczątkowo
-- [ ] **GUS BIR/REGON** (darmowy klucz) — PKD i forma prawna
-- [ ] w `config/intake.php`: które źródła włączone i w jakiej kolejności; klucze w `intake.local.php`
-- [ ] testy każdego klienta na atrapach transportu + test kolejności w `CompositeCompanyRegistry`
+- [x] `CompositeCompanyRegistry` — pyta tylko te źródła, które obsługują dany numer (`supports()`
+      w interfejsie `CompanyRegistry`); awaria jednego nie przerywa łańcucha, a gdy nikt nie
+      odpowiedział, wraca ostatni błąd (nie „brak firmy”)
+- [x] **VIES** (`ec.europa.eu/taxation_customs/vies/rest-api`, bez klucza) — firmy z UE po numerze
+      VAT z kodem kraju; osobnego pola „kraj” nie trzeba, bo `Validator::isValidTaxId` już przyjmuje
+      numery unijne, a `supports()` kieruje polski NIP do Białej listy. Sprawdzone na żywo:
+      IE6388047V (Google Ireland) wraca z nazwą i adresem, DE811907980 jest ważny, ale Niemcy nie
+      ujawniają danych („---” → puste pola), DE000000000 nieważny
+- [ ] **KRS** (`api-krs.ms.gov.pl`, bez klucza) — **nie jest źródłem po NIP-ie**: API przyjmuje tylko
+      numer KRS, więc nie pasuje do `CompanyRegistry`. Sens ma jako **uzupełnienie** po tym, jak Biała
+      lista zwróci KRS (forma prawna, reprezentacja) — osobny interfejs, osobne zadanie
+- [ ] **CEIDG v3** — wymaga darmowego tokenu z wnioskiem do ministerstwa; **blokada po stronie autora**:
+      bez tokenu nie da się ani wdrożyć, ani przetestować na żywo
+- [ ] **GUS BIR/REGON** — wymaga darmowego klucza z rejestracji w GUS; **blokada po stronie autora**
+- [x] w `config/intake.php`: `registry.sources` (kolejność pytania, domyślnie `[whitelist, vies]`),
+      `registry.vies_base_url`; klucze przyszłych źródeł trafią do `intake.local.php`
+- [x] 18 testów: `ViesRegistryTest` (obsługiwane numery, prawdziwa odpowiedź VIES, nieujawnione dane,
+      awarie, limit, adres w kilku układach) i `CompositeCompanyRegistryTest` (kierowanie, awaria
+      jednego źródła, numer bez obsługi)
 
 ## Krok 5 — rejestr w imporcie CSV/XML
 

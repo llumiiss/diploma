@@ -240,7 +240,7 @@ final class PayerServiceTest extends IntegrationTestCase
             $this->serviceWithRegistry($registry)->lookupTaxId($operator, '1234567890');
             $this->fail('oczekiwano ServiceException');
         } catch (ServiceException $e) {
-            $this->assertArrayHasKey('tax_id', $e->errors());
+            $this->assertArrayHasKey('tax_id', $e->errors);
         }
 
         $this->assertSame([], $registry->queries);

@@ -871,8 +871,24 @@ z 200 płatnikami oznaczałby 200 zapytań do Ministerstwa Finansów.
 (`7740001454`) i Allegro (`5252674798`) wracają z nazwą, statusem VAT, REGON-em, KRS-em i adresem;
 `deploy-pull.php` sprawdzony na prawdziwej paczce z GitHuba w trybie podglądu.
 
-**Czeka na autora**: 9 nowych testów integracyjnych `PayerServiceTest` (potrzebny MySQL — w czasie
-prac usługi Laragona były zatrzymane) i klik w przycisk na produkcji po wdrożeniu.
+**Krok 4 — firmy z Unii.** Interfejs `CompanyRegistry` dostał `supports()`, a `CompositeCompanyRegistry`
+kieruje numer do źródła, które go obsługuje: polski NIP → Biała lista (więcej danych), numer VAT
+z innego kraju Unii → **VIES** Komisji Europejskiej (`ViesRegistry`, publiczne API bez klucza).
+Źródła i ich kolejność ustawia `registry.sources` w `config/intake.php`. Formularz firmy przyjmuje
+teraz także numery unijne, bo `Validator::isValidTaxId` już je znał.
+
+Na sprawdzeniu na żywo wyszedł błąd, którego testy nie mogły wykryć: pisałem klienta z założeniem,
+że VIES zwraca pole `isValid`, a zwraca `valid` — wszystkie numery wychodziły „nieważne”. Poprawione,
+a prawdziwa odpowiedź (IE6388047V) jest teraz testem regresji. Przy okazji `titleCase()` nie psuje
+już członów z cyfrą („3RD FLOOR” → „3rd Floor”, nie „3Rd Floor”).
+
+Dla kompletności: **KRS** (`api-krs.ms.gov.pl`) nie jest źródłem po NIP-ie — przyjmuje tylko numer
+KRS, więc pasuje jako uzupełnienie po odpowiedzi Białej listy, nie jako kolejne `CompanyRegistry`.
+**CEIDG v3** i **GUS BIR/REGON** wymagają darmowych, ale wnioskowanych kluczy — to zadanie dla autora.
+
+**Stan prac**: 380/380 testów zielonych z integracyjnymi (MySQL uruchomiony w czasie tej sesji),
+PHPStan level 5 bez błędów, PHP-CS-Fixer 0 z 208 plików. Do zrobienia zostają kroki 5 i 6 z listy
+`docs/TODO_REJESTR_FIRM.md` oraz klik w przycisk na produkcji po wdrożeniu.
 
 ---
 ## Załącznik A — Oficjalny opis pracy (dosłownie, przekazany 2026-09-16)

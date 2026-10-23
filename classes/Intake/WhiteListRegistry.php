@@ -32,6 +32,16 @@ final class WhiteListRegistry implements CompanyRegistry
         $this->transport = $transport ?? $this->defaultTransport(...);
     }
 
+    /**
+     * Biała lista zna wyłącznie polskich podatników: dziesięć cyfr, opcjonalnie z prefiksem PL.
+     */
+    public function supports(string $taxId): bool
+    {
+        $normalized = strtoupper((string) preg_replace('/[\s\-.]/', '', $taxId));
+
+        return preg_match('/^(?:PL)?\d{10}$/', $normalized) === 1;
+    }
+
     public function lookupNip(string $nip, ?DateTimeImmutable $date = null): ?CompanyRecord
     {
         $nip = (string) preg_replace('/\D/', '', $nip);
@@ -105,10 +115,10 @@ final class WhiteListRegistry implements CompanyRegistry
         }
 
         if (preg_match('/^(.*),\s*(\d{2}-\d{3})\s+(.+)$/u', $raw, $m) === 1) {
-            return [self::title(trim($m[1])), $m[2], self::title(trim($m[3]))];
+            return [self::titleCase(trim($m[1])), $m[2], self::titleCase(trim($m[3]))];
         }
 
-        return [self::title($raw), null, null];
+        return [self::titleCase($raw), null, null];
     }
 
     /**
@@ -140,10 +150,30 @@ final class WhiteListRegistry implements CompanyRegistry
         ]));
     }
 
-    private static function title(string $value): string
+    /**
+     * Wszystkie litery wielkie → zapis normalny; tekst już pisany normalnie zostaje bez zmian.
+     * Publiczne, bo tak samo traktujemy adresy z VIES (ViesRegistry) — rejestry zwracają kapitaliki,
+     * a w formularzu mają wyglądać jak dane wpisane ręcznie.
+     */
+    public static function titleCase(string $value): string
     {
-        // Wszystkie litery wielkie → zapis normalny; adres już pisany normalnie zostaje.
-        return $value === mb_strtoupper($value) ? mb_convert_case(mb_strtolower($value), MB_CASE_TITLE, 'UTF-8') : $value;
+        if ($value !== mb_strtoupper($value)) {
+            return $value;
+        }
+
+        $words = preg_split('/(\s+)/u', mb_strtolower($value), -1, PREG_SPLIT_DELIM_CAPTURE) ?: [];
+
+        foreach ($words as $index => $word) {
+            // Człony z cyfrą zostają małymi literami: „3RD FLOOR” → „3rd Floor”, „12B” → „12b”,
+            // bo „3Rd” i „12B” w adresie wyglądają jak błąd.
+            if (preg_match('/\d/u', $word) === 1) {
+                continue;
+            }
+
+            $words[$index] = mb_convert_case($word, MB_CASE_TITLE, 'UTF-8');
+        }
+
+        return implode('', $words);
     }
 
     /**

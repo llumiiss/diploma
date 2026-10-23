@@ -318,10 +318,13 @@ final class PayerService
             $actor->authorize('payers.update');
         }
 
-        $digits = (string) preg_replace('/\D/', '', $taxId);
-        if (preg_match('/^\d{10}$/', $digits) !== 1 || !Validator::isValidTaxId($digits)) {
+        // Polski NIP i numer VAT z innego kraju Unii — ten sam warunek co przy zapisie płatnika.
+        $normalized = Validator::normalizeTaxId($taxId);
+        if (!Validator::isValidTaxId($normalized)) {
             throw ServiceException::validation(['tax_id' => \__('validation.tax_id')]);
         }
+
+        $digits = $normalized;
 
         if (!$this->lookupThrottle()->allow('payer-registry-' . $actor->id)) {
             throw ServiceException::conflict(\__('payer.registry.rate_limited'));

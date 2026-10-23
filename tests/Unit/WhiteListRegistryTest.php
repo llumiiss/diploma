@@ -116,4 +116,15 @@ final class WhiteListRegistryTest extends TestCase
         $this->assertSame('NovaTech Sp. z o.o.', WhiteListRegistry::prettyName('NovaTech Sp. z o.o.'));
         $this->assertSame('', WhiteListRegistry::prettyName(''));
     }
+    /**
+     * Rejestry zwracają kapitaliki; człony z cyfrą zostają małe, żeby adres nie wyglądał jak błąd.
+     */
+    public function testTitleCaseKeepsTokensWithDigitsLowercase(): void
+    {
+        $this->assertSame('3rd Floor, Gordon House, Dublin 4', WhiteListRegistry::titleCase('3RD FLOOR, GORDON HOUSE, DUBLIN 4'));
+        $this->assertSame('Wierzbięcice 1b', WhiteListRegistry::titleCase('WIERZBIĘCICE 1B'));
+        $this->assertSame('Chemików 7', WhiteListRegistry::titleCase('CHEMIKÓW 7'));
+        $this->assertSame('Dom Handlowy Stary', WhiteListRegistry::titleCase('Dom Handlowy Stary'), 'tekst pisany normalnie zostaje bez zmian');
+    }
+
 }
