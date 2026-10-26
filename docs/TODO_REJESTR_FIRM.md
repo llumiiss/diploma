@@ -23,18 +23,18 @@ Repozytorium: `github.com/llumiiss/diploma`, gałąź `master`.
 
 ---
 
-## Krok 0 — wdrożyć obecny stan na produkcję ⏳ W TOKU
+## Krok 0 — wdrożyć obecny stan na produkcję ✅ ZROBIONE (2026-10-26)
 
 Produkcja ma kod Etapu 9 i 10 (sprawdzone: `api/registrations.php`, `api/notifications.php`,
 `api/preferences.php` odpowiadają 401, `verify-email.php` i `set-password.php` działają), ale
 **pliki językowe są sprzed 2026-10-23** — po przełączeniu na hiszpański sekcja „hero” na stronie
 startowej jest po angielsku („Daily renewal scanner”).
 
-- [ ] wgrać przez FTP paczkę `deploy-2026-10-23.zip`: `lang/es.php`, `lang/de.php`, `lang/uk.php`,
+- [x] wgrać przez FTP paczkę `deploy-2026-10-23.zip`: `lang/es.php`, `lang/de.php`, `lang/uk.php`,
       `deploy-pull.php`, `classes/Deploy/` — i dopisać `pull_token` do `config/deploy.local.php`
       (od tego momentu kolejne wdrożenia idą bez FTP)
-- [ ] sprawdzić `index.php?lang=es`, `?lang=de`, `?lang=uk` — sekcja „hero” i stopka w wybranym języku
-- [ ] sprawdzić po zalogowaniu jeden ekran panelu w każdym języku (np. „Certyfikaty” i „Zadania”)
+- [x] sprawdzić `index.php?lang=es`, `?lang=de`, `?lang=uk` — sekcja „hero” i stopka w wybranym języku
+- [x] sprawdzić po zalogowaniu jeden ekran panelu w każdym języku (np. „Certyfikaty” i „Zadania”)
 
 Hasła FTP nie przechodzą przez agenta — pliki wgrywa autor (FileZilla, `ftpupload.net`, katalog `htdocs`).
 
@@ -139,9 +139,10 @@ Największa luka: przy ręcznym dodawaniu firmy operator wpisuje wszystko sam.
       i `imap.*` w pięciu językach (1334 klucze w każdym pliku). Polskie brzmienie zostało identyczne,
       więc testy sprawdzające fragmenty komunikatów przechodzą bez zmian; sprawdzone, że ten sam błąd
       wychodzi po polsku, angielsku, hiszpańsku, niemiecku i ukraińsku
-- [ ] **czeka na wdrożenie przez autora** (FTP): sprawdzenie na produkcji, czy wychodzące HTTPS do
-      `wl-api.mf.gov.pl` i `ec.europa.eu` działa na InfinityFree — przycisk „Pobierz z rejestru” na żywo.
-      Stan na 2026-10-23: produkcja ma jeszcze stare pliki językowe i nie ma `deploy-pull.php`
+- [x] sprawdzone na produkcji 2026-10-26 przez autora: logowanie oraz przycisk „Pobierz z rejestru”
+      po polskim NIP-ie działają — InfinityFree przepuszcza wychodzące HTTPS do `wl-api.mf.gov.pl`
+      i `api-krs.ms.gov.pl`. Numery unijne (VIES) odpowiadają, ale nie wypełniają wszystkich pól —
+      opis niżej w „Do następnej poprawki”
 - [x] `docs/MAPA_PROJEKTU.md` (dziennik zmian), `docs/INSTRUKCJA_OBSLUGI.md` (przycisk w firmach,
       uzupełnianie w imporcie), `docs/DEPLOY_INFINITYFREE.md` §8a, `CLAUDE.md` (zasady rejestrów
       i wdrożeń). `docs/BAZA_DANYCH.md` bez zmian — rejestry nie dodają kolumn
@@ -149,6 +150,27 @@ Największa luka: przy ręcznym dodawaniu firmy operator wpisuje wszystko sam.
       PHP-CS-Fixer 0 z 208 plików, `npm run css` bez zmian (użyte klasy już były w arkuszu)
 
 ---
+
+## Do następnej poprawki — firmy zagraniczne (VIES)
+
+Zgłoszone przez autora 2026-10-26 po sprawdzeniu na produkcji: pobieranie danych firmy
+zagranicznej (przykład: numer niemiecki) „nie działa do końca”. Nie jest to awaria — tak odpowiada
+VIES. Uzgodnione z autorem: **na razie nic z tym nie robimy**.
+
+Co się dzieje: VIES potwierdza, że numer jest ważny, ale część państw nie ujawnia nazwy ani adresu
+podatnika i zwraca `---` (Niemcy, Hiszpania i Włochy konsekwentnie, inne wyrywkowo). `ViesRegistry`
+tłumaczy `---` na puste pole, więc formularz dostaje potwierdzenie numeru i nic więcej, a operator
+widzi pustą nazwę. Sprawdzone na żywo 2026-10-23: `DE811907980` ważny bez danych, `IE6388047V`
+(Google Ireland) z nazwą i adresem.
+
+Do zrobienia, gdy wrócimy do tematu:
+
+- [ ] osobny komunikat w formularzu: „numer VAT potwierdzony, ale rejestr tego kraju nie udostępnia
+      nazwy i adresu — wpisz je ręcznie” zamiast dzisiejszego ostrzeżenia o niepełnym adresie;
+      nowy klucz `payer.registry.*` w pięciu plikach językowych
+- [ ] nie pokazywać panelu danych rejestrowych, gdy wszystkie pola poza samym numerem są puste
+- [ ] rozważyć drugie źródło dla firm z UE (np. GLEIF LEI — publiczne, bez klucza, ma nazwę i adres
+      po numerze LEI, ale nie po numerze VAT, więc wymagałoby dodatkowego pola w formularzu)
 
 ## Zasady na czas tych prac
 

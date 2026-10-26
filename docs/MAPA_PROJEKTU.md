@@ -918,6 +918,46 @@ z rejestru” na produkcji, żeby potwierdzić, że InfinityFree przepuszcza wyc
 `wl-api.mf.gov.pl` i `ec.europa.eu`; (3) darmowe, ale wnioskowane klucze do CEIDG v3 i GUS BIR/REGON,
 jeśli chcemy te dwa źródła.
 
+### Wdrożenie na produkcję i awaria połączenia z bazą (2026-10-26)
+
+Autor wgrał przez FTP paczkę z tłumaczeniami i `deploy-pull.php`, dopisał `pull_token` do
+`config/deploy.local.php` i uruchomił pierwsze wdrożenie bez FTP. Wdrożenie przeszło (215 plików
+bez zmian, 86 pominiętych), ale **logowanie przestało działać**: `index.php` odpowiadał 200,
+a `login.php` i całe `api/` zwracały HTTP 500.
+
+**Przyczyna**: lista plików chronionych w `CodeDeployer` obejmowała tylko `config/*.local.php`,
+a `config/database.php` jest w repozytorium z ustawieniami lokalnymi (`localhost`, `root`, puste
+hasło) i jednocześnie trzymał na hostingu prawdziwe dane logowania do MySQL. Wdrożenie nadpisało
+go wersją z GitHuba, a `App\Database` rzuca wyjątek przy nieudanym połączeniu — stąd 500 wszędzie,
+gdzie potrzebna jest baza, i poprawna strona główna, która bazy nie rusza. Żadne dane nie zginęły.
+
+**Naprawa** (commit `aa17092`): `config/database.php` na liście chronionych wraz z komentarzem
+opisującym ten przypadek; sam plik czyta teraz opcjonalny `config/database.local.php` (gitignored)
+i scala go z ustawieniami lokalnymi, więc dane różniące się między serwerami mieszkają poza
+repozytorium — tak jak poczta i tokeny wdrożeniowe. `CERTISUB_DB_NAME` dalej ma pierwszeństwo nad
+nazwą bazy (tego używają testy). Dołożony wzór `config/database.local.php.example` i test
+`testNeverOverwritesTheDatabaseConfiguration`, który sprawdza, że wdrożenie zostawia produkcyjny
+plik nietknięty, a przy okazji że `config/mail.php` i `config/intake.php` nadal się wdrażają.
+Wniosek na przyszłość: **każdy** plik konfiguracyjny różniący się między serwerami musi być albo
+chroniony, albo wyniesiony do `*.local.php` — obecność w repozytorium nie znaczy, że wolno go
+nadpisać. Przy tym samym wdrożeniu nadpisany został też `config/auth.php` (m.in.
+`self_registration`); zostaje wdrażalny, bo są w nim tylko opcje, nie sekrety.
+
+**Sprawdzone na produkcji po naprawie** (autor, 2026-10-26): logowanie działa, przycisk
+„Pobierz z rejestru” po polskim NIP-ie wypełnia dane — czyli InfinityFree przepuszcza wychodzące
+HTTPS do `wl-api.mf.gov.pl` i `api-krs.ms.gov.pl`, co było ostatnią niewiadomą kroku 6 z
+`docs/TODO_REJESTR_FIRM.md`. Zgłoszona jedna rzecz do późniejszej poprawy: firmy zagraniczne
+(przykład niemiecki) nie uzupełniają wszystkich pól. To nie awaria — VIES potwierdza numer, ale
+Niemcy, Hiszpania i Włochy nie ujawniają nazwy ani adresu (`---` w odpowiedzi). Uzgodnione, że na
+razie zostaje bez zmian; co zrobić, gdy wrócimy do tematu, opisuje sekcja „Do następnej poprawki”
+w `docs/TODO_REJESTR_FIRM.md`.
+
+**Stan prac**: 394/394 testy zielone z integracyjnymi, PHPStan level 5 bez błędów, PHP-CS-Fixer
+0 z 210 plików.
+
+**Czeka na autora**: darmowe, ale wnioskowane klucze do CEIDG v3 i GUS BIR/REGON, jeśli chcemy
+te dwa źródła.
+
 ---
 ## Załącznik A — Oficjalny opis pracy (dosłownie, przekazany 2026-09-16)
 
