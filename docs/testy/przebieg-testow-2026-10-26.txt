@@ -1,0 +1,51 @@
+Pełny przebieg testów automatycznych — CertiSub Assistant
+Data: 2026-10-26, gałąź master
+Polecenie: $env:RUN_INTEGRATION_TESTS=1; composer test
+Środowisko: PHP 8.3.30, MySQL 8.4.3 (Laragon), PHPUnit 11.5.55
+
+=== 1. Pełny przebieg (jednostkowe + integracyjne) ===
+PHPUnit 11.5.55 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.3.30
+Configuration: C:\laragon\www\assistent_subscription\phpunit.xml.dist
+
+...............................................................  63 / 394 ( 15%)
+............................................................... 126 / 394 ( 31%)
+............................................................... 189 / 394 ( 47%)
+............................................................... 252 / 394 ( 63%)
+............................................................... 315 / 394 ( 79%)
+............................................................... 378 / 394 ( 95%)
+................                                                394 / 394 (100%)
+
+Time: 00:41.502, Memory: 20.00 MB
+
+OK (394 tests, 19486 assertions)
+
+=== 2. Sam zestaw jednostkowy (bez bazy MySQL) ===
+PHPUnit 11.5.55 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.3.30
+Configuration: C:\laragon\www\assistent_subscription\phpunit.xml.dist
+
+...............................................................  63 / 209 ( 30%)
+............................................................... 126 / 209 ( 60%)
+............................................................... 189 / 209 ( 90%)
+....................                                            209 / 209 (100%)
+
+Time: 00:06.054, Memory: 16.00 MB
+
+OK (209 tests, 18369 assertions)
+
+=== 3. Sam zestaw integracyjny (jednorazowa baza assistent_subscriptions_test) ===
+PHPUnit 11.5.55 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.3.30
+Configuration: C:\laragon\www\assistent_subscription\phpunit.xml.dist
+
+...............................................................  63 / 185 ( 34%)
+............................................................... 126 / 185 ( 68%)
+...........................................................     185 / 185 (100%)
+
+Time: 00:35.566, Memory: 16.00 MB
+
+OK (185 tests, 1117 assertions)

@@ -1,0 +1,231 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 297 210" width="1782" height="1260" font-family="Arial, Helvetica, sans-serif">
+<rect width="297" height="210" fill="#ffffff"/>
+<text x="8" y="10" font-size="5" font-weight="bold" fill="#1e3a5f">CertiSub Assistant — diagram ERD bazy assistent_subscriptions (stan po Etapie 10)</text>
+<rect x="121.0" y="115.0" width="56.0" height="80.0" fill="none" stroke="#969696" stroke-width="0.3" stroke-dasharray="1.5 1.2"/><text x="122.5" y="118.0" font-size="2.6" font-style="italic" fill="#6e6e6e">Logowanie i ustawienia</text>
+<polyline points="33,54.2 33,66" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="30.80" y="57.20" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<text x="33.60" y="64.60" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="58,36 66,36" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="59.40" y="38.20" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<text x="61.30" y="35.40" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="58,76 66,76" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="59.40" y="78.20" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<text x="61.30" y="75.40" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="124,34 116,34" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="119.30" y="33.40" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<text x="117.40" y="36.20" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="66,52 62.5,52 62.5,60 66,60" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="56.20" y="51.40" font-size="2.4" font-weight="bold" fill="#141414">0..1</text>
+<text x="61.30" y="59.40" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="91,83 91,100" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="88.80" y="86.00" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<text x="91.60" y="98.60" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="124,56 120,56 120,122 116,122" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="119.30" y="55.40" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<text x="117.40" y="124.20" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="149,24 149,17 4,17 4,84 8,84" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="149.60" y="22.60" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<text x="-1.80" y="83.40" font-size="2.4" font-weight="bold" fill="#141414">0..1</text>
+<polyline points="100,24 100,19.5 207,19.5 207,24" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="100.60" y="22.60" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<text x="207.60" y="22.60" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="116,111 177,111 177,52 182,52" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="117.40" y="113.20" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<text x="177.30" y="51.40" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="182,118 179.5,118 179.5,58 182,58" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="172.20" y="117.40" font-size="2.4" font-weight="bold" fill="#141414">0..1</text>
+<text x="177.30" y="57.40" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="149,60.6 149,72" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="146.80" y="63.60" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<text x="149.60" y="70.60" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="207,63.8 207,72" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="204.80" y="66.80" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<text x="207.60" y="70.60" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="232,77.5 240,77.5" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="233.40" y="79.70" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<text x="235.30" y="76.90" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<polyline points="207,130.2 207,140" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="204.80" y="133.20" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<text x="207.60" y="138.60" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<polyline points="232,145.5 265,145.5 265,99" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="233.40" y="147.70" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<text x="262.80" y="102.00" font-size="2.4" font-weight="bold" fill="#141414">1</text>
+<polyline points="58,130 62,130 62,80 66,80" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="59.40" y="132.20" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<text x="56.20" y="79.40" font-size="2.4" font-weight="bold" fill="#141414">0..1</text>
+<polyline points="33,106 33,93" fill="none" stroke="#464646" stroke-width="0.28"/>
+<text x="33.60" y="104.60" font-size="2.4" font-weight="bold" fill="#141414">N</text>
+<text x="30.80" y="96.00" font-size="2.4" font-weight="bold" fill="#141414">0..1</text>
+<rect x="8" y="24" width="50.0" height="30.200000000000003" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="8" y="24" width="50.0" height="4.6" fill="#1e3a5f"/><text x="9.5" y="27.3" font-size="2.8" font-weight="bold" fill="#ffffff">payers</text>
+<rect x="8.15" y="28.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="9.2" y="30.900000000000002" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="15.5" y="30.900000000000002" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="9.2" y="34.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="34.1" font-size="2.4" font-weight="normal" fill="#141414">company_name</text>
+<text x="9.2" y="37.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="37.3" font-size="2.4" font-weight="normal" fill="#141414">contact_person</text>
+<text x="9.2" y="40.5" font-size="2.3" font-weight="normal" fill="#3c3c3c">UK</text><text x="15.5" y="40.5" font-size="2.4" font-weight="normal" fill="#141414">tax_id</text>
+<text x="9.2" y="43.7" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="43.7" font-size="2.4" font-weight="normal" fill="#141414">email</text>
+<text x="9.2" y="46.9" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="46.9" font-size="2.4" font-weight="normal" fill="#141414">city</text>
+<text x="9.2" y="50.1" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="15.5" y="50.1" font-size="2.4" font-weight="normal" fill="#141414">created_by_user_id</text>
+<text x="9.2" y="53.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="53.3" font-size="2.4" font-weight="normal" fill="#141414">archived_at</text>
+<rect x="8" y="66" width="50.0" height="27.0" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="8" y="66" width="50.0" height="4.6" fill="#1e3a5f"/><text x="9.5" y="69.3" font-size="2.8" font-weight="bold" fill="#ffffff">beneficiaries</text>
+<rect x="8.15" y="70.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="9.2" y="72.89999999999999" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="15.5" y="72.89999999999999" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="9.2" y="76.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="76.1" font-size="2.4" font-weight="normal" fill="#141414">first_name</text>
+<text x="9.2" y="79.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="79.3" font-size="2.4" font-weight="normal" fill="#141414">last_name</text>
+<text x="9.2" y="82.49999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="82.49999999999999" font-size="2.4" font-weight="normal" fill="#141414">email</text>
+<text x="9.2" y="85.69999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="15.5" y="85.69999999999999" font-size="2.4" font-weight="normal" fill="#141414">payer_id (NOT NULL)</text>
+<text x="9.2" y="88.89999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="15.5" y="88.89999999999999" font-size="2.4" font-weight="normal" fill="#141414">created_by_user_id</text>
+<text x="9.2" y="92.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="92.1" font-size="2.4" font-weight="normal" fill="#141414">archived_at</text>
+<rect x="8" y="106" width="50.0" height="43.00000000000001" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="8" y="106" width="50.0" height="4.6" fill="#1e3a5f"/><text x="9.5" y="109.3" font-size="2.8" font-weight="bold" fill="#ffffff">registration_drafts</text>
+<rect x="8.15" y="110.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="9.2" y="112.89999999999999" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="15.5" y="112.89999999999999" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="9.2" y="116.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="116.1" font-size="2.4" font-weight="normal" fill="#141414">status</text>
+<text x="9.2" y="119.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="119.3" font-size="2.4" font-weight="normal" fill="#141414">source</text>
+<text x="9.2" y="122.49999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c">UK</text><text x="15.5" y="122.49999999999999" font-size="2.4" font-weight="normal" fill="#141414">message_id</text>
+<text x="9.2" y="125.69999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c">UK</text><text x="15.5" y="125.69999999999999" font-size="2.4" font-weight="normal" fill="#141414">content_hash</text>
+<text x="9.2" y="128.9" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="128.9" font-size="2.4" font-weight="normal" fill="#141414">extracted (JSON)</text>
+<text x="9.2" y="132.10000000000002" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="132.10000000000002" font-size="2.4" font-weight="normal" fill="#141414">form (JSON)</text>
+<text x="9.2" y="135.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="15.5" y="135.3" font-size="2.4" font-weight="normal" fill="#141414">company_lookup (JSON)</text>
+<text x="9.2" y="138.5" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="15.5" y="138.5" font-size="2.4" font-weight="normal" fill="#141414">matched_payer_id</text>
+<text x="9.2" y="141.70000000000002" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="15.5" y="141.70000000000002" font-size="2.4" font-weight="normal" fill="#141414">matched_beneficiary_id</text>
+<text x="9.2" y="144.9" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="15.5" y="144.9" font-size="2.4" font-weight="normal" fill="#141414">result_certificate_id</text>
+<text x="9.2" y="148.10000000000002" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="15.5" y="148.10000000000002" font-size="2.4" font-weight="normal" fill="#141414">reviewed_by_user_id</text>
+<rect x="66" y="24" width="50.0" height="59.00000000000001" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="66" y="24" width="50.0" height="4.6" fill="#1e3a5f"/><text x="67.5" y="27.3" font-size="2.8" font-weight="bold" fill="#ffffff">certificates</text>
+<rect x="66.15" y="28.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="67.2" y="30.900000000000002" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="73.5" y="30.900000000000002" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="67.2" y="34.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="34.1" font-size="2.4" font-weight="normal" fill="#141414">name</text>
+<text x="67.2" y="37.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="37.3" font-size="2.4" font-weight="normal" fill="#141414">certificate_type</text>
+<text x="67.2" y="40.5" font-size="2.3" font-weight="normal" fill="#3c3c3c">UK</text><text x="73.5" y="40.5" font-size="2.4" font-weight="normal" fill="#141414">serial_number</text>
+<text x="67.2" y="43.7" font-size="2.3" font-weight="normal" fill="#3c3c3c">UK</text><text x="73.5" y="43.7" font-size="2.4" font-weight="normal" fill="#141414">issuer</text>
+<text x="67.2" y="46.9" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="46.9" font-size="2.4" font-weight="normal" fill="#141414">valid_from</text>
+<text x="67.2" y="50.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="50.1" font-size="2.4" font-weight="normal" fill="#141414">expiry_date</text>
+<text x="67.2" y="53.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="53.3" font-size="2.4" font-weight="normal" fill="#141414">renewal_lead_days</text>
+<text x="67.2" y="56.5" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="73.5" y="56.5" font-size="2.4" font-weight="normal" fill="#141414">user_id</text>
+<text x="67.2" y="59.7" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="73.5" y="59.7" font-size="2.4" font-weight="normal" fill="#141414">beneficiary_id</text>
+<text x="67.2" y="62.9" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="73.5" y="62.9" font-size="2.4" font-weight="normal" fill="#141414">payer_id</text>
+<text x="67.2" y="66.10000000000001" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="73.5" y="66.10000000000001" font-size="2.4" font-weight="normal" fill="#141414">previous_certificate_id</text>
+<text x="67.2" y="69.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="69.3" font-size="2.4" font-weight="normal" fill="#141414">status</text>
+<text x="67.2" y="72.5" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="72.5" font-size="2.4" font-weight="normal" fill="#141414">discount_percent</text>
+<text x="67.2" y="75.7" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="75.7" font-size="2.4" font-weight="normal" fill="#141414">billing_cycle</text>
+<text x="67.2" y="78.89999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="78.89999999999999" font-size="2.4" font-weight="normal" fill="#141414">payment_status</text>
+<text x="67.2" y="82.10000000000001" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="82.10000000000001" font-size="2.4" font-weight="normal" fill="#141414">archived_at</text>
+<rect x="66" y="100" width="50.0" height="30.200000000000003" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="66" y="100" width="50.0" height="4.6" fill="#1e3a5f"/><text x="67.5" y="103.3" font-size="2.8" font-weight="bold" fill="#ffffff">renewal_tasks</text>
+<rect x="66.15" y="104.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="67.2" y="106.89999999999999" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="73.5" y="106.89999999999999" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="67.2" y="110.1" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="73.5" y="110.1" font-size="2.4" font-weight="normal" fill="#141414">certificate_id</text>
+<text x="67.2" y="113.3" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="73.5" y="113.3" font-size="2.4" font-weight="normal" fill="#141414">assigned_user_id</text>
+<text x="67.2" y="116.49999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="116.49999999999999" font-size="2.4" font-weight="normal" fill="#141414">status</text>
+<text x="67.2" y="119.69999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="119.69999999999999" font-size="2.4" font-weight="normal" fill="#141414">priority</text>
+<text x="67.2" y="122.89999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="122.89999999999999" font-size="2.4" font-weight="normal" fill="#141414">due_date</text>
+<text x="67.2" y="126.1" font-size="2.3" font-weight="normal" fill="#3c3c3c">UK</text><text x="73.5" y="126.1" font-size="2.4" font-weight="normal" fill="#141414">open_marker (wyliczana)</text>
+<text x="67.2" y="129.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="73.5" y="129.3" font-size="2.4" font-weight="normal" fill="#141414">closed_at</text>
+<rect x="124" y="24" width="50.0" height="36.6" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="124" y="24" width="50.0" height="4.6" fill="#1e3a5f"/><text x="125.5" y="27.3" font-size="2.8" font-weight="bold" fill="#ffffff">users</text>
+<rect x="124.15" y="28.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="125.2" y="30.900000000000002" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="131.5" y="30.900000000000002" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="125.2" y="34.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="34.1" font-size="2.4" font-weight="normal" fill="#141414">first_name</text>
+<text x="125.2" y="37.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="37.3" font-size="2.4" font-weight="normal" fill="#141414">last_name</text>
+<text x="125.2" y="40.5" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="40.5" font-size="2.4" font-weight="normal" fill="#141414">role</text>
+<text x="125.2" y="43.7" font-size="2.3" font-weight="normal" fill="#3c3c3c">UK</text><text x="131.5" y="43.7" font-size="2.4" font-weight="normal" fill="#141414">email</text>
+<text x="125.2" y="46.9" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="46.9" font-size="2.4" font-weight="normal" fill="#141414">password_hash</text>
+<text x="125.2" y="50.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="50.1" font-size="2.4" font-weight="normal" fill="#141414">email_verified_at</text>
+<text x="125.2" y="53.3" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="131.5" y="53.3" font-size="2.4" font-weight="normal" fill="#141414">beneficiary_id</text>
+<text x="125.2" y="56.5" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="56.5" font-size="2.4" font-weight="normal" fill="#141414">company_filter (JSON)</text>
+<text x="125.2" y="59.7" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="59.7" font-size="2.4" font-weight="normal" fill="#141414">deactivated_at</text>
+<rect x="124" y="72" width="50.0" height="33.4" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="124" y="72" width="50.0" height="4.6" fill="#1e3a5f"/><text x="125.5" y="75.3" font-size="2.8" font-weight="bold" fill="#ffffff">notifications</text>
+<rect x="124.15" y="76.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="125.2" y="78.89999999999999" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="131.5" y="78.89999999999999" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="125.2" y="82.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="82.1" font-size="2.4" font-weight="normal" fill="#141414">thread_id</text>
+<text x="125.2" y="85.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="85.3" font-size="2.4" font-weight="normal" fill="#141414">parent_id</text>
+<text x="125.2" y="88.49999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="88.49999999999999" font-size="2.4" font-weight="normal" fill="#141414">type</text>
+<text x="125.2" y="91.69999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="131.5" y="91.69999999999999" font-size="2.4" font-weight="normal" fill="#141414">sender_user_id</text>
+<text x="125.2" y="94.89999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="131.5" y="94.89999999999999" font-size="2.4" font-weight="normal" fill="#141414">recipient_user_id</text>
+<text x="125.2" y="98.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="98.1" font-size="2.4" font-weight="normal" fill="#141414">related_type</text>
+<text x="125.2" y="101.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="101.3" font-size="2.4" font-weight="normal" fill="#141414">related_id</text>
+<text x="125.2" y="104.49999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="104.49999999999999" font-size="2.4" font-weight="normal" fill="#141414">read_at</text>
+<rect x="124" y="118" width="50.0" height="23.800000000000004" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="124" y="118" width="50.0" height="4.6" fill="#1e3a5f"/><text x="125.5" y="121.3" font-size="2.8" font-weight="bold" fill="#ffffff">email_verifications</text>
+<rect x="124.15" y="122.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="125.2" y="124.89999999999999" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="131.5" y="124.89999999999999" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="125.2" y="128.1" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="131.5" y="128.1" font-size="2.4" font-weight="normal" fill="#141414">user_id</text>
+<text x="125.2" y="131.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="131.3" font-size="2.4" font-weight="normal" fill="#141414">purpose</text>
+<text x="125.2" y="134.5" font-size="2.3" font-weight="normal" fill="#3c3c3c">UK</text><text x="131.5" y="134.5" font-size="2.4" font-weight="normal" fill="#141414">token_hash</text>
+<text x="125.2" y="137.70000000000002" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="137.70000000000002" font-size="2.4" font-weight="normal" fill="#141414">expires_at</text>
+<text x="125.2" y="140.9" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="140.9" font-size="2.4" font-weight="normal" fill="#141414">used_at</text>
+<rect x="124" y="150" width="50.0" height="20.6" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="124" y="150" width="50.0" height="4.6" fill="#1e3a5f"/><text x="125.5" y="153.3" font-size="2.8" font-weight="bold" fill="#ffffff">login_attempts</text>
+<rect x="124.15" y="154.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="125.2" y="156.9" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="131.5" y="156.9" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="125.2" y="160.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="160.1" font-size="2.4" font-weight="normal" fill="#141414">email</text>
+<text x="125.2" y="163.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="163.3" font-size="2.4" font-weight="normal" fill="#141414">request_ip</text>
+<text x="125.2" y="166.5" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="166.5" font-size="2.4" font-weight="normal" fill="#141414">successful</text>
+<text x="125.2" y="169.70000000000002" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="169.70000000000002" font-size="2.4" font-weight="normal" fill="#141414">created_at</text>
+<rect x="124" y="178" width="50.0" height="14.200000000000001" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="124" y="178" width="50.0" height="4.6" fill="#1e3a5f"/><text x="125.5" y="181.3" font-size="2.8" font-weight="bold" fill="#ffffff">settings</text>
+<rect x="124.15" y="182.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="125.2" y="184.9" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="131.5" y="184.9" font-size="2.4" font-weight="bold" fill="#141414">setting_key</text>
+<text x="125.2" y="188.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="131.5" y="188.1" font-size="2.4" font-weight="normal" fill="#141414">setting_value</text>
+<text x="125.2" y="191.3" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="131.5" y="191.3" font-size="2.4" font-weight="normal" fill="#141414">updated_by_user_id</text>
+<rect x="182" y="24" width="50.0" height="39.800000000000004" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="182" y="24" width="50.0" height="4.6" fill="#1e3a5f"/><text x="183.5" y="27.3" font-size="2.8" font-weight="bold" fill="#ffffff">invitations</text>
+<rect x="182.15" y="28.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="183.2" y="30.900000000000002" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="189.5" y="30.900000000000002" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="183.2" y="34.1" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="189.5" y="34.1" font-size="2.4" font-weight="normal" fill="#141414">certificate_id</text>
+<text x="183.2" y="37.3" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="189.5" y="37.3" font-size="2.4" font-weight="normal" fill="#141414">renewal_task_id</text>
+<text x="183.2" y="40.5" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="189.5" y="40.5" font-size="2.4" font-weight="normal" fill="#141414">template_id</text>
+<text x="183.2" y="43.7" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="189.5" y="43.7" font-size="2.4" font-weight="normal" fill="#141414">sent_by_user_id</text>
+<text x="183.2" y="46.9" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="189.5" y="46.9" font-size="2.4" font-weight="normal" fill="#141414">recipient_type</text>
+<text x="183.2" y="50.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="189.5" y="50.1" font-size="2.4" font-weight="normal" fill="#141414">recipient_email</text>
+<text x="183.2" y="53.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="189.5" y="53.3" font-size="2.4" font-weight="normal" fill="#141414">status</text>
+<text x="183.2" y="56.5" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="189.5" y="56.5" font-size="2.4" font-weight="normal" fill="#141414">body_html</text>
+<text x="183.2" y="59.7" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="189.5" y="59.7" font-size="2.4" font-weight="normal" fill="#141414">reminder_count</text>
+<text x="183.2" y="62.9" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="189.5" y="62.9" font-size="2.4" font-weight="normal" fill="#141414">next_reminder_at</text>
+<rect x="182" y="72" width="50.0" height="11.0" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="182" y="72" width="50.0" height="4.6" fill="#1e3a5f"/><text x="183.5" y="75.3" font-size="2.8" font-weight="bold" fill="#ffffff">invitation_attachments</text>
+<rect x="182.15" y="76.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="183.2" y="78.89999999999999" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="189.5" y="78.89999999999999" font-size="2.4" font-weight="bold" fill="#141414">invitation_id (FK)</text>
+<rect x="182.15" y="79.8" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="183.2" y="82.1" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="189.5" y="82.1" font-size="2.4" font-weight="bold" fill="#141414">attachment_id (FK)</text>
+<rect x="182" y="100" width="50.0" height="30.200000000000003" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="182" y="100" width="50.0" height="4.6" fill="#1e3a5f"/><text x="183.5" y="103.3" font-size="2.8" font-weight="bold" fill="#ffffff">email_templates</text>
+<rect x="182.15" y="104.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="183.2" y="106.89999999999999" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="189.5" y="106.89999999999999" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="183.2" y="110.1" font-size="2.3" font-weight="normal" fill="#3c3c3c">UK</text><text x="189.5" y="110.1" font-size="2.4" font-weight="normal" fill="#141414">code</text>
+<text x="183.2" y="113.3" font-size="2.3" font-weight="normal" fill="#3c3c3c">UK</text><text x="189.5" y="113.3" font-size="2.4" font-weight="normal" fill="#141414">locale</text>
+<text x="183.2" y="116.49999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="189.5" y="116.49999999999999" font-size="2.4" font-weight="normal" fill="#141414">name</text>
+<text x="183.2" y="119.69999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="189.5" y="119.69999999999999" font-size="2.4" font-weight="normal" fill="#141414">subject</text>
+<text x="183.2" y="122.89999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="189.5" y="122.89999999999999" font-size="2.4" font-weight="normal" fill="#141414">body_html</text>
+<text x="183.2" y="126.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="189.5" y="126.1" font-size="2.4" font-weight="normal" fill="#141414">body_text</text>
+<text x="183.2" y="129.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="189.5" y="129.3" font-size="2.4" font-weight="normal" fill="#141414">is_active</text>
+<rect x="182" y="140" width="50.0" height="11.0" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="182" y="140" width="50.0" height="4.6" fill="#1e3a5f"/><text x="183.5" y="143.3" font-size="2.8" font-weight="bold" fill="#ffffff">email_template_attachments</text>
+<rect x="182.15" y="144.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="183.2" y="146.9" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="189.5" y="146.9" font-size="2.4" font-weight="bold" fill="#141414">template_id (FK)</text>
+<rect x="182.15" y="147.79999999999998" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="183.2" y="150.1" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="189.5" y="150.1" font-size="2.4" font-weight="bold" fill="#141414">attachment_id (FK)</text>
+<rect x="240" y="72" width="50.0" height="27.0" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="240" y="72" width="50.0" height="4.6" fill="#1e3a5f"/><text x="241.5" y="75.3" font-size="2.8" font-weight="bold" fill="#ffffff">attachments</text>
+<rect x="240.15" y="76.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="241.2" y="78.89999999999999" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="247.5" y="78.89999999999999" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="241.2" y="82.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="82.1" font-size="2.4" font-weight="normal" fill="#141414">original_name</text>
+<text x="241.2" y="85.3" font-size="2.3" font-weight="normal" fill="#3c3c3c">UK</text><text x="247.5" y="85.3" font-size="2.4" font-weight="normal" fill="#141414">stored_name</text>
+<text x="241.2" y="88.49999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="88.49999999999999" font-size="2.4" font-weight="normal" fill="#141414">mime_type</text>
+<text x="241.2" y="91.69999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="91.69999999999999" font-size="2.4" font-weight="normal" fill="#141414">size_bytes</text>
+<text x="241.2" y="94.89999999999999" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="94.89999999999999" font-size="2.4" font-weight="normal" fill="#141414">sha256</text>
+<text x="241.2" y="98.1" font-size="2.3" font-weight="normal" fill="#3c3c3c">FK</text><text x="247.5" y="98.1" font-size="2.4" font-weight="normal" fill="#141414">uploaded_by_user_id</text>
+<rect x="240" y="160" width="50.0" height="36.6" fill="#ffffff" stroke="#283c64" stroke-width="0.3"/><rect x="240" y="160" width="50.0" height="4.6" fill="#1e3a5f"/><text x="241.5" y="163.3" font-size="2.8" font-weight="bold" fill="#ffffff">events</text>
+<rect x="240.15" y="164.6" width="49.7" height="3.2" fill="#fff4cd"/>
+<text x="241.2" y="166.9" font-size="2.3" font-weight="bold" fill="#3c3c3c">PK</text><text x="247.5" y="166.9" font-size="2.4" font-weight="bold" fill="#141414">id</text>
+<text x="241.2" y="170.1" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="170.1" font-size="2.4" font-weight="normal" fill="#141414">entity_type</text>
+<text x="241.2" y="173.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="173.3" font-size="2.4" font-weight="normal" fill="#141414">entity_id</text>
+<text x="241.2" y="176.5" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="176.5" font-size="2.4" font-weight="normal" fill="#141414">event_type</text>
+<text x="241.2" y="179.70000000000002" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="179.70000000000002" font-size="2.4" font-weight="normal" fill="#141414">user_id</text>
+<text x="241.2" y="182.9" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="182.9" font-size="2.4" font-weight="normal" fill="#141414">certificate_id</text>
+<text x="241.2" y="186.10000000000002" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="186.10000000000002" font-size="2.4" font-weight="normal" fill="#141414">beneficiary_id</text>
+<text x="241.2" y="189.3" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="189.3" font-size="2.4" font-weight="normal" fill="#141414">payer_id</text>
+<text x="241.2" y="192.5" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="192.5" font-size="2.4" font-weight="normal" fill="#141414">payload (JSON)</text>
+<text x="241.2" y="195.70000000000002" font-size="2.3" font-weight="normal" fill="#3c3c3c"></text><text x="247.5" y="195.70000000000002" font-size="2.4" font-weight="normal" fill="#141414">occurred_at</text>
+<text x="8" y="158.0" font-size="2.3" font-style="italic" fill="#464646">PK — klucz główny, FK — klucz obcy, UK —</text>
+<text x="8" y="160.9" font-size="2.3" font-style="italic" fill="#464646">klucz unikalny</text>
+<text x="8" y="164.60000000000002" font-size="2.3" font-style="italic" fill="#464646">1 — strona „jeden”, N — strona „wiele”, 0..1</text>
+<text x="8" y="167.50000000000003" font-size="2.3" font-style="italic" fill="#464646">— powiązanie opcjonalne</text>
+<text x="8" y="171.20000000000005" font-size="2.3" font-style="italic" fill="#464646">Dla czytelności pominięto klucze obce do</text>
+<text x="8" y="174.10000000000005" font-size="2.3" font-style="italic" fill="#464646">users, które wskazują tylko autora lub</text>
+<text x="8" y="177.00000000000006" font-size="2.3" font-style="italic" fill="#464646">wykonawcę (created_by_user_id,</text>
+<text x="8" y="179.90000000000006" font-size="2.3" font-style="italic" fill="#464646">sent_by_user_id, uploaded_by_user_id,</text>
+<text x="8" y="182.80000000000007" font-size="2.3" font-style="italic" fill="#464646">updated_by_user_id, user_id w</text>
+<text x="8" y="185.70000000000007" font-size="2.3" font-style="italic" fill="#464646">email_verifications), oraz wskazania wniosku</text>
+<text x="8" y="188.60000000000008" font-size="2.3" font-style="italic" fill="#464646">na firmy (matched_/result_payer_id).</text>
+<text x="8" y="192.3000000000001" font-size="2.3" font-style="italic" fill="#464646">Tabele events i login_attempts nie mają</text>
+<text x="8" y="195.2000000000001" font-size="2.3" font-style="italic" fill="#464646">kluczy obcych celowo.</text>
+</svg>

@@ -31,8 +31,12 @@ require dirname(__DIR__) . '/bootstrap.php';
 use App\Auth\PasswordPolicy;
 use App\CertificateHelper;
 use App\Database;
+use App\Intake\CompanyRecord;
+use App\Intake\CompanyRegistry;
 use App\Migrations\SchemaInspector;
 use App\Rbac;
+use App\Service\Actor;
+use App\Service\RegistrationIntakeService;
 
 $args = array_slice($argv ?? [], 1);
 $force = in_array('--force', $args, true);
@@ -102,18 +106,26 @@ $demoStaff = [
 /** Konto pracownika → klucz użytkownika certyfikatu, którego certyfikaty są jego własnymi. */
 $demoEmployeeLinks = ['jan_pracownik' => 'jan'];
 
+/** Ostatnie logowanie kont demo (przesunięcie w dniach od dziś) — kolumna na liście kont. */
+$demoLastLogins = [
+    'ewa' => 0, 'tomasz' => 0, 'robert' => -2, 'monika' => -1, 'jakub' => -5, 'jan_pracownik' => -11,
+];
+
 /** Konta wyłączone przez administratora (Etap 2, D3): [imię, nazwisko, e-mail, rola, wyłączone dni temu] */
 $demoInactiveStaff = [
     'adam' => ['Adam', 'Nowicki', 'adam.nowicki@example.com', Rbac::OPERATOR, 45],
 ];
 
-/** Użytkownicy certyfikatów (beneficjenci): [imię, nazwisko, e-mail, telefon, płatnik] */
+/**
+ * Użytkownicy certyfikatów (beneficjenci): [imię, nazwisko, e-mail, telefon, płatnik, notatka,
+ * konto, które dodało rekord].
+ */
 $demoBeneficiaries = [
-    'jan'       => ['Jan', 'Kowalski', 'jan.kowalski@novatech.example.com', '+48 600 100 200', 'novatech'],
-    'maria'     => ['Maria', 'Wójcik', 'maria.wojcik@novatech.example.com', '+48 600 100 201', 'novatech'],
-    'piotr'     => ['Piotr', 'Lewandowski', 'piotr.lewandowski@grupawisla.example.com', '+48 600 200 300', 'wisla'],
-    'michal'    => ['Michał', 'Kamiński', 'michal.kaminski@grupawisla.example.com', null, 'wisla'],
-    'agnieszka' => ['Agnieszka', 'Mazur', 'agnieszka.mazur@cyfrowyslask.example.org', '+48 600 300 400', 'fundacja'],
+    'jan'       => ['Jan', 'Kowalski', 'jan.kowalski@novatech.example.com', '+48 600 100 200', 'novatech', 'Prezes zarządu — podpisuje umowy i sprawozdania finansowe. Odnowienia uzgadniać z księgowością NovaTechu.', 'tomasz'],
+    'maria'     => ['Maria', 'Wójcik', 'maria.wojcik@novatech.example.com', '+48 600 100 201', 'novatech', 'Dział handlowy. Pieczęć kwalifikowana firmy jest na jej stanowisku — przy odnowieniu potrzebne pełnomocnictwo.', 'ewa'],
+    'piotr'     => ['Piotr', 'Lewandowski', 'piotr.lewandowski@grupawisla.example.com', '+48 600 200 300', 'wisla', 'Dyrektor finansowy. Certyfikat dwuletni, odnowienie planowane na półtora miesiąca przed terminem.', 'tomasz'],
+    'michal'    => ['Michał', 'Kamiński', 'michal.kaminski@grupawisla.example.com', '+48 600 200 301', 'wisla', 'Administrator systemów — odbiorca spraw technicznych (SSL, domeny) po stronie Grupy Wisła.', 'tomasz'],
+    'agnieszka' => ['Agnieszka', 'Mazur', 'agnieszka.mazur@cyfrowyslask.example.org', '+48 600 300 400', 'fundacja', 'Prezes fundacji. Faktury wystawiane na fundację, korespondencja na adres prywatny odrzucana.', 'ewa'],
 ];
 
 /**
@@ -246,6 +258,158 @@ $attachmentContent = "Instrukcja odnowienia certyfikatu kwalifikowanego (plik de
     . "3. Potwierdź zamówienie u płatnika wskazanego w wiadomości.\n"
     . "4. Po wydaniu nowego certyfikatu zainstaluj go i poinformuj opiekuna.\n";
 
+/**
+ * Ustawienia procesu odnowień zapisane w bazie. Wartości są takie, jak domyślne w kodzie — wpis
+ * w tabeli pokazuje na ekranie „Ustawienia”, kto i kiedy je zatwierdził, a nie zmienia rozkładu
+ * priorytetów, pod który dobrane są daty certyfikatów wyżej.
+ */
+$demoSettings = [
+    'renewal.warning_days'    => 30,
+    'renewal.critical_days'   => 7,
+    'reminders.interval_days' => 7,
+    'reminders.max_count'     => 3,
+];
+
+/**
+ * Powiadomienia wewnętrzne (Etap 10). Pokrywają wszystkie cztery rodzaje, wątek z odpowiedzią,
+ * prośbę załatwioną i niezałatwioną oraz wiadomość w archiwum. Przesunięcia dni jak wyżej:
+ * `created`, `read`, `resolved` i `archived` liczone od dziś.
+ */
+$notificationDefaults = [
+    'from'     => null,
+    'related'  => null,
+    'read'     => null,
+    'resolved' => null,
+    'archived' => null,
+    'reply'    => null,
+];
+$demoNotifications = array_map(static fn (array $notification): array => array_merge($notificationDefaults, $notification), [
+    [
+        'from' => 'ewa', 'to' => 'owner', 'type' => 'message',
+        'subject' => 'Pieczęć kwalifikowana NovaTech — czekam na płatnika',
+        'body' => "Dzień dobry,\n\nzaproszenie do odnowienia pieczęci poszło do NovaTechu dwadzieścia dni temu. Płatnik odpowiedział, ale nie potwierdził jeszcze zamówienia. Zostawiam zadanie w toku i pilnuję terminu — pieczęć wygasa za cztery dni.\n\nEwa",
+        'related' => ['certificate', 'novatech_seal'], 'created' => -3, 'read' => -3,
+        'reply' => [
+            'from' => 'owner',
+            'body' => 'Dziękuję. Jeśli do poniedziałku nie potwierdzą, wyślij przypomnienie i dopisz mnie do zadania.',
+            'created' => -2, 'read' => -2,
+        ],
+    ],
+    [
+        'from' => 'tomasz', 'to' => 'owner', 'type' => 'request',
+        'subject' => 'Prośba o zgodę na rabat 10% dla Grupy Wisła',
+        'body' => 'Grupa Wisła odnawia Microsoft 365 na 25 stanowisk i prosi o utrzymanie rabatu 10% na kolejny rok. Proszę o zgodę albo o wskazanie innej stawki.',
+        'related' => ['certificate', 'wisla_m365'], 'created' => -1,
+    ],
+    [
+        'from' => 'monika', 'to' => 'owner', 'type' => 'request',
+        'subject' => 'Prośba o fakturę zbiorczą dla Fundacji Cyfrowy Śląsk',
+        'body' => 'Fundacja prosi o jedną fakturę za certyfikat kwalifikowany i za Jirę, zamiast dwóch osobnych. Czy mogę tak wystawić?',
+        'related' => ['payer', 'fundacja'], 'created' => -6, 'read' => -6, 'resolved' => -5,
+    ],
+    [
+        'from' => null, 'to' => 'owner', 'type' => 'error',
+        'subject' => 'Nie udało się wysłać zaproszenia — SSL Wildcard *.novatech.pl',
+        'body' => 'Serwer odbiorcy odrzucił wiadomość: SMTP 421 — serwer odbiorcy chwilowo niedostępny. Zaproszenie czeka w stanie „błąd wysyłki”, wysyłkę można ponowić z ekranu certyfikatu.',
+        'related' => ['certificate', 'novatech_ssl'], 'created' => -1,
+    ],
+    [
+        'from' => null, 'to' => 'tomasz', 'type' => 'system',
+        'subject' => 'Skan odnowień: 2 nowe zadania o priorytecie krytycznym',
+        'body' => 'Nocny skan oznaczył dwa certyfikaty jako krytyczne (wygasają w ciągu siedmiu dni) i utworzył dla nich zadania na liście ToDo.',
+        'related' => null, 'created' => -8, 'read' => -8,
+    ],
+    [
+        'from' => 'robert', 'to' => 'owner', 'type' => 'message',
+        'subject' => 'Budżet na odnowienia w 2027 roku',
+        'body' => 'Potrzebuję do końca miesiąca zestawienia kosztów odnowień z podziałem na firmy — najlepiej z raportu „Płatnicy”. Wystarczy eksport do CSV.',
+        'related' => null, 'created' => -14, 'read' => -13, 'archived' => -10,
+    ],
+]);
+
+/**
+ * Odpowiedzi rejestru dla danych demo — ten sam układ pól, co Biała Lista podatników VAT, ale bez
+ * sieci, żeby skrypt działał offline i zawsze tak samo. Dane Orlenu są prawdziwe (tak odpowiada
+ * rejestr na żywo), pozostałe opisują firmy demonstracyjne.
+ */
+$demoCompanyRecords = [
+    '6342851974' => [
+        'nip' => '6342851974', 'official_name' => 'NOVATECH SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ',
+        'name' => 'NovaTech Spółka z Ograniczoną Odpowiedzialnością', 'status_vat' => 'Czynny',
+        'regon' => '243617285', 'krs' => '0000412765', 'address_line' => 'ul. Przemysłowa 12',
+        'postal_code' => '40-020', 'city' => 'Katowice', 'raw_address' => 'ul. Przemysłowa 12, 40-020 Katowice',
+        'registration_date' => '2012-03-14',
+    ],
+    '9876543210' => [
+        'nip' => '9876543210', 'official_name' => 'GRUPA WISŁA SPÓŁKA AKCYJNA',
+        'name' => 'Grupa Wisła Spółka Akcyjna', 'status_vat' => 'Czynny',
+        'regon' => '070123456', 'krs' => '0000198734', 'address_line' => 'ul. Nadrzeczna 5',
+        'postal_code' => '43-460', 'city' => 'Wisła', 'raw_address' => 'ul. Nadrzeczna 5, 43-460 Wisła',
+        'registration_date' => '2004-06-01',
+    ],
+    '5551112223' => [
+        'nip' => '5551112223', 'official_name' => 'FUNDACJA CYFROWY ŚLĄSK',
+        'name' => 'Fundacja Cyfrowy Śląsk', 'status_vat' => 'Zwolniony',
+        'regon' => '365214789', 'krs' => '0000612345', 'address_line' => 'ul. Bankowa 14',
+        'postal_code' => '40-007', 'city' => 'Katowice', 'raw_address' => 'ul. Bankowa 14, 40-007 Katowice',
+        'registration_date' => '2016-09-22',
+    ],
+    '7740001454' => [
+        'nip' => '7740001454', 'official_name' => 'ORLEN SPÓŁKA AKCYJNA',
+        'name' => 'Orlen Spółka Akcyjna', 'status_vat' => 'Czynny',
+        'regon' => '610188201', 'krs' => '0000028860', 'address_line' => 'Chemików 7',
+        'postal_code' => '09-411', 'city' => 'Płock', 'raw_address' => 'Chemików 7, 09-411 Płock',
+        'registration_date' => '1993-07-01',
+    ],
+];
+
+/**
+ * Wnioski o certyfikat z poczty — po jednym z każdej drogi wejścia i w każdym stanie przeglądu.
+ * Treść listów ma układ, który czyta `RegistrationExtractor` (etykiety „Imię:”, „NIP:” i dalsze),
+ * a same wnioski powstają przez `RegistrationIntakeService::ingest()`, żeby zapisane wyliczenia
+ * (`extracted`, `form`, `company_lookup`, `warnings`) miały dokładnie taki układ jak w aplikacji.
+ */
+$registrationDefaults = [
+    'assigned' => null,
+    'reviewer' => null,
+    'reviewed' => null,
+    'reason'   => null,
+    'result'   => null,
+];
+$demoRegistrations = array_map(static fn (array $registration): array => array_merge($registrationDefaults, $registration), [
+    'novatech_nowa_osoba' => [
+        'source' => 'imap', 'offset' => -2, 'status' => 'pending', 'assigned' => 'tomasz',
+        'from' => ['Łukasz Adamczyk', 'lukasz.adamczyk@novatech.example.com'],
+        'subject' => 'Wniosek o certyfikat kwalifikowany - Łukasz Adamczyk',
+        'id' => 'wniosek-novatech-014',
+        'body' => "Dzień dobry,\n\nproszę o wystawienie certyfikatu kwalifikowanego do podpisu elektronicznego dla nowego pracownika.\n\nDane wnioskodawcy:\nImię: Łukasz\nNazwisko: Adamczyk\nE-mail: lukasz.adamczyk@novatech.example.com\nTelefon: 601 455 788\n\nDane firmy:\nNIP: 634-285-19-74\n\nDane certyfikatu:\nRodzaj certyfikatu: Certyfikat kwalifikowany\nWystawca: Certum\nOkres ważności: 2 lata\nRabat: -10%\nUwagi: Odbiór w siedzibie firmy\n\nPozdrawiam\nŁukasz Adamczyk\n",
+    ],
+    'orlen_nowa_firma' => [
+        'source' => 'upload', 'offset' => -4, 'status' => 'pending', 'assigned' => null,
+        'from' => ['Anna Nowak', 'anna.nowak@orlen.example.com'],
+        'subject' => 'Wniosek o certyfikat kwalifikowany - Anna Nowak',
+        'id' => 'wniosek-orlen-001',
+        'body' => "Dzień dobry,\n\nproszę o rejestrację certyfikatu kwalifikowanego do podpisu elektronicznego.\n\nDane wnioskodawcy:\nImię: Anna\nNazwisko: Nowak\nE-mail: anna.nowak@orlen.example.com\nTelefon: 601 202 303\n\nDane firmy:\nNIP: 774-000-14-54\n\nDane certyfikatu:\nRodzaj certyfikatu: Certyfikat kwalifikowany\nWystawca: Certum\nOkres ważności: 2 lata\nRabat: -5%\nUwagi: Odbiór osobisty w siedzibie\n\nPozdrawiam\nAnna Nowak\n",
+    ],
+    'wisla_zatwierdzony' => [
+        'source' => 'webhook', 'offset' => -690, 'status' => 'approved', 'reviewer' => 'tomasz',
+        'reviewed' => -686, 'result' => ['wisla', 'piotr', 'piotr_qes'],
+        'from' => ['Piotr Lewandowski', 'piotr.lewandowski@grupawisla.example.com'],
+        'subject' => 'Wniosek o certyfikat kwalifikowany - Piotr Lewandowski',
+        'id' => 'wniosek-wisla-002',
+        'body' => "Dzień dobry,\n\nproszę o certyfikat kwalifikowany do podpisywania umów.\n\nDane wnioskodawcy:\nImię: Piotr\nNazwisko: Lewandowski\nE-mail: piotr.lewandowski@grupawisla.example.com\nTelefon: 600 200 300\n\nDane firmy:\nNIP: 987-654-32-10\n\nDane certyfikatu:\nRodzaj certyfikatu: Certyfikat kwalifikowany\nWystawca: KIR\nOkres ważności: 2 lata\nRabat: -3%\n\nPozdrawiam\nPiotr Lewandowski\n",
+    ],
+    'brak_nipu_odrzucony' => [
+        'source' => 'upload', 'offset' => -9, 'status' => 'rejected', 'reviewer' => 'ewa',
+        'reviewed' => -7,
+        'reason' => 'Wniosek bez NIP-u i bez nazwy firmy — poprosiliśmy wnioskodawcę o uzupełnienie danych, nowy wniosek założymy po odpowiedzi.',
+        'from' => ['Krzysztof Malinowski', 'k.malinowski@example.net'],
+        'subject' => 'Wniosek o certyfikat kwalifikowany',
+        'id' => 'wniosek-brak-nipu-007',
+        'body' => "Dzień dobry,\n\nchciałbym zamówić certyfikat kwalifikowany do podpisu elektronicznego.\n\nDane wnioskodawcy:\nImię: Krzysztof\nNazwisko: Malinowski\nE-mail: k.malinowski@example.net\n\nDane certyfikatu:\nRodzaj certyfikatu: Certyfikat kwalifikowany\n\nPozdrawiam\nKrzysztof Malinowski\n",
+    ],
+]);
+
 // ── Sprawdzenie stanu bazy ────────────────────────────────────────────────────
 
 $existing = (int) $db->query('SELECT COUNT(*) FROM certificates')->fetchColumn();
@@ -300,6 +464,21 @@ if ($force) {
         $db->exec("DELETE FROM beneficiaries WHERE id IN ({$beneficiaryList})");
     }
 
+    // Wnioski z poczty poznajemy po identyfikatorze wiadomości, powiadomienia po przedrostku klucza
+    // paczki; powiadomienia o wnioskach tworzy sama usługa, więc idą po powiązanym wniosku.
+    $demoDrafts = $db->query("SELECT id, raw_file FROM registration_drafts WHERE message_id LIKE '%@demo.certisub.example'")->fetchAll();
+    $draftIdList = implode(',', array_map(static fn (array $row): int => (int) $row['id'], $demoDrafts)) ?: '0';
+
+    $db->exec("DELETE FROM notifications WHERE batch_key LIKE 'demo%' OR (related_type = 'registration' AND related_id IN ({$draftIdList}))");
+    $db->exec("DELETE FROM registration_drafts WHERE id IN ({$draftIdList})");
+
+    foreach ($demoDrafts as $draft) {
+        $rawFile = (string) ($draft['raw_file'] ?? '');
+        if ($rawFile !== '' && is_file(dirname(__DIR__) . '/storage/intake/' . $rawFile)) {
+            unlink(dirname(__DIR__) . '/storage/intake/' . $rawFile);
+        }
+    }
+
     $db->exec("DELETE FROM events WHERE entity_type = 'user' AND entity_id IN (SELECT id FROM users WHERE email LIKE '%@example.com')");
     $db->exec("DELETE FROM users WHERE email LIKE '%@example.com'");
     $db->prepare('DELETE FROM payers WHERE company_name IN (' . $placeholders($payerNames) . ')')->execute($payerNames);
@@ -344,8 +523,9 @@ $logEvent = static function (
 
 $payerIds = [];
 $insertPayer = $db->prepare(
-    'INSERT INTO payers (company_name, contact_person, tax_id, email, phone, address_line, postal_code, city, created_at)
-     VALUES (:name, :person, :tax, :email, :phone, :address, :postal, :city, :created)'
+    'INSERT INTO payers (company_name, contact_person, tax_id, email, phone, address_line, postal_code, city,
+         created_by_user_id, created_at)
+     VALUES (:name, :person, :tax, :email, :phone, :address, :postal, :city, :created_by, :created)'
 );
 
 foreach ($demoPayers as $key => $payer) {
@@ -358,6 +538,8 @@ foreach ($demoPayers as $key => $payer) {
         'address' => $payer[5],
         'postal'  => $payer[6],
         'city'    => $payer[7],
+        // Firmy zakłada konto, na które się logujesz — konta personelu demo powstają dopiero niżej.
+        'created_by' => $ownerId,
         'created' => $at(-900),
     ]);
     $payerIds[$key] = (int) $db->lastInsertId();
@@ -385,6 +567,12 @@ foreach ($demoStaff as $key => $staff) {
     ]);
 }
 
+// Ostatnie logowanie — inaczej lista kont pokazuje przy każdym „nigdy”.
+$markLogin = $db->prepare('UPDATE users SET last_login_at = :at WHERE id = :id');
+foreach ($demoLastLogins as $staffKey => $offset) {
+    $markLogin->execute(['at' => $at($offset, '08:12:00'), 'id' => $staffIds[$staffKey]]);
+}
+
 $deactivateUser = $db->prepare('UPDATE users SET deactivated_at = :at WHERE id = :id');
 foreach ($demoInactiveStaff as $staff) {
     $insertUser->execute([
@@ -405,18 +593,20 @@ foreach ($demoInactiveStaff as $staff) {
 
 $beneficiaryIds = [];
 $insertBeneficiary = $db->prepare(
-    'INSERT INTO beneficiaries (first_name, last_name, email, phone, payer_id, created_at)
-     VALUES (:first, :last, :email, :phone, :payer_id, :created)'
+    'INSERT INTO beneficiaries (first_name, last_name, email, phone, payer_id, notes, created_by_user_id, created_at)
+     VALUES (:first, :last, :email, :phone, :payer_id, :notes, :created_by, :created)'
 );
 
 foreach ($demoBeneficiaries as $key => $person) {
     $insertBeneficiary->execute([
-        'first'    => $person[0],
-        'last'     => $person[1],
-        'email'    => $person[2],
-        'phone'    => $person[3],
-        'payer_id' => $payerIds[$person[4]],
-        'created'  => $at(-800),
+        'first'      => $person[0],
+        'last'       => $person[1],
+        'email'      => $person[2],
+        'phone'      => $person[3],
+        'payer_id'   => $payerIds[$person[4]],
+        'notes'      => $person[5],
+        'created_by' => $staffIds[$person[6]],
+        'created'    => $at(-800),
     ]);
     $beneficiaryIds[$key] = (int) $db->lastInsertId();
     $logEvent('beneficiary', $beneficiaryIds[$key], 'created', $at(-800), $ownerId, [
@@ -424,6 +614,13 @@ foreach ($demoBeneficiaries as $key => $person) {
         'payer_id'       => $payerIds[$person[4]],
     ]);
 }
+
+// Filtr firm z ustawień konta (Etap 10): księgowość demo prowadzi tylko jedną firmę. Zawęża listy
+// i wskaźniki, nie zmienia uprawnień — dlatego warto to pokazać na osobnym koncie.
+$db->prepare('UPDATE users SET company_filter = :filter WHERE id = :id')->execute([
+    'filter' => json_encode(['mode' => 'one', 'ids' => [$payerIds['fundacja']]], JSON_THROW_ON_ERROR),
+    'id'     => $staffIds['monika'],
+]);
 
 $linkEmployee = $db->prepare('UPDATE users SET beneficiary_id = :beneficiary_id WHERE id = :id');
 foreach ($demoEmployeeLinks as $staffKey => $personKey) {
@@ -677,6 +874,200 @@ foreach ($demoInvitations as [$certKey, $recipientType, $status, $sentOffset, $r
     }
 }
 
+// ── Ustawienia procesu odnowień ───────────────────────────────────────────────
+
+$insertSetting = $db->prepare(
+    'INSERT INTO settings (setting_key, setting_value, updated_by_user_id, updated_at)
+     VALUES (:key, :value, :user_id, :at)
+     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value),
+        updated_by_user_id = VALUES(updated_by_user_id), updated_at = VALUES(updated_at)'
+);
+
+foreach ($demoSettings as $settingKey => $settingValue) {
+    $insertSetting->execute([
+        'key'     => $settingKey,
+        'value'   => (string) $settingValue,
+        'user_id' => $ownerId,
+        'at'      => $at(-21, '11:20:00'),
+    ]);
+}
+
+// ── Powiadomienia wewnętrzne ──────────────────────────────────────────────────
+
+$insertNotification = $db->prepare(
+    'INSERT INTO notifications
+        (batch_key, thread_id, parent_id, sender_user_id, recipient_user_id, type, subject, body,
+         related_type, related_id, read_at, resolved_at, archived_at, created_at)
+     VALUES
+        (:batch, :thread, :parent, :sender, :recipient, :type, :subject, :body,
+         :related_type, :related_id, :read_at, :resolved_at, :archived_at, :created_at)'
+);
+$closeThread = $db->prepare('UPDATE notifications SET thread_id = id WHERE id = :id');
+
+// Klucz paczki z przedrostkiem „demo” — po nim poznaje je ponowne uruchomienie z --force.
+$demoBatchKey = static fn (): string => 'demo' . bin2hex(random_bytes(6));
+
+/** Zamienia parę [rodzaj, klucz] na identyfikator rekordu, do którego odsyła powiadomienie. */
+$relatedId = static function (?array $related) use ($certificateIds, $payerIds, $beneficiaryIds): array {
+    if ($related === null) {
+        return [null, null];
+    }
+
+    [$type, $key] = $related;
+    $id = match ($type) {
+        'certificate'  => $certificateIds[$key] ?? null,
+        'payer'        => $payerIds[$key] ?? null,
+        'beneficiary'  => $beneficiaryIds[$key] ?? null,
+        default        => null,
+    };
+
+    return $id === null ? [null, null] : [$type, $id];
+};
+
+$notificationCount = 0;
+
+foreach ($demoNotifications as $notification) {
+    [$relatedType, $related] = $relatedId($notification['related'] ?? null);
+    $batch = $demoBatchKey();
+
+    $insertNotification->execute([
+        'batch'        => $batch,
+        'thread'       => null,
+        'parent'       => null,
+        'sender'       => $notification['from'] !== null ? $staffIds[$notification['from']] : null,
+        'recipient'    => $staffIds[$notification['to']],
+        'type'         => $notification['type'],
+        'subject'      => $notification['subject'],
+        'body'         => $notification['body'],
+        'related_type' => $relatedType,
+        'related_id'   => $related,
+        'read_at'      => $notification['read'] !== null ? $at($notification['read'], '15:40:00') : null,
+        'resolved_at'  => $notification['resolved'] !== null ? $at($notification['resolved'], '16:10:00') : null,
+        'archived_at'  => $notification['archived'] !== null ? $at($notification['archived'], '17:30:00') : null,
+        'created_at'   => $at($notification['created'], '09:20:00'),
+    ]);
+    $notificationId = (int) $db->lastInsertId();
+    // Wiadomość zaczynająca wątek jest swoim własnym wątkiem — tak samo robi NotificationService.
+    $closeThread->execute(['id' => $notificationId]);
+    ++$notificationCount;
+
+    if ($notification['reply'] === null) {
+        continue;
+    }
+
+    $reply = $notification['reply'];
+    $insertNotification->execute([
+        'batch'        => $demoBatchKey(),
+        'thread'       => $notificationId,
+        'parent'       => $notificationId,
+        'sender'       => $staffIds[$reply['from']],
+        'recipient'    => $notification['from'] !== null ? $staffIds[$notification['from']] : $staffIds[$notification['to']],
+        'type'         => 'message',
+        'subject'      => 'Re: ' . $notification['subject'],
+        'body'         => $reply['body'],
+        'related_type' => $relatedType,
+        'related_id'   => $related,
+        'read_at'      => $reply['read'] !== null ? $at($reply['read'], '15:40:00') : null,
+        'resolved_at'  => null,
+        'archived_at'  => null,
+        'created_at'   => $at($reply['created'], '10:05:00'),
+    ]);
+    ++$notificationCount;
+}
+
+// ── Wnioski o certyfikat z poczty ─────────────────────────────────────────────
+
+// Rejestr bez sieci: te same pola, co Biała Lista, ale odpowiedzi z $demoCompanyRecords. Dzięki temu
+// wnioski demo powstają przez prawdziwą usługę i mają autentyczne wyliczenia w kolumnach JSON.
+$demoRegistry = new class ($demoCompanyRecords) implements CompanyRegistry {
+    /** @param array<int|string, array<string, string>> $records */
+    public function __construct(private readonly array $records)
+    {
+    }
+
+    public function supports(string $taxId): bool
+    {
+        return preg_match('/^\d{10}$/', $taxId) === 1;
+    }
+
+    public function lookupNip(string $nip, ?DateTimeImmutable $date = null): ?CompanyRecord
+    {
+        return isset($this->records[$nip]) ? CompanyRecord::fromArray($this->records[$nip]) : null;
+    }
+};
+
+$intake = new RegistrationIntakeService($db, $demoRegistry);
+// Wczytanie pliku w panelu wymaga uprawnienia; drogi automatyczne (imap, webhook) nie mają operatora.
+$uploader = Rbac::can((string) $owner['role'], 'registrations.intake') ? Actor::fromUser($owner) : null;
+
+$demoMail = static function (array $registration) use ($day): string {
+    [$fromName, $fromEmail] = $registration['from'];
+    $date = (new DateTimeImmutable($day($registration['offset']) . ' 09:30:00'))->format('D, d M Y H:i:s O');
+
+    return "From: {$fromName} <{$fromEmail}>\r\n"
+        . "To: rejestracja@certisub.example.com\r\n"
+        . "Subject: {$registration['subject']}\r\n"
+        . "Message-ID: <{$registration['id']}@demo.certisub.example>\r\n"
+        . "Date: {$date}\r\n"
+        . "MIME-Version: 1.0\r\n"
+        . "Content-Type: text/plain; charset=utf-8\r\n"
+        . "\r\n"
+        . str_replace("\n", "\r\n", $registration['body']);
+};
+
+$reviewDraft = $db->prepare(
+    'UPDATE registration_drafts
+        SET status = :status, created_at = :created_at, assigned_user_id = :assigned,
+            reviewed_by_user_id = :reviewer, reviewed_at = :reviewed_at, rejection_reason = :reason,
+            result_payer_id = :result_payer, result_beneficiary_id = :result_beneficiary,
+            result_certificate_id = :result_certificate
+      WHERE id = :id'
+);
+// Powiadomienie o wniosku tworzy sama usługa (announce) — tu zostaje tylko ustawienie daty i odczytu.
+$datedDraftNotification = $db->prepare(
+    'UPDATE notifications SET created_at = :created_at, read_at = :read_at
+      WHERE related_type = \'registration\' AND related_id = :id'
+);
+
+$draftIds = [];
+
+foreach ($demoRegistrations as $key => $registration) {
+    $result = $intake->ingest(
+        $demoMail($registration),
+        $registration['source'],
+        $registration['source'] === 'upload' ? $uploader : null
+    );
+
+    if ($result['draft_id'] === null) {
+        fwrite(STDERR, "Wniosek demo {$key} został pominięty ({$result['status']}).\n");
+        continue;
+    }
+
+    $draftId = (int) $result['draft_id'];
+    $draftIds[$key] = $draftId;
+    $resultKeys = $registration['result'];
+
+    $reviewDraft->execute([
+        'status'             => $registration['status'],
+        'created_at'         => $at($registration['offset'], '09:31:00'),
+        'assigned'           => $registration['assigned'] !== null ? $staffIds[$registration['assigned']] : null,
+        'reviewer'           => $registration['reviewer'] !== null ? $staffIds[$registration['reviewer']] : null,
+        'reviewed_at'        => $registration['reviewed'] !== null ? $at($registration['reviewed'], '12:45:00') : null,
+        'reason'             => $registration['reason'],
+        'result_payer'       => $resultKeys !== null ? $payerIds[$resultKeys[0]] : null,
+        'result_beneficiary' => $resultKeys !== null ? $beneficiaryIds[$resultKeys[1]] : null,
+        'result_certificate' => $resultKeys !== null ? $certificateIds[$resultKeys[2]] : null,
+        'id'                 => $draftId,
+    ]);
+
+    // Najnowszy wniosek zostaje nieprzeczytany — po to, żeby licznik przy dzwonku nie był pusty.
+    $datedDraftNotification->execute([
+        'created_at' => $at($registration['offset'], '09:31:00'),
+        'read_at'    => $registration['offset'] <= -4 ? $at($registration['offset'], '10:15:00') : null,
+        'id'         => $draftId,
+    ]);
+}
+
 // ── Podsumowanie ──────────────────────────────────────────────────────────────
 
 $count = static fn (string $sql): int => (int) $db->query($sql)->fetchColumn();
@@ -702,6 +1093,13 @@ printf(
 printf("  Zadania ToDo:                     %s\n", $grouped('SELECT status, COUNT(*) FROM renewal_tasks GROUP BY status ORDER BY FIELD(status, "todo", "in_progress", "done", "abandoned")'));
 printf("  Zaproszenia:                      %s\n", $grouped('SELECT status, COUNT(*) FROM invitations GROUP BY status ORDER BY status'));
 printf("  Zdarzenia w historii:             %d\n", $count('SELECT COUNT(*) FROM events'));
+printf("  Wnioski z poczty:                 %s\n", $grouped('SELECT status, COUNT(*) FROM registration_drafts GROUP BY status ORDER BY FIELD(status, "pending", "approved", "rejected")'));
+printf(
+    "  Powiadomienia:                    %s (%d nieprzeczytanych)\n",
+    $grouped('SELECT type, COUNT(*) FROM notifications GROUP BY type ORDER BY FIELD(type, "message", "request", "error", "system")'),
+    $count('SELECT COUNT(*) FROM notifications WHERE read_at IS NULL AND archived_at IS NULL')
+);
+printf("  Ustawienia odnowień w bazie:      %d\n", $count('SELECT COUNT(*) FROM settings'));
 printf(
     "\n  Twoje konto: %s %s <%s>, rola %s — opiekun %d aktywnych certyfikatów\n",
     (string) $owner['first_name'],
