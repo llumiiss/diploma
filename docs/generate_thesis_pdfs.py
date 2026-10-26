@@ -90,6 +90,7 @@ class ThesisPDF(FPDF):
 
     def figure_placeholder(self, caption: str, height: float = 80) -> None:
         """Bordered box marking where the author will paste a screenshot/diagram."""
+        self.placeholder_count = getattr(self, "placeholder_count", 0) + 1
         if self.get_y() + height + 12 > self.page_break_trigger:
             self.add_page()
         x, y, width = self.l_margin, self.get_y(), self.usable_width()

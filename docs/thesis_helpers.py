@@ -45,10 +45,12 @@ SHOTS: dict[str, tuple[str, int | tuple[int, int, int, int]]] = {
     "notifications": ("z czatu/16-powiadomienia.png", 74),
     # zrzuty do uzupełnienia (opis: docs/ZRZUTY_DO_PRACY.md) — robione wycinkiem ekranu,
     # więc bez obcinania paska przeglądarki
-    "invitation_compose": ("z czatu/17-wyslij-zaproszenie.png", 0),
-    "invitation_mail": ("z czatu/18-mailtrap-zaproszenie.png", 0),
-    "registration_review": ("z czatu/19-wniosek-sprawdzenie.png", 0),
-    "tests_run": ("z czatu/20-przebieg-testow.png", 0),
+    # Zrzuty z 26.10.2026 obejmują całe okno przeglądarki (pasek zakładek, pasek zadań),
+    # dlatego każdy ma wycinek: samo okno dialogowe albo sama treść strony.
+    "invitation_compose": ("z czatu/17-wyslij-zaproszenie.png", (535, 268, 1444, 921)),
+    "invitation_mail": ("z czatu/18-mailtrap-zaproszenie.png", (0, 105, 1909, 992)),
+    "registration_review": ("z czatu/19-wniosek-sprawdzenie.png", (0, 105, 1890, 1001)),
+    "tests_run": ("z czatu/20-przebieg-testow.png", (0, 86, 1059, 1177)),
 }
 
 _cache: dict[str, str | None] = {}

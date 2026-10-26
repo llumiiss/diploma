@@ -999,9 +999,29 @@ pojawią. Opis — co, gdzie i pod jaką nazwą — w nowym `docs/ZRZUTY_DO_PRAC
 sprawdzone w działającej aplikacji, a wysyłka poczty do piaskownicy Mailtrap potwierdzona
 `scripts/test-mail.php`.
 
+**Zrzuty dostarczone tego samego dnia** — cztery pliki były zrzutami całego ekranu (pasek zakładek,
+pasek zadań, prywatne zakładki przeglądarki) i powstały na produkcji, która ma inne dane niż lokalne
+demo. Każdy dostał więc wycinek w `SHOTS` (samo okno dialogowe albo sama treść strony), a podpisy
+zostały doprowadzone do tego, co widać na obrazku: zaproszenie bez załączników, wiadomość odebrana
+w skrzynce odbiorcy (nie w Mailtrapie), wniosek bez NIP-u z listą uwag (zamiast formularza
+wypełnionego z rejestru) i zapis przebiegu testów z pliku (nie zrzut terminala). Uwaga o pustych
+ramkach w spisie rysunków pokazuje się teraz tylko wtedy, gdy jakaś ramka rzeczywiście została.
+
+**Przegląd całości przed wysłaniem do prowadzącego** wykazał lukę merytoryczną: tabele testów
+wymieniały VIES, KRS, pamięć podręczną i limit zapytań, ale treść pracy opisywała tylko Białą Listę.
+Dopisany podrozdział **6.6 „Dane firm z otwartych rejestrów publicznych”** (powiadomienia przesunęły
+się na 6.7) opisuje interfejs `CompanyRegistry`, kierowanie numeru do źródła, państwa nieujawniające
+danych w VIES, uzupełnienie z KRS bez działu drugiego, oba dekoratory i trzy miejsca użycia
+(wnioski, formularz firmy, import). Bibliografia ma dwie nowe pozycje: VIES [24] i KRS [25].
+Do kierunków rozwoju dopisano CEIDG i GUS BIR/REGON jako źródła czekające na wnioski o klucze.
+Sprawdzone też liczby w tabeli 13: 190 kolumn, 87 indeksów, 32 klucze obce i 2 ograniczenia CHECK
+nadal zgadzają się z `information_schema`. Praca ma 65 stron, 34 rysunki, 16 tabel, zero pustych
+ramek, numeracja rysunków i tabel bez luk, wszystkie 25 pozycji bibliografii zacytowanych.
+
 **Stan prac**: 394/394 testy zielone z integracyjnymi, PHPStan level 5 bez błędów, PHP-CS-Fixer
-0 z 211 plików. Do uzupełnienia przez autora: cztery zrzuty z `docs/ZRZUTY_DO_PRACY.md` i wyniki
-ankiety SUS.
+0 z 210 plików. Do uzupełnienia przez autora: wyniki ankiety SUS (tabela 12) oraz — jeśli zależy mu
+na mocniejszych ilustracjach — dwa zrzuty zrobione na produkcji z pustymi tabelami (rysunek 27
+„Zaproszenia” i rysunek 31 „Wnioski e-mail”), które warto powtórzyć lokalnie na danych demo.
 
 ---
 ## Załącznik A — Oficjalny opis pracy (dosłownie, przekazany 2026-09-16)
