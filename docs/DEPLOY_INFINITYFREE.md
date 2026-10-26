@@ -40,14 +40,15 @@ composer install --no-dev --optimize-autoloader
 
 W tej kopii (**nie** w repozytorium git!) edytuj:
 
-**`config/database.php`** — dane z kroku 2:
+**`config/database.local.php`** (skopiuj z `config/database.local.php.example`) — dane z kroku 2.
+**Nie edytuj `config/database.php`** — ten plik jest w repozytorium i wdrożenie go zastępuje; plik
+`*.local.php` jest poza repozytorium i nic go nie nadpisze:
 ```php
 return [
     'host'     => 'sqlXXX.infinityfree.com',
     'dbname'   => 'if0_XXXXXXX_certisub',
     'username' => 'if0_XXXXXXX',
     'password' => 'twoje-haslo-do-bazy',
-    'charset'  => 'utf8mb4',
 ];
 ```
 
@@ -140,9 +141,15 @@ nie wymaga `phar` ani `ZipArchive`) i podmienia pliki aplikacji.
 
 Zawsze zacznij od `&dry=1` — lista plików od razu pokazuje, czy paczka jest ta, o którą Ci chodzi.
 
-**Czego skrypt nie rusza:** `config/*.local.php` (sekrety), `storage/` i `logs/` (dane i logi; wyjątkiem są
-pliki pilnujące katalogów `.htaccess` i `.gitkeep`, żeby dało się przywrócić blokadę załączników),
-`vendor/` oraz `.git/`. **Czego nie wgrywa:** `tests/`, `docs/` i plików narzędzi deweloperskich
+**Czego skrypt nie rusza:** `config/database.php` i `config/*.local.php` (dane logowania i sekrety),
+`storage/` i `logs/` (dane i logi; wyjątkiem są pliki pilnujące katalogów `.htaccess` i `.gitkeep`,
+żeby dało się przywrócić blokadę załączników), `vendor/` oraz `.git/`.
+
+> **Co poszło nie tak 2026-10-26.** Pierwsza wersja skryptu chroniła tylko pliki `*.local.php`, więc
+> wdrożenie nadpisało produkcyjny `config/database.php` wersją z repozytorium (localhost, root, puste
+> hasło). Strona główna działała dalej (nie rusza bazy), ale logowanie i całe API zwracały HTTP 500.
+> Od tej pory `config/database.php` jest chroniony, a dane logowania do bazy najlepiej trzymać
+> w `config/database.local.php` (patrz krok 4 niżej) — plik jest poza repozytorium i nic go nie nadpisze. **Czego nie wgrywa:** `tests/`, `docs/` i plików narzędzi deweloperskich
 (`phpunit.xml.dist`, `composer.*`, `package*.json`, `phpstan.neon`). **Czego nie robi:** nie usuwa plików,
 których nie ma w paczce, i nie uruchamia migracji — po wdrożeniu zmieniającym bazę wejdź jeszcze na
 `deploy-migrate.php?token=…`.

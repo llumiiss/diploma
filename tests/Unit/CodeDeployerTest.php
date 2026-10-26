@@ -71,6 +71,27 @@ final class CodeDeployerTest extends TestCase
         $this->assertSame(['index.php'], $report['written']);
     }
 
+    /**
+     * 2026-10-26: wdrożenie nadpisało produkcyjny config/database.php wersją z repozytorium
+     * (localhost, root, puste hasło) i aplikacja straciła połączenie z bazą — strona główna
+     * działała, a logowanie i API zwracały HTTP 500. Ten test pilnuje, żeby się nie powtórzyło.
+     */
+    public function testNeverOverwritesTheDatabaseConfiguration(): void
+    {
+        file_put_contents($this->root . '/config/database.php', '<?php return ["host" => "sql123.infinityfree.com"];');
+
+        $report = (new CodeDeployer($this->root))->deploy($this->archive([
+            'diploma-master/index.php'                    => '<?php // kod',
+            'diploma-master/config/database.php'          => '<?php return ["host" => "localhost"];',
+            'diploma-master/config/database.local.php'    => '<?php return ["host" => "z paczki"];',
+        ]));
+
+        $this->assertSame('<?php return ["host" => "sql123.infinityfree.com"];', file_get_contents($this->root . '/config/database.php'));
+        $this->assertFileDoesNotExist($this->root . '/config/database.local.php');
+        $this->assertSame(['config/database.local.php', 'config/database.php'], $report['protected']);
+        $this->assertSame(['index.php'], $report['written']);
+    }
+
     public function testDoesNotUploadTestsDocsAndDeveloperTooling(): void
     {
         $report = (new CodeDeployer($this->root))->deploy($this->archive([
@@ -171,7 +192,9 @@ final class CodeDeployerTest extends TestCase
         $this->assertTrue(CodeDeployer::isProtected('storage/attachments/umowa.pdf'));
         $this->assertFalse(CodeDeployer::isProtected('storage/.htaccess'));
         $this->assertFalse(CodeDeployer::isProtected('logs/.gitkeep'));
-        $this->assertFalse(CodeDeployer::matches('config/mail.php', CodeDeployer::PROTECTED_PATHS));
+        $this->assertTrue(CodeDeployer::matches('config/database.php', CodeDeployer::PROTECTED_PATHS));
+        $this->assertFalse(CodeDeployer::matches('config/mail.php', CodeDeployer::PROTECTED_PATHS), 'domyślne ustawienia poczty mają się wdrażać — sekrety są w mail.local.php');
+        $this->assertFalse(CodeDeployer::matches('config/intake.php', CodeDeployer::PROTECTED_PATHS), 'nowe opcje rejestrów muszą trafić na serwer');
         $this->assertFalse(CodeDeployer::matches('classes/Mailer.php', CodeDeployer::PROTECTED_PATHS));
 
         $this->assertFalse(CodeDeployer::isSafePath('../poza.php'));

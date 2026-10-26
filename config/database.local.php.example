@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Dane logowania do bazy dla tego serwera — skopiuj na `config/database.local.php`
+ * (plik jest w .gitignore i żadne wdrożenie go nie nadpisze).
+ *
+ * Na InfinityFree wartości znajdziesz w panelu: MySQL Databases.
+ * „host” to NIE localhost, tylko adres w rodzaju sqlXXX.infinityfree.com.
+ *
+ * Podajesz tylko te klucze, które różnią się od ustawień lokalnych z config/database.php.
+ */
+return [
+    'host'     => 'sqlXXX.infinityfree.com',
+    'dbname'   => 'if0_XXXXXXX_certisub',
+    'username' => 'if0_XXXXXXX',
+    'password' => 'TWOJE_HASLO_DO_BAZY',
+];
