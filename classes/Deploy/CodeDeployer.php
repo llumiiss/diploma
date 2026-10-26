@@ -29,8 +29,15 @@ final class CodeDeployer
      * @var list<string>
      */
     public const PROTECTED_PATHS = [
+        // Pliki z sekretami i dane. KAŻDY plik konfiguracyjny, który różni się między serwerami,
+        // musi być na tej liście — nawet jeśli jest w repozytorium.
+        //
+        // config/database.php jest w repozytorium z ustawieniami lokalnymi (localhost, root, puste
+        // hasło), a na hostingu trzyma prawdziwe dane logowania do MySQL. 2026-10-26 wdrożenie
+        // nadpisało go wartościami z repozytorium i aplikacja przestała łączyć się z bazą:
+        // strona główna działała (nie rusza bazy), a logowanie i całe API zwracały HTTP 500.
+        'config/database.php',
         'config/*.local.php',
-        'config/deploy.local.php',
         'storage/',
         'logs/',
         '.git/',
