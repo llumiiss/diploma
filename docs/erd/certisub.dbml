@@ -1,0 +1,287 @@
+// CertiSub Assistant — schemat bazy assistent_subscriptions (stan po Etapie 10, źródło: database/schema.sql)
+// Jak użyć: wklej całość w https://dbdiagram.io/d (przycisk „Create new diagram” -> zastąp zawartość edytora),
+// ułóż tabele myszą i wyeksportuj PNG / PDF (Export). Pełny opis tabel: docs/BAZA_DANYCH.md.
+
+Table users {
+  id int [pk, increment]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  role varchar [not null, default: 'OPERATOR', note: 'ADMIN, DIRECTOR, MANAGER, ACCOUNTANT, IT, OPERATOR, EMPLOYEE']
+  beneficiary_id int [note: 'konto pracownika wskazuje swoją osobę']
+  company_filter json
+  email varchar(255) [unique]
+  password_hash varchar(255)
+  email_verified_at datetime
+  last_login_at datetime
+  deactivated_at datetime
+  created_at timestamp
+}
+
+Table payers {
+  id int [pk, increment]
+  company_name varchar(255) [not null]
+  contact_person varchar(200) [not null]
+  tax_id varchar(20) [unique, note: 'NIP']
+  email varchar(255)
+  phone varchar(50)
+  address_line varchar(255)
+  postal_code varchar(16)
+  city varchar(120)
+  created_by_user_id int
+  archived_at datetime
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table beneficiaries {
+  id int [pk, increment]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  email varchar(255)
+  phone varchar(50)
+  payer_id int [not null]
+  notes text
+  created_by_user_id int
+  archived_at datetime
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table certificates {
+  id int [pk, increment]
+  name varchar(255) [not null]
+  certificate_type varchar [not null, default: 'OTHER', note: 'QUALIFIED_SIGNATURE, QUALIFIED_SEAL, SSL_CERTIFICATE, CODE_SIGNING, DOMAIN, SAAS, CLOUD_SUPPORT, OTHER']
+  serial_number varchar(128)
+  issuer varchar(255)
+  valid_from date
+  expiry_date date [not null]
+  renewal_lead_days smallint
+  user_id int [not null, note: 'opiekun rekordu']
+  beneficiary_id int
+  payer_id int [not null]
+  previous_certificate_id int
+  status varchar [not null, default: 'pending']
+  discount_percent decimal(5,2) [not null, default: 0, note: 'CHECK 0..100']
+  billing_cycle varchar [not null, default: 'annual']
+  payment_status varchar [not null, default: 'due_soon']
+  last_payment_date date
+  auto_renew boolean [not null, default: true]
+  notes text
+  archived_at datetime
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (issuer, serial_number) [unique]
+    expiry_date
+  }
+}
+
+Table renewal_tasks {
+  id int [pk, increment]
+  certificate_id int [not null]
+  assigned_user_id int
+  status varchar [not null, default: 'todo', note: 'todo, in_progress, done, abandoned']
+  priority varchar [not null, default: 'warning', note: 'expired, critical, warning, ok']
+  due_date date [not null]
+  resolution_note text
+  closed_at datetime
+  open_marker tinyint [note: 'kolumna wyliczana: 1 dla zadań otwartych']
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (certificate_id, open_marker) [unique]
+  }
+}
+
+Table email_templates {
+  id int [pk, increment]
+  code varchar(64) [not null]
+  locale char(2) [not null, default: 'pl']
+  name varchar(255) [not null]
+  subject varchar(255) [not null]
+  body_html mediumtext [not null]
+  body_text mediumtext
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (code, locale) [unique]
+  }
+}
+
+Table attachments {
+  id int [pk, increment]
+  original_name varchar(255) [not null]
+  stored_name varchar(255) [not null, unique]
+  mime_type varchar(127) [not null]
+  size_bytes int [not null]
+  sha256 char(64) [not null]
+  uploaded_by_user_id int
+  created_at timestamp
+}
+
+Table email_template_attachments {
+  template_id int [pk]
+  attachment_id int [pk]
+}
+
+Table invitations {
+  id int [pk, increment]
+  certificate_id int [not null]
+  renewal_task_id int
+  template_id int
+  recipient_type varchar [not null, note: 'beneficiary, payer']
+  recipient_email varchar(255) [not null]
+  recipient_name varchar(255)
+  subject varchar(255) [not null]
+  body_html mediumtext [not null]
+  status varchar [not null, default: 'queued', note: 'queued, sent, failed, responded, closed']
+  sent_at datetime
+  last_error text
+  reminder_count tinyint [not null, default: 0]
+  last_reminder_at datetime
+  next_reminder_at datetime
+  sent_by_user_id int
+}
+
+Table invitation_attachments {
+  invitation_id int [pk]
+  attachment_id int [pk]
+}
+
+Table events {
+  id bigint [pk, increment]
+  entity_type varchar [not null]
+  entity_id int
+  event_type varchar(64) [not null]
+  user_id int
+  certificate_id int
+  beneficiary_id int
+  payer_id int
+  payload json
+  occurred_at datetime [not null]
+  Note: 'celowo bez kluczy obcych — historia ma przetrwać archiwizację'
+}
+
+Table settings {
+  setting_key varchar(64) [pk]
+  setting_value varchar(255) [not null]
+  updated_by_user_id int
+  updated_at timestamp
+}
+
+Table notifications {
+  id bigint [pk, increment]
+  batch_key char(16) [not null]
+  thread_id bigint
+  parent_id bigint
+  sender_user_id int
+  recipient_user_id int [not null]
+  type varchar [not null, default: 'message', note: 'message, request, error, system']
+  subject varchar(255) [not null]
+  body text [not null]
+  related_type varchar [note: 'certificate, beneficiary, payer, registration']
+  related_id int
+  read_at datetime
+  resolved_at datetime
+  archived_at datetime
+  created_at datetime [not null]
+}
+
+Table registration_drafts {
+  id int [pk, increment]
+  status varchar [not null, default: 'pending', note: 'pending, approved, rejected']
+  source varchar [not null, default: 'upload', note: 'upload, imap, webhook, cli']
+  message_id varchar(255) [unique]
+  content_hash char(64) [not null, unique]
+  sender_email varchar(255)
+  sender_name varchar(255)
+  subject varchar(255)
+  received_at datetime
+  body_text mediumtext
+  raw_file varchar(64)
+  extracted json [not null]
+  form json [not null]
+  company_lookup json
+  warnings json
+  matched_payer_id int
+  matched_beneficiary_id int
+  assigned_user_id int
+  created_by_user_id int
+  reviewed_by_user_id int
+  reviewed_at datetime
+  rejection_reason varchar(500)
+  result_payer_id int
+  result_beneficiary_id int
+  result_certificate_id int
+  created_at datetime [not null]
+  updated_at timestamp
+}
+
+Table email_verifications {
+  id int [pk, increment]
+  user_id int [not null]
+  email varchar(255) [not null]
+  purpose varchar [not null, note: 'EMAIL_VERIFY, PASSWORD_SET']
+  token_hash char(64) [not null, unique, note: 'SHA-256 tokenu; jawny token zna tylko odbiorca']
+  request_ip varchar(45)
+  expires_at datetime [not null]
+  used_at datetime
+  created_at datetime [not null]
+}
+
+Table login_attempts {
+  id int [pk, increment]
+  email varchar(255) [not null]
+  request_ip varchar(45)
+  successful boolean [not null, default: false]
+  created_at datetime [not null]
+  Note: 'bez kluczy obcych — zapisuje też próby na nieistniejące adresy'
+}
+
+Table login_otps {
+  id int [pk, increment]
+  user_id int [not null]
+  email varchar(255) [not null]
+  request_ip varchar(45)
+  code_hash varchar(255) [not null]
+  expires_at datetime [not null]
+  used_at datetime
+  attempt_count tinyint [not null, default: 0]
+  Note: 'historia logowań kodem OTP sprzed Etapu 9 — aplikacja już z niej nie korzysta'
+}
+
+// --- relacje (strzałka od strony „wiele” do strony „jeden”) ---
+Ref: users.beneficiary_id > beneficiaries.id [delete: set null]
+Ref: payers.created_by_user_id > users.id [delete: set null]
+Ref: beneficiaries.payer_id > payers.id [delete: restrict]
+Ref: beneficiaries.created_by_user_id > users.id [delete: set null]
+Ref: certificates.user_id > users.id [delete: restrict]
+Ref: certificates.beneficiary_id > beneficiaries.id [delete: restrict]
+Ref: certificates.payer_id > payers.id [delete: restrict]
+Ref: certificates.previous_certificate_id > certificates.id [delete: set null]
+Ref: renewal_tasks.certificate_id > certificates.id [delete: restrict]
+Ref: renewal_tasks.assigned_user_id > users.id [delete: set null]
+Ref: attachments.uploaded_by_user_id > users.id [delete: set null]
+Ref: email_template_attachments.template_id > email_templates.id [delete: cascade]
+Ref: email_template_attachments.attachment_id > attachments.id [delete: restrict]
+Ref: invitations.certificate_id > certificates.id [delete: restrict]
+Ref: invitations.renewal_task_id > renewal_tasks.id [delete: set null]
+Ref: invitations.template_id > email_templates.id [delete: set null]
+Ref: invitations.sent_by_user_id > users.id [delete: set null]
+Ref: invitation_attachments.invitation_id > invitations.id [delete: cascade]
+Ref: invitation_attachments.attachment_id > attachments.id [delete: restrict]
+Ref: settings.updated_by_user_id > users.id [delete: set null]
+Ref: notifications.sender_user_id > users.id [delete: set null]
+Ref: notifications.recipient_user_id > users.id [delete: cascade]
+Ref: registration_drafts.matched_payer_id > payers.id [delete: set null]
+Ref: registration_drafts.matched_beneficiary_id > beneficiaries.id [delete: set null]
+Ref: registration_drafts.result_payer_id > payers.id [delete: set null]
+Ref: registration_drafts.result_beneficiary_id > beneficiaries.id [delete: set null]
+Ref: registration_drafts.result_certificate_id > certificates.id [delete: set null]
+Ref: registration_drafts.assigned_user_id > users.id [delete: set null]
+Ref: registration_drafts.created_by_user_id > users.id [delete: set null]
+Ref: registration_drafts.reviewed_by_user_id > users.id [delete: set null]
+Ref: email_verifications.user_id > users.id [delete: cascade]
+Ref: login_otps.user_id > users.id [delete: cascade]

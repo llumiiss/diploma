@@ -958,6 +958,51 @@ w `docs/TODO_REJESTR_FIRM.md`.
 **Czeka na autora**: darmowe, ale wnioskowane klucze do CEIDG v3 i GUS BIR/REGON, jeśli chcemy
 te dwa źródła.
 
+### Dane demonstracyjne, liczby w rozdziale 7 i lista brakujących zrzutów (2026-10-26)
+
+Autor poprosił o komplet przykładowych danych we wszystkich polach, żeby zrzuty ekranu do pracy
+nie pokazywały pustych kolumn, oraz o dokładny opis, co jeszcze ma sfotografować.
+
+**Dane demonstracyjne** (`scripts/seed-demo-data.php`). Przegląd bazy pokazał trzy puste tabele
+(`notifications`, `registration_drafts`, `settings`) i kilka kolumn wypełnianych tylko przez aplikację.
+Skrypt zakłada teraz dodatkowo: sześć powiadomień wewnętrznych pokrywających wszystkie cztery rodzaje,
+wątek z odpowiedzią, prośbę załatwioną i niezałatwioną oraz wiadomość w archiwum; cztery wnioski
+o certyfikat z poczty — po jednym z każdej drogi wejścia (upload, IMAP, webhook) i w każdym stanie
+przeglądu; cztery ustawienia procesu odnowień z podpisem konta; notatki i opiekunów rekordów przy
+firmach i użytkownikach certyfikatów; ostatnie logowanie kont oraz filtr firm na koncie księgowości.
+
+Wnioski powstają przez prawdziwą `RegistrationIntakeService::ingest()` z podstawionym rejestrem bez
+sieci — dzięki temu kolumny JSON (`extracted`, `form`, `company_lookup`, `warnings`) mają dokładnie
+taki układ jak w aplikacji, a nie ręcznie napisany. Powiadomienia demo mają klucz paczki z
+przedrostkiem `demo`, wnioski — identyfikator wiadomości `@demo.certisub.example`; po tym poznaje je
+ponowne uruchomienie z `--force`, które kasuje też zapisane kopie wiadomości ze `storage/intake`.
+Sprawdzone w przeglądarce: pulpit, kolejka wniosków (zakładki do sprawdzenia / zatwierdzone /
+odrzucone), ekran sprawdzenia wniosku z danymi z rejestru i lista powiadomień z licznikiem przy dzwonku.
+
+**Rozdział 7 pracy.** Liczby pochodziły z przebiegu z 2 października (318 testów). Po przeliczeniu:
+**394 testy** (209 jednostkowych + 185 integracyjnych), 52 klasy testowe, 19 486 asercji, czas 42 s.
+Obie tabele z podziałem tematycznym zostały przeliczone klasa po klasie (sumy zgadzają się z
+przebiegiem) i uzupełnione o zestawy dopisane po 23.10: rejestry VIES i KRS, pamięć podręczna z
+limitem zapytań, komplet tłumaczeń oraz czytnik tar.gz z regułami wdrożenia. Pełny przebieg zapisany
+w `docs/testy/przebieg-testow-2026-10-26.txt`.
+
+**Awaria wdrożeniowa jako materiał merytoryczny.** Podrozdział 7.5 opisuje teraz klasę błędów, której
+testy nie mogły wykryć, bo leży poza kodem aplikacji — nadpisanie `config/database.php` przy
+wdrożeniu — wraz z wnioskiem, że granica między kodem a konfiguracją środowiska należy do interfejsu
+systemu i powinna być opisana testem. Ten sam wątek wraca w zakończeniu (9.1) jako doświadczenie z
+wdrożenia na hosting bez SSH.
+
+**Zrzuty ekranu.** W pracy jest 28 zrzutów na miejscu i zostały **cztery** puste ramki (nie czternaście,
+jak mówił wpis z 23.10 — resztę autor uzupełnił w międzyczasie). Ramki zamieniono na wywołania
+`screenshot()` z zarejestrowanymi nazwami plików, więc praca wstawi obrazki sama, gdy pliki się
+pojawią. Opis — co, gdzie i pod jaką nazwą — w nowym `docs/ZRZUTY_DO_PRACY.md`. Ścieżki klikania
+sprawdzone w działającej aplikacji, a wysyłka poczty do piaskownicy Mailtrap potwierdzona
+`scripts/test-mail.php`.
+
+**Stan prac**: 394/394 testy zielone z integracyjnymi, PHPStan level 5 bez błędów, PHP-CS-Fixer
+0 z 211 plików. Do uzupełnienia przez autora: cztery zrzuty z `docs/ZRZUTY_DO_PRACY.md` i wyniki
+ankiety SUS.
+
 ---
 ## Załącznik A — Oficjalny opis pracy (dosłownie, przekazany 2026-09-16)
 
