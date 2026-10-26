@@ -208,7 +208,8 @@ def chapter3(pdf) -> None:
         "i statystyki zadań) z kluczem zawierającym rolę, konto i filtr firm oraz unieważnianiem przy "
         "każdym zapisie; moduł wymiany danych (App\\Exchange) z jednolitym opisem kolumn i normalizacją "
         "wartości, współdzielonym przez eksport i import; moduł odbioru wniosków (App\\Intake) z "
-        "własnym klientem IMAP i klientem rejestru VAT; mechanizm i18n z domyślnym językiem polskim "
+        "własnym klientem IMAP oraz klientami otwartych rejestrów firm (Biała Lista, VIES, KRS); "
+        "mechanizm i18n z domyślnym językiem polskim "
         "oraz zestaw testów jednostkowych i integracyjnych (PHPUnit) i statyczną analizę kodu (PHPStan) "
         "uruchamiane przy każdej zmianie."
     )

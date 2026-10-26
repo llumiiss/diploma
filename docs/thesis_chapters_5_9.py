@@ -36,6 +36,8 @@ BIBLIOGRAPHY = [
     "Hardt D., RFC 6749: The OAuth 2.0 Authorization Framework, IETF, 2012.",
     "Spring Boot Reference Documentation, VMware / Broadcom, https://docs.spring.io/spring-boot (dostęp: październik 2026).",
     "Nielsen J., 10 Usability Heuristics for User Interface Design, Nielsen Norman Group, https://www.nngroup.com/articles/ten-usability-heuristics/ (dostęp: październik 2026).",
+    "VIES — VAT Information Exchange System, interfejs REST, Komisja Europejska, https://ec.europa.eu/taxation_customs/vies/ (dostęp: październik 2026).",
+    "Krajowy Rejestr Sądowy — interfejs API, Ministerstwo Sprawiedliwości, https://api-krs.ms.gov.pl (dostęp: październik 2026).",
 ]
 
 UNIT_TESTS = [
@@ -499,9 +501,9 @@ def chapter6(pdf) -> None:
         "a skrypt uruchomiony z przeglądarki zwraca 403. Skaner może też uruchomić ręcznie menedżer lub "
         "administrator przyciskiem „Uruchom skaner”."
     )
-    screenshot(pdf, "invitation_compose", "Okno „Wyślij zaproszenie” z podglądem wiadomości i załącznikami", 150)
+    screenshot(pdf, "invitation_compose", "Okno „Wyślij zaproszenie”: wybór odbiorcy, szablon i podgląd treści z podstawionymi danymi certyfikatu", 130)
     screenshot(pdf, "invitations", "Rejestr „Zaproszenia” z filtrami statusu i zaległych przypomnień", 150)
-    screenshot(pdf, "invitation_mail", "Wiadomość z zaproszeniem odebrana w skrzynce Mailtrap (sandbox)", 150)
+    screenshot(pdf, "invitation_mail", "Zaproszenie dostarczone do skrzynki odbiorcy z wersji demonstracyjnej na hostingu", 150)
 
     pdf.subheading("6.4. Integracja modułu z aplikacją webową i rejestr zdarzeń")
     pdf.paragraph(
@@ -559,9 +561,56 @@ def chapter6(pdf) -> None:
         "decyzją człowieka, a ta sama wiadomość (Message-ID lub skrót treści) nie powstaje drugi raz."
     )
     screenshot(pdf, "registrations", "Kolejka „Wnioski e-mail” (zakładki: do sprawdzenia, zatwierdzone, odrzucone)", 150)
-    screenshot(pdf, "registration_review", "Ekran sprawdzenia wniosku: treść wiadomości obok wypełnionego formularza", 150)
+    screenshot(pdf, "registration_review", "Ekran sprawdzenia wniosku: treść wiadomości i lista uwag obok formularza — w tej wiadomości nie było NIP-u, więc danych firmy nie dało się pobrać z rejestru", 150)
 
-    pdf.subheading("6.6. Powiadomienia wewnętrzne między kontami")
+    pdf.subheading("6.6. Dane firm z otwartych rejestrów publicznych")
+    pdf.paragraph(
+        "Dane firmy po numerze podatkowym pobiera osobna warstwa, wspólna dla całej aplikacji. Każde "
+        "źródło implementuje interfejs CompanyRegistry z dwiema metodami: supports() rozstrzyga, czy "
+        "potrafi odpowiedzieć na dany numer, a lookupNip() zwraca rekord firmy albo null, gdy numeru "
+        "nie ma w rejestrze. CompositeCompanyRegistry pyta wyłącznie te źródła, które obsługują dany "
+        "numer, więc polski NIP trafia do Białej Listy podatników VAT [18], a numer VAT z kodem kraju "
+        "do unijnego systemu VIES [24]; awaria jednego źródła nie przerywa łańcucha, a gdy nie "
+        "odpowiedziało żadne, operator widzi komunikat o awarii, a nie informację o braku firmy. Oba "
+        "interfejsy są publiczne i nie wymagają klucza, co było warunkiem wdrożenia na bezpłatnym "
+        "hostingu."
+    )
+    pdf.paragraph(
+        "Zakres danych z każdego źródła jest różny. Biała Lista zwraca nazwę, status VAT, REGON, numer "
+        "KRS i adres, VIES — nazwę i adres, przy czym część państw członkowskich (m.in. Niemcy, "
+        "Hiszpania i Włochy) potwierdza wyłącznie ważność numeru i zamiast danych podatnika zwraca "
+        "znacznik „---”; aplikacja zamienia go na puste pole, a operator dostaje potwierdzenie numeru "
+        "wraz z ostrzeżeniem, że dane trzeba wpisać ręcznie. Jeżeli Biała Lista poda numer KRS, "
+        "odpytywany jest dodatkowo rejestr sądowy [25], który uzupełnia formę prawną i adres rozbity "
+        "na ulicę, kod pocztowy i miejscowość. Dział drugi odpisu, zawierający dane osób "
+        "reprezentujących spółkę, nie jest czytany: ewidencja certyfikatów go nie potrzebuje, a "
+        "ograniczenie zakresu pobieranych danych osobowych wynika z zasady minimalizacji [2]."
+    )
+    pdf.paragraph(
+        "Ponieważ rejestry są usługami zewnętrznymi o ograniczonej przepustowości, zapytania "
+        "przechodzą przez dwa dekoratory. CachedCompanyRegistry trzyma odpowiedzi w pamięci podręcznej "
+        "przez siedem dni i zapamiętuje także odpowiedź „nie ma takiego numeru”, natomiast awarii nie "
+        "zapamiętuje — chwilowa niedostępność rejestru ma prawo minąć przed kolejną próbą. "
+        "LookupThrottle ogranicza liczbę zapytań do dwudziestu na konto na godzinę, co chroni zarówno "
+        "przed limitem po stronie rejestru, jak i przed pętlą w interfejsie; brak katalogu do zapisu "
+        "licznika nie blokuje funkcji, bo ograniczenie ma charakter ochronny, a nie kontroli dostępu."
+    )
+    pdf.paragraph(
+        "Z tej samej warstwy korzystają trzy miejsca w aplikacji. Pierwsze to opisana wyżej kolejka "
+        "wniosków z poczty. Drugie to formularz firmy, w którym przycisk „Pobierz z rejestru” przy polu "
+        "NIP wypełnia nazwę i adres, a pod polami pokazuje dane rejestrowe (status VAT, REGON, KRS, "
+        "datę rejestracji) oraz ostrzeżenia: firmy nie ma w rejestrze, status VAT jest nieczynny, adres "
+        "jest niepełny albo firma jest już w ewidencji. Pola wypełnione wcześniej przez operatora "
+        "nadpisywane są dopiero po potwierdzeniu. Trzecie to import plików CSV i XML: gdy wiersz ma "
+        "numer podatkowy, a komórka z nazwą lub adresem jest pusta, brakująca wartość pochodzi z "
+        "rejestru — danych z pliku aplikacja nigdy nie nadpisuje, bo plik jest deklaracją operatora. "
+        "Uzupełnienie działa już na etapie podglądu importu (inaczej podgląd pokazywałby błędy "
+        "walidacji, których przy zapisie nie będzie), a jeden plik może wywołać najwyżej sto zapytań. "
+        "We wszystkich trzech ścieżkach obowiązuje ta sama zasada: dane z rejestru są propozycją i nie "
+        "trafiają do ewidencji bez decyzji człowieka."
+    )
+
+    pdf.subheading("6.7. Powiadomienia wewnętrzne między kontami")
     pdf.paragraph(
         "Powiadomienia służą głównie do komunikacji administratora z operatorami. Jeden wiersz "
         "w tabeli notifications to jedna wiadomość dla jednego odbiorcy (wiadomość do wielu osób to "
@@ -750,7 +799,7 @@ def chapter7(pdf) -> None:
         "konfiguracją środowiska jest częścią interfejsu systemu i powinna być opisana testem tak samo "
         "jak reguły biznesowe."
     )
-    screenshot(pdf, "tests_run", "Wynik pełnego przebiegu testów (composer test z RUN_INTEGRATION_TESTS=1) w terminalu", 150)
+    screenshot(pdf, "tests_run", "Zapis pełnego przebiegu testów automatycznych (docs/testy/przebieg-testow-2026-10-26.txt)", 105)
 
 
 # --------------------------------------------------------------------------------------------- 8
@@ -955,6 +1004,9 @@ def chapter9(pdf) -> None:
         "iCalendar,",
         "automatyczne pobieranie informacji o statusie certyfikatów SSL z publicznych rejestrów "
         "przejrzystości certyfikatów oraz integracja z interfejsami wystawców,",
+        "kolejne źródła danych o firmach, które wymagają wniosku o bezpłatny klucz dostępu: CEIDG "
+        "(działalności jednoosobowe) i GUS BIR/REGON — warstwa CompanyRegistry jest na nie "
+        "przygotowana, brakuje wyłącznie poświadczeń,",
         "rozszerzenie odczytu wniosków o załączniki PDF (OCR) i uczenie ekstraktora na własnych "
         "wiadomościach,",
         "powiązanie z osobną aplikacją „Menedżer Subskrypcji” (prywatne subskrypcje) na poziomie "
@@ -982,12 +1034,14 @@ def back_matter(pdf) -> None:
     for number, caption, page in pdf.figures:
         pdf.multi_cell(pdf.usable_width(), 5.2, f"Rysunek {number}. {caption} ... {page}")
         pdf.ln(0.6)
-    pdf.ln(2)
-    pdf.set_font("Arial", "I", 9)
-    pdf.multi_cell(
-        pdf.usable_width(), 4.6,
-        "Pozycje oznaczone w tekście ramką „miejsce na rysunek” wymagają wstawienia zrzutu ekranu przez autora."
-    )
+    # Uwaga o pustych ramkach ma sens tylko wtedy, gdy w pracy rzeczywiście jakaś została.
+    if getattr(pdf, "placeholder_count", 0):
+        pdf.ln(2)
+        pdf.set_font("Arial", "I", 9)
+        pdf.multi_cell(
+            pdf.usable_width(), 4.6,
+            "Pozycje oznaczone w tekście ramką „miejsce na rysunek” wymagają wstawienia zrzutu ekranu przez autora."
+        )
 
     pdf.add_page()
     pdf.start_section("Spis tabel", level=0)
