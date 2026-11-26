@@ -47,12 +47,11 @@
                 return this.store.invitations;
             },
             filtered() {
-                const query = this.search.trim().toLowerCase();
-                if (!query) {
+                const matches = CertiSub.textFilter.matcher(this.search);
+                if (!this.search.trim()) {
                     return this.state.items;
                 }
-                return this.state.items.filter((item) => [item.certificate_name, item.recipient_email, item.recipient_name, item.subject]
-                    .some((value) => value && String(value).toLowerCase().indexOf(query) !== -1));
+                return this.state.items.filter((item) => matches([item.certificate_name, item.recipient_email, item.recipient_name, item.subject]));
             },
         },
         watch: {
@@ -133,8 +132,8 @@
                                 </td>
                                 <td class="td text-right whitespace-nowrap" @click.stop>
                                     <template v-if="can('invitations.send')">
-                                        <button v-if="item.status === 'sent'" type="button" class="btn-ghost" @click="act(item, 'remind')">🔔 {{ t('invitation.action.remind') }}</button>
-                                        <button v-if="item.status === 'failed'" type="button" class="btn-ghost" @click="act(item, 'retry')">↻ {{ t('invitation.action.retry') }}</button>
+                                        <button v-if="item.status === 'sent' && !item.renewal_blocked" type="button" class="btn-ghost" @click="act(item, 'remind')">🔔 {{ t('invitation.action.remind') }}</button>
+                                        <button v-if="item.status === 'failed' && !item.renewal_blocked" type="button" class="btn-ghost" @click="act(item, 'retry')">↻ {{ t('invitation.action.retry') }}</button>
                                         <button v-if="item.status === 'sent' || item.status === 'failed'" type="button" class="btn-ghost text-emerald-700" @click="act(item, 'responded')">✔ {{ t('invitation.action.responded') }}</button>
                                     </template>
                                 </td>
@@ -209,8 +208,8 @@
             <DrawerShell :title="invitation ? invitation.subject : ''" :subtitle="invitation ? invitation.certificate_name : ''" :loading="loading" :error="error" @close="close">
                 <template #actions>
                     <template v-if="invitation && can('invitations.send')">
-                        <button v-if="invitation.status === 'sent'" type="button" class="btn-secondary" @click="act('remind')">🔔 {{ t('invitation.action.remind') }}</button>
-                        <button v-if="invitation.status === 'failed'" type="button" class="btn-secondary" @click="act('retry')">↻ {{ t('invitation.action.retry') }}</button>
+                        <button v-if="invitation.status === 'sent' && !invitation.renewal_blocked" type="button" class="btn-secondary" @click="act('remind')">🔔 {{ t('invitation.action.remind') }}</button>
+                        <button v-if="invitation.status === 'failed' && !invitation.renewal_blocked" type="button" class="btn-secondary" @click="act('retry')">↻ {{ t('invitation.action.retry') }}</button>
                         <button v-if="invitation.status === 'sent' || invitation.status === 'failed'" type="button" class="btn-secondary" @click="act('responded')">✔ {{ t('invitation.action.responded') }}</button>
                         <button v-if="invitation.status !== 'closed'" type="button" class="btn-secondary" @click="act('close')">✖ {{ t('invitation.action.close') }}</button>
                     </template>
@@ -281,6 +280,13 @@
             },
             invitationTemplates() {
                 return this.options ? this.options.templates : [];
+            },
+            templateOptions() {
+                return this.invitationTemplates.map((template) => ({
+                    value: template.id,
+                    label: template.name + ' (' + template.locale.toUpperCase() + ')',
+                    search: template.code,
+                }));
             },
         },
         async mounted() {
@@ -378,10 +384,7 @@
                         </fieldset>
 
                         <FormField :label="t('invitation.template')" :error="errors.template_id" required>
-                            <select v-model="form.template_id" class="input" @change="onTemplateChange">
-                                <option value="">{{ t('common.choose') }}</option>
-                                <option v-for="template in invitationTemplates" :key="template.id" :value="String(template.id)">{{ template.name }} ({{ template.locale.toUpperCase() }})</option>
-                            </select>
+                            <SearchSelect v-model="form.template_id" :options="templateOptions" :empty-label="t('common.choose')" :aria-label="t('invitation.template')" @change="onTemplateChange" />
                         </FormField>
 
                         <fieldset>

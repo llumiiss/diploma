@@ -6,8 +6,10 @@ namespace Tests\Unit;
 
 use App\Exchange\EmlParser;
 use App\Intake\RegistrationExtractor;
+use App\Service\TemplateRenderer;
 use App\Session;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\VendorNoticeFixtures;
 
 final class RegistrationExtractorTest extends TestCase
 {
@@ -266,7 +268,7 @@ final class RegistrationExtractorTest extends TestCase
     {
         $rows = '<tr><td>Imię</td><td>Piotr</td></tr><tr><td>Nazwisko</td><td>Lewandowski</td></tr>';
         $rows .= str_repeat('<tr><td>x</td><td>y</td></tr>', 600);
-        $rows .= '<tr><td>NIP firmy</td><td>9876543210</td></tr>';
+        $rows .= '<tr><td>Numer seryjny</td><td>5A3F9C21B7E04D18</td></tr>';
         // Same otwarcia bez zamknięć i bez „>” — wyrażenie z leniwym kwantyfikatorem liczyłoby się tu kwadratowo.
         $html = '<table>' . $rows . str_repeat('<tr <td ', 20000) . '</table>';
 
@@ -276,7 +278,7 @@ final class RegistrationExtractorTest extends TestCase
 
         $this->assertLessThan(3.0, $elapsed, 'złośliwy HTML nie może blokować odbioru poczty');
         $this->assertSame('Piotr', $result['person']['first_name']);
-        $this->assertNull($result['company']['nip'], 'wiersze ponad limit tabeli nie są czytane');
+        $this->assertNull($result['certificate']['serial_number'], 'wiersze ponad limit tabeli nie są czytane');
     }
 
     public function testOversizedTextIsTruncatedBeforeReading(): void
@@ -300,5 +302,89 @@ final class RegistrationExtractorTest extends TestCase
 
         $this->assertSame('Jan', $result['person']['first_name']);
         $this->assertSame('6342851974', $result['company']['nip']);
+    }
+
+    public function testVendorNoticeAboutIssuedSignatureIsSplitIntoFields(): void
+    {
+        $result = RegistrationExtractor::extract(EmlParser::parse(VendorNoticeFixtures::issued()));
+
+        $this->assertTrue($result['notification']);
+        $this->assertSame(
+            ['first_name' => 'Katarzyna', 'last_name' => 'Przykładowa', 'email' => 'k.przykladowa@example.com', 'phone' => '+48 500100200'],
+            $result['person']
+        );
+        $this->assertNull($result['company']['nip'], 'NIP ze stopki dostawcy nie jest firmą klienta');
+        $this->assertNull($result['company']['name']);
+        $this->assertSame('QUALIFIED_SIGNATURE', $result['certificate']['certificate_type']);
+        $this->assertSame('2026-03-10', $result['certificate']['valid_from']);
+        $this->assertSame('2029-03-09', $result['certificate']['expiry_date']);
+        $this->assertSame(36, $result['certificate']['validity_months']);
+        $this->assertSame('Certum', $result['certificate']['issuer']);
+        $this->assertStringContainsString('R100200', (string) $result['certificate']['notes']);
+        $this->assertStringContainsString('podpis 3-letni', (string) $result['certificate']['notes']);
+        $this->assertContains('company_not_in_message', array_column($result['warnings'], 'code'));
+        $this->assertNotContains('renewal_notice', array_column($result['warnings'], 'code'));
+    }
+
+    public function testVendorNoticeAboutExpiringSignature(): void
+    {
+        $message = EmlParser::parse(VendorNoticeFixtures::expiring());
+        $result = RegistrationExtractor::extract($message);
+
+        $this->assertStringNotContainsString('#outlook', $message->text, 'style nie należą do treści');
+        $this->assertSame(
+            ['first_name' => 'Tomasz', 'last_name' => 'Testowy', 'email' => 'tomasz.testowy@firma-testowa.example', 'phone' => '+48 600700800'],
+            $result['person']
+        );
+        $this->assertNull($result['company']['nip']);
+        $this->assertSame('0a1b2c3d4e5f60718293a4b5c6d7e8f9', $result['certificate']['serial_number']);
+        $this->assertSame('2024-07-16', $result['certificate']['valid_from']);
+        $this->assertSame('2027-07-15', $result['certificate']['expiry_date']);
+        $this->assertStringContainsString('1000200030004000', (string) $result['certificate']['notes']);
+        $this->assertContains('renewal_notice', array_column($result['warnings'], 'code'));
+        $this->assertTrue($result['looks_like_registration']);
+    }
+
+    public function testLabelOnItsOwnLineTakesTheNextLine(): void
+    {
+        $result = $this->extract("Imię:\nEwa\nNazwisko:\nPawlak\nNIP:\n6342851974\nTelefon:\nE-mail: ewa@example.com\nWażny do:\n31.12.2027 22:59:59 UTC");
+
+        $this->assertSame('Ewa', $result['person']['first_name']);
+        $this->assertSame('Pawlak', $result['person']['last_name']);
+        $this->assertSame('6342851974', $result['company']['nip']);
+        $this->assertSame('ewa@example.com', $result['person']['email']);
+        $this->assertNull($result['person']['phone'], 'kolejna etykieta nie jest wartością poprzedniej');
+        $this->assertSame('2027-12-31', $result['certificate']['expiry_date']);
+    }
+
+    public function testCustomLabelsFromReadingRulesWin(): void
+    {
+        $body = "Klient końcowy\nOla Wymyślona\nKontrahent ID: 6342851974\nAbonament do: 2027-05-31";
+        $this->assertNull($this->extract($body)['certificate']['expiry_date']);
+
+        $eml = "From: Biuro <biuro@example.com>\r\nSubject: Zlecenie\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n" . $body;
+        $result = RegistrationExtractor::extract(EmlParser::parse($eml), [
+            ['field' => 'person.full_name', 'label' => 'Klient końcowy'],
+            ['field' => 'company.nip', 'label' => 'Kontrahent ID'],
+            ['field' => 'cert.expiry', 'label' => 'Abonament do'],
+            ['field' => 'nieistniejace.pole', 'label' => 'Zlecenie'],
+        ]);
+
+        $this->assertSame('Ola', $result['person']['first_name']);
+        $this->assertSame('Wymyślona', $result['person']['last_name']);
+        $this->assertSame('6342851974', $result['company']['nip']);
+        $this->assertSame('2027-05-31', $result['certificate']['expiry_date']);
+    }
+
+    public function testHtmlToTextKeepsWhatTheReaderSees(): void
+    {
+        $html = "<html><head><style>p{color:red}</style></head><body><!-- ukryte --><header>Nagłówek</header>\n<div>\n  <span>Imię:</span>\n  <b>Ewa</b>\n</div><table><tr><td>A</td><td>B</td></tr></table><script>alert(1)</script><p>x<br>y</p></body></html>";
+
+        $this->assertSame("Nagłówek\nImię: Ewa\n\nA\nB\n\nx\ny", TemplateRenderer::htmlToText($html));
+        $this->assertSame('przed', TemplateRenderer::htmlToText('przed<style>niedomknięty'));
+
+        $started = microtime(true);
+        TemplateRenderer::htmlToText(str_repeat('<!--', 100000) . str_repeat('<div ', 60000));
+        $this->assertLessThan(3.0, microtime(true) - $started);
     }
 }

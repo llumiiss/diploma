@@ -28,20 +28,20 @@
             },
         },
         template: `
-            <div class="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true" @keydown.esc="requestClose">
+            <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" @keydown.esc="requestClose">
                 <div class="fixed inset-0 bg-slate-900/50" @click="requestClose"></div>
-                <div :class="['relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full my-8', widthClass]">
-                    <div class="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
-                        <div>
+                <div :class="['relative flex flex-col max-h-full min-h-0 bg-white rounded-2xl border border-slate-200 shadow-xl w-full', widthClass]">
+                    <div class="shrink-0 px-6 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
+                        <div class="min-w-0">
                             <h3 class="text-lg font-bold text-slate-900">{{ title }}</h3>
                             <p v-if="subtitle" class="text-sm text-slate-500 mt-1">{{ subtitle }}</p>
                         </div>
                         <button type="button" class="text-slate-400 hover:text-slate-700 text-xl leading-none" :aria-label="t('common.close')" @click="requestClose">×</button>
                     </div>
-                    <div class="px-6 py-5">
+                    <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-5">
                         <slot></slot>
                     </div>
-                    <div v-if="$slots.footer" class="px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-2xl flex flex-wrap justify-end gap-3">
+                    <div v-if="$slots.footer" class="shrink-0 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-2xl flex flex-wrap justify-end gap-3">
                         <slot name="footer"></slot>
                     </div>
                 </div>

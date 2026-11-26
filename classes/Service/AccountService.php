@@ -36,7 +36,7 @@ final class AccountService
 
         $stmt = $this->db->query(
             "SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.beneficiary_id, u.created_at, u.deactivated_at,
-                    CONCAT_WS(' ', ub.first_name, ub.last_name) AS beneficiary_name,
+                    CONCAT_WS(' ', ub.first_name, ub.last_name) AS beneficiary_name, ub.email AS beneficiary_email,
                     (SELECT COUNT(*) FROM certificates c
                       WHERE c.user_id = u.id AND c.archived_at IS NULL) AS certificate_count,
                     (SELECT COUNT(*) FROM renewal_tasks t

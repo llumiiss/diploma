@@ -28,6 +28,7 @@ $steps = [
     'events'                    => 'DELETE FROM events',
     'notifications'             => 'DELETE FROM notifications',
     'registration drafts'       => 'DELETE FROM registration_drafts',
+    'reading rules'             => 'DELETE FROM reading_rules',
     'invitation attachments'    => 'DELETE FROM invitation_attachments',
     'invitations'               => 'DELETE FROM invitations',
     'renewal tasks'             => 'DELETE FROM renewal_tasks',

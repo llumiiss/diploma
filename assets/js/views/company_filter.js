@@ -49,12 +49,15 @@
                 return this.state.mode !== 'all';
             },
             visibleCompanies() {
-                const query = this.search.trim().toLowerCase();
-                if (!query) {
-                    return this.state.available;
-                }
-                return this.state.available.filter((item) => [item.company_name, item.tax_id, item.city]
-                    .some((value) => value && String(value).toLowerCase().indexOf(query) !== -1));
+                const matches = CertiSub.textFilter.matcher(this.search);
+                return this.state.available.filter((item) => matches([item.company_name, item.tax_id, item.city]));
+            },
+            companyOptions() {
+                return this.state.available.map((item) => ({
+                    value: item.id,
+                    label: item.company_name + (item.city ? ' — ' + item.city : ''),
+                    search: item.tax_id || '',
+                }));
             },
             canApply() {
                 if (this.draftMode === 'one') {
@@ -138,10 +141,7 @@
                         <legend class="sr-only">{{ t('filter.label') }}</legend>
                         <label class="flex items-center gap-2 text-sm"><input v-model="draftMode" type="radio" value="all"> {{ t('filter.all') }}</label>
                         <label class="flex items-center gap-2 text-sm"><input v-model="draftMode" type="radio" value="one"> {{ t('filter.one') }}</label>
-                        <select v-if="draftMode === 'one'" v-model="draftOne" class="input" :aria-label="t('filter.one')">
-                            <option value="">{{ t('filter.choose_company') }}</option>
-                            <option v-for="item in state.available" :key="item.id" :value="String(item.id)">{{ item.company_name }}{{ item.city ? ' — ' + item.city : '' }}</option>
-                        </select>
+                        <SearchSelect v-if="draftMode === 'one'" v-model="draftOne" :options="companyOptions" :empty-label="t('filter.choose_company')" :aria-label="t('filter.one')" />
                         <label class="flex items-center gap-2 text-sm"><input v-model="draftMode" type="radio" value="list"> {{ t('filter.list') }}</label>
                     </fieldset>
 

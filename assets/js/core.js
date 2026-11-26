@@ -343,7 +343,7 @@
 
     // ── Stan widoków: szuflada szczegółów i stos okien ────────────────────────
 
-    const ui = reactive({ view: 'dashboard', recordId: null, drawer: null, modals: [], searchQuery: '', searchNonce: 0, filterNonce: 0 });
+    const ui = reactive({ view: 'dashboard', recordId: null, drawer: null, modals: [], searchQuery: '', searchNonce: 0, filterNonce: 0, importDataset: null });
     let modalSequence = 0;
 
     /**
@@ -355,6 +355,12 @@
             global.location.hash = hash;
         }
         closeDrawer();
+    }
+
+    /** Ekran importu z wybranym zbiorem — przycisk „Importuj z pliku” przy listach. */
+    function openImport(dataset) {
+        ui.importDataset = dataset;
+        navigate('exchange');
     }
 
     function debounce(fn, wait) {
@@ -512,6 +518,7 @@
         openDrawer,
         closeDrawer,
         navigate,
+        openImport,
         debounce,
         openModal,
         closeModal,

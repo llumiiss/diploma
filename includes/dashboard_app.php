@@ -68,6 +68,7 @@ $boot = [
         'preferences'    => 'api/preferences.php',
         'notifications'  => 'api/notifications.php',
         'registrations'  => 'api/registrations.php',
+        'reading_rules'  => 'api/reading_rules.php',
         'delete_account' => 'api/delete_account.php',
     ],
     'links'       => [
@@ -83,6 +84,7 @@ $bootJson = json_encode($boot, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_
 $scripts = [
     'assets/js/core.js',
     'assets/js/components.js',
+    'assets/js/inputs.js',
     'assets/js/views/dashboard.js',
     'assets/js/views/certificates.js',
     'assets/js/views/beneficiaries.js',
@@ -92,6 +94,7 @@ $scripts = [
     'assets/js/views/tasks.js',
     'assets/js/views/invitations.js',
     'assets/js/views/templates.js',
+    'assets/js/views/reading_rules.js',
     'assets/js/views/search.js',
     'assets/js/views/reports.js',
     'assets/js/views/events.js',

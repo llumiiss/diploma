@@ -71,18 +71,20 @@
             stats() {
                 return this.store.taskStats;
             },
+            assigneeOptions() {
+                const fixed = [
+                    { value: '', label: t('task.filter.all_assignees') },
+                    { value: 'me', label: t('task.filter.mine') },
+                ];
+                if (CertiSub.can('tasks.assign')) {
+                    fixed.push({ value: 'unassigned', label: t('task.filter.unassigned') });
+                }
+                return fixed.concat(this.owners.map((owner) => ({ value: owner.id, label: owner.name })));
+            },
             filtered() {
-                const query = this.search.trim().toLowerCase();
-                return this.state.items.filter((task) => {
-                    if (this.priority && task.priority !== this.priority) {
-                        return false;
-                    }
-                    if (!query) {
-                        return true;
-                    }
-                    return [task.certificate_name, task.serial_number, task.beneficiary_name, task.payer_name, task.assignee_name]
-                        .some((value) => value && String(value).toLowerCase().indexOf(query) !== -1);
-                });
+                const matches = CertiSub.textFilter.matcher(this.search);
+                return this.state.items.filter((task) => (!this.priority || task.priority === this.priority)
+                    && matches([task.certificate_name, task.serial_number, task.beneficiary_name, task.payer_name, task.assignee_name]));
             },
         },
         watch: {
@@ -132,6 +134,12 @@
             invite(task) {
                 CertiSub.openModal('InvitationComposer', { certificateId: task.certificate_id }, () => CertiSub.data.refresh('tasks', 'taskStats'));
             },
+            canArchive() {
+                return CertiSub.can('certificates.archive') || CertiSub.can('certificates.archive_lapsed');
+            },
+            archive(task) {
+                CertiSub.certificateActions.archive({ id: task.certificate_id, name: task.certificate_name });
+            },
         },
         template: `
             <section>
@@ -174,12 +182,7 @@
                         <option value="closed">{{ t('task.filter.closed') }}</option>
                         <option value="all">{{ t('task.filter.all') }}</option>
                     </select>
-                    <select v-model="assignee" class="input" :aria-label="t('task.assignee')">
-                        <option value="">{{ t('task.filter.all_assignees') }}</option>
-                        <option value="me">{{ t('task.filter.mine') }}</option>
-                        <option v-if="can('tasks.assign')" value="unassigned">{{ t('task.filter.unassigned') }}</option>
-                        <option v-for="owner in owners" :key="owner.id" :value="String(owner.id)">{{ owner.name }}</option>
-                    </select>
+                    <SearchSelect v-model="assignee" :options="assigneeOptions" :aria-label="t('task.assignee')" />
                     <select v-model="priority" class="input" :aria-label="t('dash.priority')">
                         <option value="">{{ t('dash.filter.all_priorities') }}</option>
                         <option value="expired">{{ t('priority.label.expired') }}</option>
@@ -224,8 +227,14 @@
                                     <span v-else class="text-slate-400 text-xs">{{ t('invitation.none') }}</span>
                                 </td>
                                 <td class="td text-right whitespace-nowrap" @click.stop>
-                                    <button v-if="task.status === 'todo' && can('tasks.update')" type="button" class="btn-ghost" @click="start(task)">▶ {{ t('task.action.start') }}</button>
-                                    <button v-if="task.is_open && can('invitations.send')" type="button" class="btn-ghost" @click="invite(task)">✉️ {{ t('invitation.send') }}</button>
+                                    <template v-if="task.renewal_blocked">
+                                        <button v-if="task.is_open && !task.certificate_archived_at && canArchive()" type="button" class="btn-ghost text-red-700" @click="archive(task)">📦 {{ t('common.archive') }}</button>
+                                        <span v-if="task.is_open" class="block text-xs text-slate-500">{{ t('task.lapsed_short') }}</span>
+                                    </template>
+                                    <template v-else>
+                                        <button v-if="task.status === 'todo' && can('tasks.update')" type="button" class="btn-ghost" @click="start(task)">▶ {{ t('task.action.start') }}</button>
+                                        <button v-if="task.is_open && can('invitations.send')" type="button" class="btn-ghost" @click="invite(task)">✉️ {{ t('invitation.send') }}</button>
+                                    </template>
                                 </td>
                             </tr>
                             <TableState :colspan="8" :loading="state.loading && !state.loaded" :error="state.error"
@@ -245,6 +254,9 @@
             return { task: null, loading: true, error: '', owners: [], assigning: false };
         },
         computed: {
+            ownerOptions() {
+                return this.owners.map((owner) => ({ value: owner.id, label: owner.name + ' (' + CertiSub.labels.role(owner.role) + ')' }));
+            },
             rows() {
                 const task = this.task;
                 return [
@@ -288,8 +300,7 @@
                     this.task = updated;
                 }
             },
-            async assign(event) {
-                const value = event.target.value;
+            async assign(value) {
                 this.assigning = true;
                 try {
                     const result = await api.post(endpoints.tasks, { action: 'assign', id: this.id, user_id: value ? Number(value) : null });
@@ -298,7 +309,6 @@
                     CertiSub.data.refresh('tasks', 'taskStats');
                 } catch (error) {
                     CertiSub.notifyError(error);
-                    event.target.value = this.task.assigned_user_id ? String(this.task.assigned_user_id) : '';
                 } finally {
                     this.assigning = false;
                 }
@@ -320,11 +330,22 @@
             openInvitation(invitation) {
                 CertiSub.openDrawer('invitation', invitation.id);
             },
+            canArchive() {
+                return CertiSub.can('certificates.archive') || CertiSub.can('certificates.archive_lapsed');
+            },
+            async archive() {
+                if (await CertiSub.certificateActions.archive({ id: this.task.certificate_id, name: this.task.certificate_name })) {
+                    this.load();
+                }
+            },
         },
         template: `
             <DrawerShell :title="task ? task.certificate_name : ''" :subtitle="t('task.singular')" :loading="loading" :error="error" @close="close">
                 <template #actions>
-                    <template v-if="task && task.is_open">
+                    <template v-if="task && task.renewal_blocked">
+                        <button v-if="task.is_open && !task.certificate_archived_at && canArchive()" type="button" class="btn-danger" @click="archive">📦 {{ t('task.action.archive_certificate') }}</button>
+                    </template>
+                    <template v-else-if="task && task.is_open">
                         <button v-if="task.status === 'todo' && can('tasks.update')" type="button" class="btn-secondary" @click="setStatus('in_progress')">▶ {{ t('task.action.start') }}</button>
                         <button v-if="can('invitations.send')" type="button" class="btn-secondary" @click="invite">✉️ {{ t('invitation.send') }}</button>
                         <button v-if="can('tasks.update') && can('certificates.create') && !task.certificate_archived_at" type="button" class="btn-primary" @click="renew">🔁 {{ t('task.action.renew') }}</button>
@@ -337,14 +358,13 @@
 
                 <template v-if="task">
                     <div v-if="task.is_overdue" class="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm font-medium">{{ t('task.overdue_notice', { days: Math.abs(task.days_left) }) }}</div>
+                    <div v-if="task.is_open && task.renewal_blocked" class="mb-4 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm">{{ t('task.lapsed_notice') }}</div>
                     <DetailGrid :rows="rows" />
 
-                    <label v-if="can('tasks.assign') && task.is_open" class="block mt-4">
+                    <label v-if="can('tasks.assign') && task.is_open && !task.renewal_blocked" class="block mt-4">
                         <span class="block text-sm font-medium text-slate-700 mb-1">{{ t('task.assign') }}</span>
-                        <select class="input" :disabled="assigning" :value="task.assigned_user_id ? String(task.assigned_user_id) : ''" @change="assign">
-                            <option value="">{{ t('task.unassigned') }}</option>
-                            <option v-for="owner in owners" :key="owner.id" :value="String(owner.id)">{{ owner.name }} ({{ labels.role(owner.role) }})</option>
-                        </select>
+                        <SearchSelect :model-value="task.assigned_user_id ? String(task.assigned_user_id) : ''" :options="ownerOptions" :empty-label="t('task.unassigned')"
+                                      :disabled="assigning" :aria-label="t('task.assign')" @change="assign" />
                     </label>
 
                     <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mt-6 mb-3">{{ t('certificate.links') }}</h4>

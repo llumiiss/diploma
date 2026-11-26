@@ -13,8 +13,11 @@ namespace App\Exchange;
  */
 final class Columns
 {
-    /** Zbiory, które można importować, w kolejności importu (płatnik → osoba → certyfikat). */
-    public const IMPORTABLE = ['payers', 'beneficiaries', 'certificates'];
+    /**
+     * Zbiory, które można importować, w kolejności importu (firma → osoba → certyfikat), potem konta personelu
+     * i szablony: wiadomości wysyłanych i odczytu wiadomości przychodzących.
+     */
+    public const IMPORTABLE = ['payers', 'beneficiaries', 'certificates', 'accounts', 'email_templates', 'reading_rules'];
 
     /**
      * Pole → [klucz etykiety, importowane, wymagane w pliku importu, dodatkowe nazwy kolumny].
@@ -79,6 +82,37 @@ final class Columns
             'priority'                => ['exchange.column.priority', false, false, []],
             'created_at'              => ['common.created_at', false, false, []],
             'archived_at'             => ['exchange.column.archived_at', false, false, []],
+        ],
+        'accounts' => [
+            'id'                => ['exchange.column.id', false, false, []],
+            'first_name'        => ['field.first_name', true, true, ['imie', 'given name']],
+            'last_name'         => ['field.last_name', true, true, ['surname', 'family name']],
+            'email'             => ['field.email', true, true, ['mail', 'adres email', 'adres e-mail', 'login']],
+            'role'              => ['field.role', true, true, ['stanowisko', 'uprawnienia', 'position']],
+            'beneficiary_email' => ['exchange.column.beneficiary_email', true, false, ['powiązana osoba', 'linked person']],
+            'active'            => ['exchange.column.active', false, false, []],
+            'certificate_count' => ['exchange.column.certificate_count', false, false, []],
+            'last_login_at'     => ['exchange.column.last_login_at', false, false, []],
+            'created_at'        => ['common.created_at', false, false, []],
+        ],
+        'email_templates' => [
+            'id'        => ['exchange.column.id', false, false, []],
+            'code'      => ['field.code', true, true, ['kod szablonu', 'template code']],
+            'locale'    => ['field.locale', true, true, ['jezyk', 'lang']],
+            'name'      => ['field.name', true, true, ['nazwa szablonu', 'template name']],
+            'subject'   => ['field.subject', true, true, ['tytul', 'title']],
+            'body_html' => ['field.body_html', true, true, ['html', 'treść']],
+            'body_text' => ['field.body_text', true, false, ['tekst', 'text']],
+            'is_active' => ['field.is_active', true, false, ['aktywny', 'active']],
+        ],
+        'reading_rules' => [
+            'id'            => ['exchange.column.id', false, false, []],
+            'name'          => ['field.name', true, true, ['nazwa szablonu', 'szablon', 'template']],
+            'field'         => ['reading.column.field', true, true, ['pole formularza', 'form field']],
+            'label'         => ['reading.column.label', true, true, ['etykieta', 'label']],
+            'sender_match'  => ['reading.column.sender_match', true, false, ['nadawca', 'sender']],
+            'subject_match' => ['reading.column.subject_match', true, false, ['temat', 'subject']],
+            'is_active'     => ['field.is_active', true, false, ['aktywny', 'active']],
         ],
     ];
 

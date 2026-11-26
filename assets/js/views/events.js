@@ -57,6 +57,16 @@
             hasFilters() {
                 return Object.keys(this.filters).some((key) => this.filters[key] !== '');
             },
+            eventOptions() {
+                return this.eventTypes.map((item) => ({ value: item.value, label: item.label + ' (' + item.count + ')' }));
+            },
+            userOptions() {
+                const users = this.facets.users.map((user) => ({ value: user.id, label: user.name }));
+                if (this.facets.has_system) {
+                    users.push({ value: 'system', label: t('eventlog.system_user') });
+                }
+                return users;
+            },
             events() {
                 return this.journal ? this.journal.events : [];
             },
@@ -167,19 +177,12 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-slate-500 mb-1" for="eventlog-event">{{ t('eventlog.filter.event') }}</label>
-                        <select id="eventlog-event" v-model="filters.event_type" class="input">
-                            <option value="">{{ t('eventlog.filter.all_events') }}</option>
-                            <option v-for="item in eventTypes" :key="item.value" :value="item.value">{{ item.label }} ({{ item.count }})</option>
-                        </select>
+                        <span class="block text-xs font-medium text-slate-500 mb-1">{{ t('eventlog.filter.event') }}</span>
+                        <SearchSelect v-model="filters.event_type" :options="eventOptions" :empty-label="t('eventlog.filter.all_events')" :aria-label="t('eventlog.filter.all_events')" />
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-slate-500 mb-1" for="eventlog-user">{{ t('eventlog.filter.user') }}</label>
-                        <select id="eventlog-user" v-model="filters.user" class="input">
-                            <option value="">{{ t('eventlog.filter.all_users') }}</option>
-                            <option v-for="user in facets.users" :key="user.id" :value="String(user.id)">{{ user.name }}</option>
-                            <option v-if="facets.has_system" value="system">{{ t('eventlog.system_user') }}</option>
-                        </select>
+                        <span class="block text-xs font-medium text-slate-500 mb-1">{{ t('eventlog.filter.user') }}</span>
+                        <SearchSelect v-model="filters.user" :options="userOptions" :empty-label="t('eventlog.filter.all_users')" :aria-label="t('eventlog.filter.all_users')" />
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-500 mb-1" for="eventlog-from">{{ t('eventlog.filter.date_from') }}</label>

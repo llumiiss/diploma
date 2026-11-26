@@ -228,7 +228,7 @@ final class RegistrationService
         $extracted['company']['nip'] = $nip;
         $extracted['warnings'] = array_values(array_filter(
             $extracted['warnings'],
-            static fn (array $warning): bool => !in_array($warning['code'], ['nip_missing', 'nip_invalid', 'nip_multiple'], true)
+            static fn (array $warning): bool => !in_array($warning['code'], ['nip_missing', 'nip_invalid', 'nip_multiple', 'company_not_in_message', 'matched_by_person'], true)
         ));
 
         $assumed = [];

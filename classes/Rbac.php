@@ -17,7 +17,7 @@ namespace App;
  *   ACCOUNTANT  księgowa — podgląd całej organizacji, płatności i rabaty, dane firm, raporty, eksport
  *   IT          informatyk — certyfikaty techniczne (SSL, podpis kodu, domeny, SaaS, chmura) całej organizacji
  *   OPERATOR    operator — własne i przydzielone certyfikaty oraz osoby i firmy z nimi powiązane (D8),
- *               obsługa wniosków przesłanych e-mailem
+ *               obsługa wniosków przesłanych e-mailem; archiwizuje tylko certyfikaty kwalifikowane po terminie
  *   EMPLOYEE    pracownik — wyłącznie własne certyfikaty (jako opiekun albo jako użytkownik certyfikatu
  *               powiązany z kontem) i firmy, do których te certyfikaty należą; tylko odczyt
  *
@@ -55,7 +55,7 @@ final class Rbac
     private const ALL = [
         // Ewidencja (Etap 2).
         'certificates.view', 'certificates.create', 'certificates.update', 'certificates.update_payment',
-        'certificates.assign_owner', 'certificates.archive',
+        'certificates.assign_owner', 'certificates.archive', 'certificates.archive_lapsed',
         'beneficiaries.view', 'beneficiaries.create', 'beneficiaries.update', 'beneficiaries.archive',
         'payers.view', 'payers.create', 'payers.update', 'payers.archive',
         'archive.view',
@@ -92,6 +92,8 @@ final class Rbac
 
     private const OPERATOR_CAN = [
         'certificates.view', 'certificates.create', 'certificates.update', 'certificates.update_payment',
+        // Archiwizacja wyłącznie certyfikatu kwalifikowanego po terminie (z listy ToDo).
+        'certificates.archive_lapsed',
         'beneficiaries.view', 'beneficiaries.create', 'beneficiaries.update',
         'payers.view', 'payers.create', 'payers.update',
         'tasks.view', 'tasks.update',

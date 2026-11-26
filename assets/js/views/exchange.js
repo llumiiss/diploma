@@ -8,17 +8,20 @@
 
     const { t, api, endpoints, format } = CertiSub;
 
-    const IMPORT_DATASETS = ['payers', 'beneficiaries', 'certificates'];
+    const IMPORT_DATASETS = ['payers', 'beneficiaries', 'certificates', 'accounts', 'email_templates', 'reading_rules'];
 
     const STATUS_BADGES = {
         create: 'bg-emerald-100 text-emerald-800',
         update: 'bg-blue-100 text-blue-800',
         unchanged: 'bg-slate-100 text-slate-600',
         skip: 'bg-slate-100 text-slate-600',
+        excluded: 'bg-amber-100 text-amber-800',
         error: 'bg-red-100 text-red-800',
     };
 
-    const LIST_VIEWS = { payers: 'payers', beneficiaries: 'beneficiaries', certificates: 'certificates' };
+    const LIST_VIEWS = {
+        payers: 'payers', beneficiaries: 'beneficiaries', certificates: 'certificates', accounts: 'accounts', email_templates: 'templates', reading_rules: 'templates',
+    };
 
     function fileSize(bytes) {
         if (bytes >= 1048576) {
@@ -53,6 +56,8 @@
                 busy: '',
                 error: '',
                 rowFilter: 'all',
+                /** Numery wierszy odznaczonych w podglądzie — nie zostaną zapisane. */
+                excluded: [],
                 emlFile: null,
                 eml: null,
                 emlBusy: false,
@@ -68,6 +73,9 @@
                     { id: 'certificates', icon: '📜', label: t('certificate.plural'), archive: true },
                     { id: 'beneficiaries', icon: '👤', label: t('beneficiary.plural'), archive: true },
                     { id: 'payers', icon: '🏢', label: t('payer.plural'), archive: true },
+                    { id: 'accounts', icon: '🔐', label: t('exchange.dataset.accounts'), permission: 'accounts.manage' },
+                    { id: 'email_templates', icon: '🧩', label: t('exchange.dataset.email_templates'), permission: 'templates.manage' },
+                    { id: 'reading_rules', icon: '🔎', label: t('exchange.dataset.reading_rules'), permission: 'templates.manage' },
                     { id: 'tasks', icon: '✅', label: t('nav.todo') },
                     { id: 'invitations', icon: '✉️', label: t('nav.invitations') },
                     { id: 'events', icon: '🧾', label: t('nav.events'), permission: 'events.view_all' },
@@ -88,7 +96,16 @@
                 });
             },
             importable() {
-                return this.preview ? this.preview.totals.create + this.preview.totals.update : 0;
+                if (!this.preview) {
+                    return 0;
+                }
+                return this.preview.rows.filter((row) => this.writes(row) && this.excluded.indexOf(row.line) === -1).length;
+            },
+            writableLines() {
+                return this.preview ? this.preview.rows.filter((row) => this.writes(row)).map((row) => row.line) : [];
+            },
+            payerSelectOptions() {
+                return this.payerOptions.map((payer) => ({ value: payer.id, label: payer.company_name, search: payer.tax_id || '' }));
             },
             fileName() {
                 if (!this.file) {
@@ -137,8 +154,18 @@
             },
         },
         mounted() {
-            if (CertiSub.can('import.run')) {
+            if (!CertiSub.can('import.run')) {
+                return;
+            }
+            const wanted = CertiSub.ui.importDataset;
+            CertiSub.ui.importDataset = null;
+            if (wanted && IMPORT_DATASETS.indexOf(wanted) !== -1 && wanted !== this.dataset) {
+                this.dataset = wanted;
+            } else {
                 this.loadColumns();
+            }
+            if (wanted) {
+                this.$nextTick(() => this.$refs.importSection && this.$refs.importSection.scrollIntoView({ block: 'start' }));
             }
         },
         methods: {
@@ -159,16 +186,31 @@
                     CertiSub.notifyError(error);
                 }
             },
-            onFile(event) {
-                this.file = event.target.files[0] || null;
+            /** Wybrany plik od razu trafia do podglądu — zapis wymaga osobnego zatwierdzenia. */
+            onFile(file) {
+                this.file = file;
                 this.attachment = null;
                 this.resetPreview();
+                this.runPreview();
+            },
+            writes: (row) => row.status === 'create' || row.status === 'update',
+            toggleAll(event) {
+                this.excluded = event.target.checked ? [] : this.writableLines.slice();
+            },
+            toggleRow(line) {
+                const index = this.excluded.indexOf(line);
+                if (index === -1) {
+                    this.excluded.push(line);
+                } else {
+                    this.excluded.splice(index, 1);
+                }
             },
             resetPreview() {
                 this.preview = null;
                 this.result = null;
                 this.error = '';
                 this.rowFilter = 'all';
+                this.excluded = [];
             },
             formData(action) {
                 const data = new FormData();
@@ -177,6 +219,9 @@
                 data.append('mode', this.mode);
                 if (this.attachment !== null) {
                     data.append('attachment', String(this.attachment));
+                }
+                if (action === 'commit' && this.excluded.length > 0) {
+                    data.append('exclude', this.excluded.join(','));
                 }
                 data.append('file', this.file);
                 return data;
@@ -192,6 +237,7 @@
                     const data = await api.post(endpoints.import, this.formData('preview'));
                     this.preview = data.import;
                     this.rowFilter = 'all';
+                    this.excluded = [];
                     this.$nextTick(() => this.$refs.preview && this.$refs.preview.scrollIntoView({ behavior: 'smooth', block: 'start' }));
                 } catch (error) {
                     this.error = (error.errors && error.errors.file) || error.message;
@@ -200,15 +246,16 @@
                 }
             },
             async runCommit() {
-                if (this.preview.totals.error > 0) {
-                    const ok = await CertiSub.confirm({
-                        title: t('exchange.import.confirm_title'),
-                        message: t('exchange.import.confirm_errors', { count: this.importable, errors: this.preview.totals.error }),
-                        confirmLabel: t('exchange.import.commit', { count: this.importable }),
-                    });
-                    if (!ok) {
-                        return;
-                    }
+                const errors = this.preview.totals.error;
+                const ok = await CertiSub.confirm({
+                    title: t('exchange.import.confirm_title'),
+                    message: errors > 0
+                        ? t('exchange.import.confirm_errors', { count: this.importable, errors })
+                        : t('exchange.import.confirm_checked', { count: this.importable }),
+                    confirmLabel: t('exchange.import.commit', { count: this.importable }),
+                });
+                if (!ok) {
+                    return;
                 }
                 this.busy = 'commit';
                 this.error = '';
@@ -218,6 +265,7 @@
                     this.preview = null;
                     CertiSub.notify(t('exchange.result.done', { created: this.result.totals.create, updated: this.result.totals.update }));
                     CertiSub.data.refresh('certificates', 'beneficiaries', 'payers', 'summary', 'options', 'taskStats');
+                    this.excluded = [];
                 } catch (error) {
                     this.error = (error.errors && error.errors.file) || error.message;
                 } finally {
@@ -227,11 +275,12 @@
             openList(dataset) {
                 CertiSub.navigate(LIST_VIEWS[dataset] || 'dashboard');
             },
-            onEmlFile(event) {
-                this.emlFile = event.target.files[0] || null;
+            onEmlFile(file) {
+                this.emlFile = file;
                 this.eml = null;
                 this.emlResult = null;
                 this.emlError = '';
+                this.analyzeEml();
             },
             async analyzeEml() {
                 if (!this.emlFile) {
@@ -351,10 +400,11 @@
                                         <span>{{ t('exchange.import.mode_' + value) }}<span class="block text-xs text-slate-500">{{ t('exchange.import.mode_' + value + '_hint') }}</span></span>
                                     </label>
                                 </fieldset>
-                                <FormField :label="t('exchange.import.file')" :hint="t('exchange.import.file_hint')">
-                                    <input type="file" accept=".csv,.xml,.txt" class="block w-full text-sm text-slate-600 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700" @change="onFile">
-                                </FormField>
-                                <p v-if="fileName" class="text-xs text-slate-600 break-words">📄 {{ fileName }}</p>
+                                <div>
+                                    <span class="block text-sm font-medium text-slate-700 mb-1">{{ t('exchange.import.file') }}</span>
+                                    <FileDrop accept=".csv,.xml,.txt" text-name="wklejone-dane.csv" :file-name="fileName" :disabled="busy !== ''" @file="onFile" />
+                                    <span class="block text-xs text-slate-400 mt-1">{{ t('exchange.import.file_hint') }}</span>
+                                </div>
                                 <div class="flex flex-wrap items-center gap-3">
                                     <button type="button" class="btn-primary" :disabled="!file || busy !== ''" @click="runPreview">{{ busy === 'preview' ? t('exchange.import.checking') : t('exchange.import.check') }}</button>
                                     <span class="text-xs text-slate-500">
@@ -406,6 +456,7 @@
                             <template v-else>
                                 <div class="flex flex-wrap items-center gap-2 mb-3" role="status">
                                     <span v-for="status in ['create', 'update', 'unchanged', 'skip', 'error']" :key="status" :class="['badge', badgeClass(status)]">{{ t('exchange.status.' + status) }}: {{ preview.totals[status] }}</span>
+                                    <span v-if="excluded.length" :class="['badge', badgeClass('excluded')]">{{ t('exchange.status.excluded') }}: {{ excluded.length }}</span>
                                     <label class="ml-auto flex items-center gap-2 text-xs text-slate-600">
                                         {{ t('exchange.preview.show') }}
                                         <select v-model="rowFilter" class="input w-auto py-1 text-xs">
@@ -415,10 +466,15 @@
                                         </select>
                                     </label>
                                 </div>
-                                <div class="overflow-auto border border-slate-200 rounded-lg max-h-[28rem]">
-                                    <table class="w-full text-sm min-w-[640px]">
-                                        <thead class="bg-slate-50 border-b border-slate-200 sticky top-0">
+                                <p class="text-xs text-slate-500 mb-2">{{ t('exchange.preview.check_hint') }}</p>
+                                <div class="overflow-auto border border-slate-200 rounded-lg max-h-[32rem]">
+                                    <table class="w-full text-sm min-w-[760px]">
+                                        <thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                                             <tr>
+                                                <th class="th w-10">
+                                                    <input type="checkbox" :checked="writableLines.length > 0 && excluded.length === 0" :disabled="writableLines.length === 0"
+                                                           :aria-label="t('exchange.preview.include_all')" :title="t('exchange.preview.include_all')" @change="toggleAll">
+                                                </th>
                                                 <th class="th w-16">{{ t('exchange.preview.line') }}</th>
                                                 <th class="th">{{ t('exchange.preview.status') }}</th>
                                                 <th class="th">{{ t('exchange.preview.record') }}</th>
@@ -426,10 +482,22 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr v-for="row in visibleRows" :key="row.line" class="border-b border-slate-100 align-top">
+                                            <tr v-for="row in visibleRows" :key="row.line" :class="['border-b border-slate-100 align-top', excluded.indexOf(row.line) !== -1 ? 'opacity-50' : '']">
+                                                <td class="td">
+                                                    <input v-if="writes(row)" type="checkbox" :checked="excluded.indexOf(row.line) === -1"
+                                                           :aria-label="t('exchange.preview.include', { line: row.line })" @change="toggleRow(row.line)">
+                                                </td>
                                                 <td class="td text-slate-500">{{ row.line }}</td>
                                                 <td class="td"><span :class="['badge', badgeClass(row.status)]">{{ t('exchange.status.' + row.status) }}</span></td>
-                                                <td class="td font-medium text-slate-800 break-words">{{ row.label || '—' }}</td>
+                                                <td class="td break-words">
+                                                    <div class="font-medium text-slate-800">{{ row.label || '—' }}</div>
+                                                    <dl class="mt-1 text-xs text-slate-600 space-y-0.5">
+                                                        <div v-for="item in row.values" :key="item.field" class="flex gap-1">
+                                                            <dt class="text-slate-400 shrink-0">{{ item.label }}:</dt>
+                                                            <dd class="break-all whitespace-pre-line max-h-24 overflow-y-auto">{{ item.value }}</dd>
+                                                        </div>
+                                                    </dl>
+                                                </td>
                                                 <td class="td text-xs">
                                                     <ul v-if="row.errors.length" class="text-red-700 space-y-0.5">
                                                         <li v-for="(item, index) in row.errors" :key="index">{{ item.label ? item.label + ': ' : '' }}{{ item.message }}</li>
@@ -443,7 +511,7 @@
                                                 </td>
                                             </tr>
                                             <tr v-if="visibleRows.length === 0">
-                                                <td colspan="4" class="px-4 py-6 text-center text-slate-400">{{ t('exchange.preview.empty') }}</td>
+                                                <td colspan="5" class="px-4 py-6 text-center text-slate-400">{{ t('exchange.preview.empty') }}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -465,7 +533,7 @@
                                     file: result.file_name,
                                     created: result.totals.create,
                                     updated: result.totals.update,
-                                    skipped: result.totals.skip + result.totals.unchanged,
+                                    skipped: result.totals.skip + result.totals.unchanged + result.totals.excluded,
                                     errors: result.totals.error,
                                 }) }}
                             </div>
@@ -482,11 +550,10 @@
                     </ReportSection>
 
                     <ReportSection :title="t('exchange.eml.title')" :description="t('exchange.eml.description')">
-                        <div class="p-5 flex flex-wrap items-end gap-3">
-                            <FormField :label="t('exchange.eml.file')">
-                                <input type="file" accept=".eml,message/rfc822" class="block text-sm text-slate-600 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700" @change="onEmlFile">
-                            </FormField>
-                            <button type="button" class="btn-primary" :disabled="!emlFile || emlBusy" @click="analyzeEml">{{ emlBusy && !eml ? t('exchange.eml.analyzing') : t('exchange.eml.analyze') }}</button>
+                        <div class="p-5">
+                            <FileDrop accept=".eml,message/rfc822" text-name="wklejona-wiadomosc.eml" :disabled="emlBusy"
+                                      :label="emlBusy && !eml ? t('exchange.eml.analyzing') : t('exchange.eml.file')"
+                                      :file-name="emlFile ? emlFile.name : ''" @file="onEmlFile" />
                         </div>
                         <div v-if="emlError" class="mx-5 mb-5 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm" role="alert">{{ emlError }}</div>
 
@@ -532,10 +599,7 @@
                                             <FormField :label="t('field.email')"><input v-model="emlActions.person.email" type="email" class="input" maxlength="255"></FormField>
                                             <FormField :label="t('field.phone')"><input v-model="emlActions.person.phone" class="input" maxlength="50"></FormField>
                                             <FormField class="sm:col-span-2" :label="t('field.payer_id')" :hint="t('beneficiary.hint.payer')" required>
-                                                <select v-model="emlActions.person.payer_id" class="input">
-                                                    <option value="">{{ t('common.choose') }}</option>
-                                                    <option v-for="payer in payerOptions" :key="payer.id" :value="String(payer.id)">{{ payer.company_name }}</option>
-                                                </select>
+                                                <SearchSelect v-model="emlActions.person.payer_id" :options="payerSelectOptions" :empty-label="t('common.choose')" :aria-label="t('field.payer_id')" />
                                             </FormField>
                                         </div>
                                     </div>

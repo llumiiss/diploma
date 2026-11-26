@@ -221,6 +221,27 @@ w Mailtrapie czyści ją od razu.
 
 Układ: nagłówek (nazwa aplikacji, język, konto, wylogowanie), menu po lewej, nad widokiem **wyszukiwarka globalna**, widok w środku. Adres widoku jest w pasku adresu (np. `dashboard.php#/payers`, a karta płatnika `dashboard.php#/payers/22`), więc odświeżenie strony zostawia Cię w tym samym miejscu. Kliknięcie wiersza otwiera **panel szczegółów** z prawej strony.
 
+### Listy wyboru i filtrowanie
+
+Każda lista wyboru z rekordami (firma, użytkownik certyfikatu, opiekun, konto, szablon, zdarzenie, autor) **filtruje się w trakcie pisania**: kliknij pole, wpisz kilka znaków i wybierz z zawężonej listy (strzałki i **Enter**, **Esc** zamyka samą listę). Nad wynikami widać, ile pozycji pasuje. Polskie znaki nie są wymagane („lodz” znajdzie „Łódź”), a firmę można znaleźć także po NIP-ie.
+
+Ten sam sposób filtrowania działa w polach wyszukiwania nad listami (certyfikaty, osoby, firmy, ToDo, zaproszenia, filtr firm, szablony odczytu):
+
+| Wpisz | Znaczenie |
+|---|---|
+| `kowalski nowa` | wszystkie słowa naraz |
+| `ssl \| domena` | którekolwiek z nich (pionowa kreska) |
+| `certum -pieczęć` | słowo ze znakiem minus wyklucza |
+| `"sp. z o.o."` | dosłowna fraza w cudzysłowie |
+
+Lista certyfikatów ma też filtr tak/nie **Autoodnawianie**.
+
+### Pliki: przeciągnij, wybierz albo wklej
+
+Wszędzie, gdzie aplikacja przyjmuje plik (wniosek `.eml`, import CSV/XML, import wiadomości, załącznik), jest pole oznaczone przerywaną ramką. Plik można **przeciągnąć** na pole, **kliknąć**, żeby wybrać go z komputera, albo **wkleić (Ctrl+V)** — skopiowany plik lub zrzut ekranu. Do pól wniosku, wiadomości i importu da się też wkleić **skopiowany tekst** (np. treść wiadomości albo komórki z arkusza): wskaż pole myszą i naciśnij Ctrl+V. Plik o niedozwolonym typie jest odrzucany z komunikatem.
+
+Okna dodawania i edycji mają stale widoczny tytuł i przyciski; przewija się tylko środek formularza.
+
 ### Wyszukiwarka globalna
 
 Pole nad każdym widokiem; skrót **Ctrl+K** albo **/**. Po wpisaniu co najmniej 2 znaków podpowiada wyniki w trzech grupach: **certyfikaty**, **użytkownicy certyfikatów**, **płatnicy**. Strzałki wybierają wynik, **Enter** go otwiera (certyfikat w panelu szczegółów, osobę i płatnika na karcie raportowej), a **Enter bez wybranego wyniku** albo „Pokaż wszystkie wyniki” przechodzi do pełnej listy (do 50 wyników w grupie, powiązania jako odnośniki).
@@ -272,6 +293,8 @@ Zadania odnowień zakłada **skaner**: każdy bieżący certyfikat, który wszed
 
 Panel zadania pokazuje też zaproszenia wysłane w ramach zadania i historię zdarzeń (otwarcie, zmiany statusu i priorytetu, przydział, wysyłki).
 
+**Certyfikat kwalifikowany po terminie** (podpis i pieczęć) nie daje się odnowić — trzeba wydać nowy. Dla takiego zadania znikają **Rozpocznij**, **Wyślij zaproszenie**, **Odnów**, **Zakończ** i **Porzuć**, a zostaje tylko **Archiwizuj** (zadanie zamyka się wtedy samo). Zaplanowane przypomnienia są odwoływane. Tę jedną archiwizację może wykonać także operator; pozostałych certyfikatów nadal nie archiwizuje. Certyfikatów technicznych (SSL, domeny, usługi) ta reguła nie dotyczy.
+
 ### Zaproszenia
 
 **Wyślij zaproszenie** jest w liście ToDo, w panelu zadania i w szczegółach certyfikatu (sekcja „Odnowienie”). Okno wysyłki:
@@ -290,7 +313,10 @@ Automatyczne przypomnienia wysyła cron (§7) co **7 dni** do limitu **3** — o
 ### Szablony i załączniki (ADMIN)
 
 - **Szablony** — nazwa, kod (`renewal_invitation` = zaproszenie, `renewal_reminder` = przypomnienie), język, temat, treść HTML i tekstowa, aktywność, przypisane załączniki. Przyciski z polami (`{imie}`, `{numer_seryjny}`, `{data_waznosci}`…) dopisują pole do treści, a **Podgląd** wypełnia szablon danymi przykładowego certyfikatu. Kod i język muszą być unikalne.
-- **Załączniki** — biblioteka plików (PDF, DOC/DOCX, ODT, XLSX, TXT, CSV, PNG, JPG, ZIP do 10 MB). Aplikacja sprawdza rozszerzenie i faktyczną zawartość pliku, zapisuje go pod losową nazwą w `storage/attachments` (niedostępne z przeglądarki) i udostępnia do pobrania tylko zalogowanym. Plik używany w szablonie lub wysłany w zaproszeniu nie może zostać usunięty.
+- **Załączniki** — biblioteka plików (PDF, DOC/DOCX, ODT, XLSX, TXT, CSV, PNG, JPG, ZIP do 10 MB; można je przeciągać i wklejać). Aplikacja sprawdza rozszerzenie i faktyczną zawartość pliku, zapisuje go pod losową nazwą w `storage/attachments` (niedostępne z przeglądarki) i udostępnia do pobrania tylko zalogowanym. Plik używany w szablonie lub wysłany w zaproszeniu nie może zostać usunięty.
+- **Szablony odczytu** — własne etykiety dla czytnika wniosków: „w wiadomościach od tego nadawcy (o takim temacie) po etykiecie *Abonent* stoi *imię i nazwisko użytkownika*”. Warunki nadawcy i tematu są opcjonalne. Własne etykiety mają pierwszeństwo przed wbudowanymi i działają na każdej drodze odbioru.
+
+Szablony wiadomości i szablony odczytu można **wyeksportować** do CSV/XML i **zaimportować** (przyciski przy listach) — z podglądem przed zapisem. Załączników plik importu nie przenosi: aktualizowany szablon zachowuje swoje, nowy trzeba uzupełnić w edytorze. Wzór szablonu odczytu: [przyklady/szablon-odczytu.csv](przyklady/szablon-odczytu.csv).
 
 ### Ustawienia (ADMIN)
 
@@ -305,14 +331,14 @@ Każda zmiana ustawień trafia do historii zdarzeń.
 
 ### Certyfikaty
 
-- **Lista** z wyszukiwarką (nazwa, numer seryjny, wystawca, osoba, płatnik, opiekun) i filtrami: typ, status, płatność, priorytet.
+- **Lista** z wyszukiwarką (nazwa, numer seryjny, wystawca, osoba, płatnik, opiekun) i filtrami: typ, status, płatność, priorytet, autoodnawianie.
 - **Szczegóły** (kliknij wiersz): typ, status, numer seryjny, wystawca, ważność z liczbą dni, wymagany czas odnowienia, opiekun, **rabat** (np. -5%), płatność, notatki; odnośniki do osoby i płatnika; łańcuch odnowień (poprzedni certyfikat / zastąpiony przez); sekcja **Odnowienie** (otwarte zadanie, **Utwórz zadanie**, **Wyślij zaproszenie**, lista zaproszeń); **historia zdarzeń** — kto i kiedy dodał, zmienił (z listą zmienionych pól „z → na”), zarchiwizował, wysłał zaproszenie.
 - **Dodaj / Edytuj** — formularz w sekcjach: dane certyfikatu, ważność i odnowienie, powiązania, **rabat i płatność**. Rabat to procent: pole przyjmuje „-5%”, „-5”, „5” albo „5,5 %” (przyciski 0, -3, -5, -10, -15, -20%), a w liście i szczegółach widać go z minusem. **Certyfikat kwalifikowany (podpis i pieczęć) wymaga użytkownika certyfikatu**, a użytkownik zawsze ma firmę. Walidacja pokazuje błędy przy polach, np.:
   - data „ważny od” późniejsza niż wygaśnięcie,
   - numer seryjny zajęty u tego samego wystawcy,
   - nieistniejąca data (np. 31 lutego — serwer sprawdza datę kalendarzem).
 - Po wybraniu osoby **firma (płatnik) podpowiada się sama**. Przyciski „+” przy polach osoby i płatnika dodają nowy rekord bez zamykania formularza.
-- **Archiwizuj** (MANAGER, ADMIN) — certyfikat znika z bieżących list, historia zostaje, a otwarte zadanie odnowienia zamyka się jako porzucone.
+- **Archiwizuj** (MANAGER, ADMIN; operator tylko dla certyfikatu kwalifikowanego po terminie) — certyfikat znika z bieżących list, historia zostaje, a otwarte zadanie odnowienia zamyka się jako porzucone.
 
 ### Użytkownicy certyfikatów
 
@@ -376,11 +402,13 @@ Pozycja **Powiadomienia** w menu (ze znaczkiem nieprzeczytanych) to prosta wymia
 
 Pozycja **Wnioski e-mail** (operator, menedżer, administrator; szef tylko podgląd) to kolejka wniosków o certyfikat przesłanych pocztą. Aplikacja **sama przygotowuje formularz**, operator tylko sprawdza i zatwierdza:
 
-1. **Wniosek trafia do aplikacji** jedną z dróg: przycisk **Wczytaj wiadomość (.eml)** (zapisz wiadomość z programu pocztowego), skrzynka IMAP (`cron/mail-intake.php` albo przycisk **Pobierz nowe wiadomości**), webhook `api/inbound-mail.php` albo potok serwera pocztowego `scripts/mail-pipe.php` (konfiguracja: `config/intake.local.php`).
-2. **Odczyt wiadomości**: imię i nazwisko, e-mail, telefon, **NIP**, rodzaj certyfikatu (podpis czy pieczęć kwalifikowana), wystawca, okres ważności albo daty, rabat i uwagi. Rozumie „Etykieta: wartość” po polsku i angielsku, sekcje „Dane firmy” / „Dane wnioskodawcy”, tabele HTML i NIP wpisany w zdaniu (sprawdzany sumą kontrolną).
+1. **Wniosek trafia do aplikacji** jedną z dróg: pole **przeciągnij / wybierz / wklej** albo przycisk **Wczytaj wiadomość (.eml)** (zapisz wiadomość z programu pocztowego), skrzynka IMAP (`cron/mail-intake.php` albo przycisk **Pobierz nowe wiadomości**), webhook `api/inbound-mail.php` albo potok serwera pocztowego `scripts/mail-pipe.php` (konfiguracja: `config/intake.local.php`).
+2. **Odczyt wiadomości**: imię i nazwisko, e-mail, telefon, **NIP**, rodzaj certyfikatu (podpis czy pieczęć kwalifikowana), wystawca, okres ważności albo daty, rabat i uwagi. Rozumie „Etykieta: wartość” po polsku i angielsku (także wartość linijkę pod etykietą), sekcje „Dane firmy” / „Dane wnioskodawcy”, tabele HTML, daty z godziną w UTC i NIP wpisany w zdaniu (sprawdzany sumą kontrolną). Własne etykiety dodaje się w **Szablonach odczytu**.
+
+   **Powiadomienia dostawcy certyfikatów** (np. z Certum: „podpis czeka na instalację”, „podpis klienta wygaśnie za 60 dni”) są rozpoznawane po nadawcy: dane użytkownika pochodzą z treści, a nadawca i stopka z NIP-em dostawcy są pomijane. Takie wiadomości nie zawierają firmy klienta — operator **wybiera ją z ewidencji** (albo wpisuje nową). Gdy numer seryjny albo adres e-mail są już w ewidencji, firma i osoba dobierają się same, a przy istniejącym certyfikacie pojawia się ostrzeżenie o duplikacie.
 3. **Firma po NIP-ie**: aplikacja pyta publiczne API **Białej Listy podatników VAT** (`wl-api.mf.gov.pl`) o nazwę, adres i status VAT. Jeśli firma jest już w ewidencji — zostanie użyta; jeśli nie — **powstanie z danych z rejestru**. Awaria rejestru nie blokuje wniosku (dane uzupełnia się ręcznie, przycisk 🔎 ponawia zapytanie).
 4. **Dopasowanie do ewidencji**: osoba z tym samym adresem e-mail w tej samej firmie jest użyta, w innej firmie — powstaje nowa osoba z ostrzeżeniem.
-5. **Ekran sprawdzenia** (`#/registrations/N`): po lewej treść wiadomości i lista uwag („do sprawdzenia”: np. niepoprawny NIP, firma w archiwum, status VAT inny niż czynny, założona domyślna data wygaśnięcia), po prawej wypełniony formularz firmy, użytkownika i certyfikatu. Przyciski: **Zapisz zmiany**, **Przejmij wniosek**, **Poproś o uzupełnienie** (powiadomienie), **Odrzuć**, **Zatwierdź i utwórz**.
+5. **Ekran sprawdzenia** (`#/registrations/N`; firmę wybiera się przełącznikiem **Firma z ewidencji / Nowa firma**, a w wybranej firmie można wskazać istniejącego użytkownika): po lewej treść wiadomości i lista uwag („do sprawdzenia”: np. niepoprawny NIP, firma w archiwum, status VAT inny niż czynny, założona domyślna data wygaśnięcia), po prawej wypełniony formularz firmy, użytkownika i certyfikatu. Przyciski: **Zapisz zmiany**, **Przejmij wniosek**, **Poproś o uzupełnienie** (powiadomienie), **Odrzuć**, **Zatwierdź i utwórz**.
 6. **Zatwierdź i utwórz** zakłada w **jednej transakcji** firmę (jeśli jej nie było), użytkownika certyfikatu w tej firmie i certyfikat (opiekun: zatwierdzający operator); błąd w którymkolwiek polu wycofuje całość i podświetla pole w odpowiedniej sekcji. Zatwierdzony wniosek pokazuje odnośniki do utworzonych rekordów.
 
 Wiadomości powtórzone (ten sam `Message-ID` lub treść) nie tworzą drugiego wniosku, a z automatycznych dróg wiadomości niewyglądające na wniosek (brak NIP-u i etykiet) są pomijane. Nowy wniosek wysyła komunikat systemowy osobom z uprawnieniem do sprawdzania.
@@ -397,12 +425,15 @@ Trzy zakładki: certyfikaty, użytkownicy certyfikatów, płatnicy — z datą a
 - Eksport obejmuje **zakres danych konta** (operator nie pobierze cudzych rekordów) i zapisuje zdarzenie w dzienniku — widać, kto i kiedy wyniósł dane osobowe.
 - Dziennik zdarzeń eksportuje się z bieżącymi filtrami ekranu.
 
-**Import (ADMIN).** Kolejność: **płatnicy → użytkownicy certyfikatów → certyfikaty**, bo kolejne pliki wskazują wcześniejsze rekordy (NIP, e-mail). Krok po kroku:
+**Import (ADMIN).** Można importować **płatników, użytkowników certyfikatów, certyfikaty, konta personelu, szablony wiadomości i szablony odczytu**. Przy przenoszeniu bazy zachowaj kolejność: płatnicy → użytkownicy certyfikatów → certyfikaty → konta, bo kolejne pliki wskazują wcześniejsze rekordy (NIP, e-mail). Krok po kroku:
 
 1. Wybierz rodzaj danych i tryb dla rekordów, które już są w ewidencji: **Pomiń** albo **Aktualizuj** (aktualizacja zmienia tylko kolumny obecne w pliku).
-2. Wskaż plik CSV albo XML (do 1000 wierszy). Obok jest tabela rozpoznawanych kolumn i **wzór pliku** do pobrania.
-3. **Sprawdź plik** — podgląd pokazuje dla każdego wiersza: *Nowy*, *Aktualizacja* (z listą zmienianych pól), *Bez zmian*, *Pominięty* albo *Błąd* z komunikatem przy polu. Rozpoznane kolumny są zaznaczone na zielono, nierozpoznane na szaro (są pomijane).
-4. **Importuj** zapisuje wiersze bez błędów; każdy nowy rekord trafia do historii tak samo jak wpisany ręcznie.
+2. Przeciągnij, wybierz albo wklej plik CSV albo XML (do 1000 wierszy). Obok jest tabela rozpoznawanych kolumn i **wzór pliku** do pobrania.
+3. Podgląd uruchamia się od razu (przycisk **Sprawdź plik** powtarza go po zmianie ustawień) i pokazuje dla każdego wiersza odczytane wartości oraz wynik: *Nowy*, *Aktualizacja* (z listą zmienianych pól), *Bez zmian*, *Pominięty* albo *Błąd* z komunikatem przy polu. Rozpoznane kolumny są zaznaczone na zielono, nierozpoznane na szaro (są pomijane).
+4. Sprawdź wartości i **odznacz wiersze**, których nie chcesz zapisać.
+5. **Importuj** (po potwierdzeniu) zapisuje zaznaczone wiersze bez błędów; każdy nowy rekord trafia do historii tak samo jak wpisany ręcznie.
+
+**Konta personelu** w pliku to: imię, nazwisko, e-mail, rola (kod albo nazwa: administrator, szef, menedżer, księgowa, informatyk, operator, pracownik) i opcjonalnie e-mail powiązanej osoby. Haseł plik nie zawiera — eksport ich nie wynosi, a przeniesione konto ustawia hasło linkiem z poczty („Nie pamiętam hasła” albo przycisk w **Kontach**). Eksport kont i szablonów ma tylko administrator.
 
 Podgląd wykonuje dokładnie ten sam zapis co import i wycofuje go na końcu, więc pokazuje wynik, a nie prognozę — po samym podglądzie w bazie nic nie przybywa.
 
@@ -598,7 +629,7 @@ SELECT certificate_id, 'todo', CURDATE() FROM renewal_tasks WHERE status = 'in_p
 | `php scripts/test-mail.php adres@example.com` | test konfiguracji poczty |
 | `php scripts/mailtrap-inbox.php [--link[=adres]] [--show=ID]` | podgląd skrzynki Mailtrap z terminala: lista wiadomości, link z najnowszej, treść wskazanej |
 | `php cron/renewals.php` | skaner odnowień i zaległe przypomnienia o zaproszeniach (codziennie) |
-| `composer test` | 187 testów (w tym scenariusz E2E przez API); 81 integracyjnych wymaga `RUN_INTEGRATION_TESTS=1` i tworzy osobną bazę `assistent_subscriptions_test` |
+| `composer test` | testy PHPUnit (w tym scenariusz E2E przez API); integracyjne wymagają `RUN_INTEGRATION_TESTS=1` i tworzą osobną bazę `assistent_subscriptions_test` |
 | `npm install && npm run css` | przebudowanie arkusza stylów `assets/css/app.css` po zmianie klas Tailwinda (potrzebne tylko przy zmianach w interfejsie) |
 | `composer stan` | analiza statyczna (PHPStan) |
 

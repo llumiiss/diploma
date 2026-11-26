@@ -23,12 +23,25 @@ use PDO;
 final class ExportService
 {
     public const FORMATS = ['csv', 'xml'];
-    public const DATASETS = ['certificates', 'beneficiaries', 'payers', 'tasks', 'invitations', 'events', 'beneficiary_card', 'payer_card', 'schedule'];
+    public const DATASETS = [
+        'certificates', 'beneficiaries', 'payers', 'accounts', 'email_templates', 'reading_rules',
+        'tasks', 'invitations', 'events', 'beneficiary_card', 'payer_card', 'schedule',
+    ];
+
+    /** Zbiory z uprawnieniem ostrzejszym niż sam eksport: konta personelu i szablony widzi tylko administrator. */
+    private const DATASET_PERMISSIONS = [
+        'accounts'        => 'accounts.manage',
+        'email_templates' => 'templates.manage',
+        'reading_rules'   => 'templates.manage',
+    ];
 
     private const FILE_NAMES = [
         'certificates'     => 'certyfikaty',
         'beneficiaries'    => 'uzytkownicy-certyfikatow',
         'payers'           => 'platnicy',
+        'accounts'         => 'konta',
+        'email_templates'  => 'szablony-wiadomosci',
+        'reading_rules'    => 'szablony-odczytu',
         'tasks'            => 'zadania',
         'invitations'      => 'zaproszenia',
         'events'           => 'dziennik-zdarzen',
@@ -79,6 +92,10 @@ final class ExportService
             throw ServiceException::badRequest(\__('exchange.error.unknown_format'));
         }
 
+        if (isset(self::DATASET_PERMISSIONS[$dataset])) {
+            $actor->authorize(self::DATASET_PERMISSIONS[$dataset]);
+        }
+
         $archived = !empty($options['archived']);
         $template = !empty($options['template']);
         $id = isset($options['id']) ? (int) $options['id'] : null;
@@ -96,6 +113,9 @@ final class ExportService
             'certificates'     => $this->listFile($dataset, $format, $this->certificateRecords($actor, $archived)),
             'beneficiaries'    => $this->listFile($dataset, $format, $this->beneficiaryRecords($actor, $archived)),
             'payers'           => $this->listFile($dataset, $format, $this->payerRecords($actor, $archived)),
+            'accounts'         => $this->listFile($dataset, $format, $this->accountRecords($actor)),
+            'email_templates'  => $this->listFile($dataset, $format, $this->templateRecords($actor)),
+            'reading_rules'    => $this->listFile($dataset, $format, $this->readingRuleRecords($actor)),
             'tasks'            => $this->plainFile($dataset, $format, $this->taskRecords($actor), 'task'),
             'invitations'      => $this->plainFile($dataset, $format, $this->invitationRecords($actor), 'invitation'),
             'events'           => $this->plainFile($dataset, $format, $this->eventRecords($actor, $filters), 'event'),
@@ -350,6 +370,66 @@ final class ExportService
     }
 
     /**
+     * Konta personelu bez haseł i ich skrótów — przeniesione konta ustawiają hasło linkiem z poczty.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function accountRecords(Actor $actor): array
+    {
+        return array_map(static fn (array $row): array => [
+            'id'                => $row['id'],
+            'first_name'        => $row['first_name'],
+            'last_name'         => $row['last_name'],
+            'email'             => $row['email'],
+            'role'              => $row['role'],
+            'beneficiary_email' => $row['beneficiary_email'],
+            'active'            => $row['active'],
+            'certificate_count' => $row['certificate_count'],
+            'last_login_at'     => $row['last_login_at'],
+            'created_at'        => $row['created_at'],
+        ], (new AccountService($this->db, $this->events))->list($actor));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function templateRecords(Actor $actor): array
+    {
+        $service = new TemplateService($this->db, $this->events);
+
+        return array_map(static function (array $row) use ($actor, $service): array {
+            $template = $service->get($actor, (int) $row['id']);
+
+            return [
+                'id'        => $template['id'],
+                'code'      => $template['code'],
+                'locale'    => $template['locale'],
+                'name'      => $template['name'],
+                'subject'   => $template['subject'],
+                'body_html' => $template['body_html'],
+                'body_text' => $template['body_text'],
+                'is_active' => (bool) $template['is_active'],
+            ];
+        }, $service->list($actor));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function readingRuleRecords(Actor $actor): array
+    {
+        return array_map(static fn (array $row): array => [
+            'id'            => $row['id'],
+            'name'          => $row['name'],
+            'field'         => $row['field'],
+            'label'         => $row['label'],
+            'sender_match'  => $row['sender_match'],
+            'subject_match' => $row['subject_match'],
+            'is_active'     => $row['is_active'],
+        ], (new ReadingRuleService($this->db, $this->events))->list($actor));
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
     private function taskRecords(Actor $actor): array
@@ -451,6 +531,8 @@ final class ExportService
             'task_status'       => \__('task.status.' . $value),
             'invitation_status' => \__('invitation.status.' . $value),
             'recipient_type'    => \__('invitation.recipient_type.' . $value),
+            'role'              => \__('role.' . strtolower($value)),
+            'field'             => \__(ReadingRuleService::fieldLabelKey($value)),
             'entity_type'       => \__('eventlog.entity.' . $value),
             default             => $value,
         };
@@ -466,8 +548,11 @@ final class ExportService
         return match ($dataset) {
             'certificates'  => 'certificate',
             'beneficiaries' => 'beneficiary',
-            'payers'        => 'payer',
-            default         => 'record',
+            'payers'          => 'payer',
+            'accounts'        => 'account',
+            'email_templates' => 'email_template',
+            'reading_rules'   => 'reading_rule',
+            default           => 'record',
         };
     }
 }

@@ -31,6 +31,7 @@ final class RegistrationIntakeService
     public const SOURCES = ['upload', 'imap', 'webhook', 'cli'];
 
     private readonly CompanyRegistry $registry;
+    private readonly ReadingRuleService $readingRules;
     private readonly NotificationService $notifications;
     private readonly EventLogger $events;
     private readonly string $storageDir;
@@ -45,6 +46,7 @@ final class RegistrationIntakeService
         $this->registry = $registry ?? IntakeConfig::registry();
         $this->notifications = $notifications ?? new NotificationService($db);
         $this->events = $events ?? new EventLogger($db);
+        $this->readingRules = new ReadingRuleService($db, $this->events);
         $this->storageDir = $storageDir ?? dirname(__DIR__, 2) . '/storage/intake';
     }
 
@@ -72,7 +74,7 @@ final class RegistrationIntakeService
             return ['status' => 'duplicate', 'draft_id' => $duplicate];
         }
 
-        $extracted = RegistrationExtractor::extract($message);
+        $extracted = RegistrationExtractor::extract($message, $this->readingRules->matching($message));
         if ($source !== 'upload' && !$extracted['looks_like_registration']) {
             return ['status' => 'skipped', 'draft_id' => null, 'reason' => 'not_registration'];
         }
@@ -84,6 +86,26 @@ final class RegistrationIntakeService
 
         $payer = $nip !== null ? $this->findPayerByTaxId($nip) : null;
         $beneficiary = $this->findBeneficiary($extracted['person']['email'], $payer !== null ? (int) $payer['id'] : null);
+
+        $serial = $extracted['certificate']['serial_number'];
+        $known = $serial !== null ? $this->findCertificateBySerial($serial) : null;
+        if ($known !== null) {
+            $extracted['warnings'][] = ['code' => 'certificate_exists', 'field' => 'certificate', 'params' => ['name' => (string) $known['name'], 'date' => (string) $known['expiry_date']]];
+        }
+
+        // Powiadomienie dostawcy nie zawiera danych firmy — wskazuje ją certyfikat o tym numerze albo osoba z tym adresem.
+        if ($nip === null && $extracted['notification']) {
+            $match = $this->matchCompany($known, $extracted['person']['email']);
+            if ($match !== null) {
+                $payer = $match['payer'];
+                $beneficiary = ['id' => $match['beneficiary_id'], 'other_company' => false];
+                $extracted['warnings'] = array_values(array_filter(
+                    $extracted['warnings'],
+                    static fn (array $warning): bool => $warning['code'] !== 'company_not_in_message'
+                ));
+                $extracted['warnings'][] = ['code' => 'matched_by_person', 'field' => 'company'];
+            }
+        }
 
         $assumed = [];
         $form = self::buildForm($extracted, $record, $payer, $beneficiary['id'] ?? null, $today, $assumed);
@@ -245,6 +267,55 @@ final class RegistrationIntakeService
         return ['id' => null, 'other_company' => true];
     }
 
+    /**
+     * Certyfikat z ewidencji o numerze seryjnym z wiadomości (najnowszy, także z archiwum).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function findCertificateBySerial(string $serial): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, name, expiry_date, payer_id, beneficiary_id FROM certificates
+             WHERE serial_number = :serial ORDER BY archived_at IS NOT NULL, id DESC LIMIT 1'
+        );
+        $stmt->execute(['serial' => $serial]);
+        $row = $stmt->fetch();
+
+        return $row === false ? null : $row;
+    }
+
+    /**
+     * Firma i użytkownik wynikające z ewidencji: z certyfikatu o tym numerze albo z jedynej bieżącej osoby
+     * o tym adresie e-mail.
+     *
+     * @param array<string, mixed>|null $certificate
+     * @return array{payer: array<string, mixed>, beneficiary_id: int}|null
+     */
+    private function matchCompany(?array $certificate, ?string $email): ?array
+    {
+        $beneficiaryId = $certificate !== null && $certificate['beneficiary_id'] !== null ? (int) $certificate['beneficiary_id'] : null;
+
+        if ($beneficiaryId === null && $email !== null && $email !== '') {
+            $stmt = $this->db->prepare('SELECT id FROM beneficiaries WHERE LOWER(email) = LOWER(:email) AND archived_at IS NULL LIMIT 2');
+            $stmt->execute(['email' => $email]);
+            $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $beneficiaryId = count($ids) === 1 ? (int) $ids[0] : null;
+        }
+        if ($beneficiaryId === null) {
+            return null;
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT p.id, p.company_name, p.tax_id, p.archived_at FROM beneficiaries b
+             INNER JOIN payers p ON p.id = b.payer_id
+             WHERE b.id = :id AND b.archived_at IS NULL AND p.archived_at IS NULL'
+        );
+        $stmt->execute(['id' => $beneficiaryId]);
+        $payer = $stmt->fetch();
+
+        return $payer === false ? null : ['payer' => $payer, 'beneficiary_id' => $beneficiaryId];
+    }
+
     // ---------------------------------------------------------------- formularz
 
     /**
@@ -356,7 +427,11 @@ final class RegistrationIntakeService
         $warnings = [];
         foreach ($extracted['warnings'] as $warning) {
             // Brak NIP-u z wiadomości przestaje być problemem, gdy NIP znaleziono później (np. ręcznie podany).
-            $warnings[] = $warning + ['level' => in_array($warning['code'], ['nip_missing', 'person_missing'], true) ? 'error' : 'warning'];
+            $warnings[] = $warning + ['level' => match ($warning['code']) {
+                'nip_missing', 'person_missing', 'company_not_in_message' => 'error',
+                'renewal_notice', 'matched_by_person'                     => 'info',
+                default                                                   => 'warning',
+            }];
         }
 
         foreach ($extracted['assumed'] ?? [] as $code) {

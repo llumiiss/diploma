@@ -17,8 +17,10 @@ use PDO;
 
 /**
  * api/import.php (ADMIN)
- *   GET  ?view=columns&dataset=payers|beneficiaries|certificates    kolumny pliku importu
+ *   GET  ?view=columns&dataset=payers|beneficiaries|certificates|accounts|email_templates|reading_rules
+ *                                                                    kolumny pliku importu
  *   POST multipart: action=preview|commit, dataset, mode=skip|update, file[, attachment=N dla pliku .eml]
+ *                   [, exclude=3,7 numery wierszy pominiętych przy zapisie]
  *   POST multipart: action=eml_analyze, file
  *   POST multipart: action=eml_apply, file, actions (JSON: create_beneficiary, responded, note_certificates,
  *                   note_beneficiaries, note_payers)
@@ -58,6 +60,10 @@ final class ImportController
                 $options = [
                     'mode'       => is_string($body['mode'] ?? null) ? $body['mode'] : 'skip',
                     'attachment' => isset($body['attachment']) && is_numeric($body['attachment']) ? (int) $body['attachment'] : null,
+                    // Numery wierszy wyłączonych w podglądzie: „3,7,9”.
+                    'exclude'    => is_string($body['exclude'] ?? null)
+                        ? array_values(array_map('intval', array_filter(explode(',', $body['exclude']), 'ctype_digit')))
+                        : [],
                 ];
                 $dataset = is_string($body['dataset'] ?? null) ? $body['dataset'] : '';
 

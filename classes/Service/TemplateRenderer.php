@@ -86,14 +86,56 @@ final class TemplateRenderer
         return ['first_name' => $parts[0], 'last_name' => $parts[1] ?? ''];
     }
 
+    /**
+     * Treść HTML jako zwykły tekst — tak, jak widzi ją czytający: bez stylów, skryptów i komentarzy, ze spacją
+     * zamiast łamania linii w źródle i nową linią tam, gdzie stoi znacznik blokowy albo komórka tabeli.
+     * Czas rośnie liniowo z długością (treść bywa przysłana przez obcego nadawcę).
+     */
     public static function htmlToText(string $html): string
     {
-        $text = (string) preg_replace('#<\s*br\s*/?\s*>#i', "\n", $html);
-        $text = (string) preg_replace('#</\s*(p|div|li|h[1-6]|tr)\s*>#i', "\n\n", $text);
-        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $text = (string) preg_replace("/[ \t]+/", ' ', $text);
-        $text = (string) preg_replace("/\n{3,}/", "\n\n", $text);
+        $text = self::withoutBlocks($html, '<!--', '-->');
+        foreach (['head', 'style', 'script', 'title', 'noscript'] as $tag) {
+            $text = self::withoutBlocks($text, '<' . $tag, '</' . $tag . '>');
+        }
 
-        return trim(implode("\n", array_map('trim', explode("\n", $text))));
+        $text = (string) preg_replace('/\s+/', ' ', $text);
+        $text = (string) preg_replace('#<\s*br\s*/?\s*>#i', "\n", $text);
+        $text = (string) preg_replace('#</\s*(p|div|li|h[1-6]|tr|table|ul|ol|blockquote)\s*>#i', "\n\n", $text);
+        $text = (string) preg_replace('#<(?:p|div|li|h[1-6]|tr|table|ul|ol|blockquote)(?=[\s/>])[^<>]{0,500}>#i', "\n$0", $text);
+        $text = (string) preg_replace('#</\s*t[dh]\s*>#i', "\n", $text);
+        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = (string) preg_replace('/[ \t\x{00A0}\x{200B}]+/u', ' ', $text);
+        $text = implode("\n", array_map('trim', explode("\n", $text)));
+
+        return trim((string) preg_replace("/\n{3,}/", "\n\n", $text));
+    }
+
+    /**
+     * Usuwa fragmenty od `$open` do `$close` (bez rozróżniania wielkości liter). Niedomknięty fragment sięga do
+     * końca dokumentu. Szukanie po jednej kopii małymi literami zamiast wyrażenia z „.*?” — bez kosztu kwadratowego.
+     */
+    private static function withoutBlocks(string $html, string $open, string $close): string
+    {
+        $lower = strtolower($html);
+        $result = '';
+        $offset = 0;
+        while (($start = strpos($lower, $open, $offset)) !== false) {
+            // „<head” nie może zjeść „<header” — po nazwie znacznika musi stać spacja, „/” albo „>”.
+            $next = $lower[$start + strlen($open)] ?? '>';
+            if ($open !== '<!--' && !ctype_space($next) && $next !== '>' && $next !== '/') {
+                $result .= substr($html, $offset, $start - $offset + strlen($open));
+                $offset = $start + strlen($open);
+                continue;
+            }
+
+            $result .= substr($html, $offset, $start - $offset) . ' ';
+            $end = strpos($lower, $close, $start + strlen($open));
+            if ($end === false) {
+                return $result;
+            }
+            $offset = $end + strlen($close);
+        }
+
+        return $result . substr($html, $offset);
     }
 }

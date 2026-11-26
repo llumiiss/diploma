@@ -36,12 +36,11 @@
                 return this.store.payers;
             },
             filtered() {
-                const query = this.search.trim().toLowerCase();
-                if (!query) {
+                const matches = CertiSub.textFilter.matcher(this.search);
+                if (!this.search.trim()) {
                     return this.state.items;
                 }
-                return this.state.items.filter((item) => [item.company_name, item.tax_id, item.contact_person, item.city, item.email]
-                    .some((value) => value && String(value).toLowerCase().indexOf(query) !== -1));
+                return this.state.items.filter((item) => matches([item.company_name, item.tax_id, item.contact_person, item.city, item.email]));
             },
         },
         mounted() {

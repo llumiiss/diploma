@@ -38,6 +38,7 @@ erDiagram
     registration_drafts }o--o| certificates : "utworzony certyfikat"
     users ||--o{ email_verifications : "linki z e-maili (potwierdzenie, hasło)"
     users ||--o{ login_attempts : "limit prób logowania (po e-mailu)"
+    users ||--o{ reading_rules : "autor etykiety odczytu"
 ```
 
 Tabela `events` (historia zdarzeń) celowo nie ma kluczy obcych — patrz §5.
@@ -109,6 +110,8 @@ inna firma.
 |---|---|---|
 | `registration_drafts` | **kolejka robocza operatora**: wiadomość z wnioskiem zamieniona na formularz. Kolumny: `status` (`pending/approved/rejected`), `source` (`upload/imap/webhook/cli`), `message_id` i `content_hash` (unikalne — ochrona przed duplikatem), nadawca, temat, treść tekstowa, `raw_file` (nazwa pliku oryginału w `storage/intake`), JSON-y: `extracted` (co odczytano z wiadomości), `form` (formularz edytowany przez operatora), `company_lookup` (odpowiedź Białej Listy: `found/not_found/error`), `warnings` (wątpliwości do wyjaśnienia); `assigned_user_id`, `reviewed_by_user_id`, `rejection_reason` | `matched_payer_id`/`matched_beneficiary_id → payers`/`beneficiaries` (już istniejące rekordy), `result_payer_id`/`result_beneficiary_id`/`result_certificate_id` (utworzone przy zatwierdzeniu), użytkownicy — wszystko `SET NULL` |
 
+| `reading_rules` (Etap 11) | **szablony odczytu**: własne etykiety dla czytnika wniosków — `name` (nazwa szablonu), `field` (pole formularza, np. `person.full_name`), `label` (tekst przed wartością), opcjonalne warunki `sender_match` i `subject_match`, `is_active`; unikalne (nazwa, pole, etykieta) | `created_by_user_id → users` (SET NULL) |
+
 ### 4.5. Komunikacja, historia i ustawienia
 
 | Tabela | Co przechowuje | Powiązania |
@@ -162,6 +165,7 @@ techniczne; operator — własne i przydzielone certyfikaty oraz powiązane osob
 | `company_filter` | 10 | `users.company_filter` (filtr firm) |
 | `notifications` | 10 | powiadomienia wewnętrzne |
 | `registration_drafts` | 10 | wnioski z e-maila |
+| `reading_rules` | 11 | szablony odczytu wniosków |
 
 Migracje są idempotentne (każdy krok sprawdza stan przez `SchemaInspector`). **Przed migracją istniejącej bazy zrób zrzut:**
 `mysqldump assistent_subscriptions > kopia.sql` — migracja `certificate_discount` usuwa kolumnę z kwotą.
@@ -179,7 +183,7 @@ done
 diff cols_assistent_subscriptions.txt cols_assistent_subscriptions_test.txt && echo "Kolumny identyczne"
 ```
 
-Stan z 2026-10-02: **190 kolumn, 87 pozycji indeksów, 32 klucze obce i 2 ograniczenia CHECK** — identyczne w obu bazach.
+Stan z 2026-11-26: **200 kolumn, 90 indeksów, 33 klucze obce i 2 ograniczenia CHECK** — identyczne w obu bazach.
 
 ## 9. Dane poza bazą
 

@@ -177,6 +177,13 @@
             people() {
                 return this.store.beneficiaries.items;
             },
+            personOptions() {
+                return this.people.map((person) => ({
+                    value: person.id,
+                    label: person.last_name + ' ' + person.first_name + (person.payer_name ? ' — ' + person.payer_name : ''),
+                    search: person.email || '',
+                }));
+            },
         },
         mounted() {
             CertiSub.data.beneficiaries();
@@ -223,10 +230,8 @@
                         </select>
                     </FormField>
                     <FormField v-if="isEmployee" class="sm:col-span-2" :label="t('account.linked_person')" :error="errors.beneficiary_id" :hint="t('account.hint.linked_person')">
-                        <select v-model="form.beneficiary_id" :class="['input', errors.beneficiary_id ? 'input-error' : '']">
-                            <option value="">{{ t('account.no_linked_person') }}</option>
-                            <option v-for="person in people" :key="person.id" :value="String(person.id)">{{ person.last_name }} {{ person.first_name }}{{ person.payer_name ? ' — ' + person.payer_name : '' }}</option>
-                        </select>
+                        <SearchSelect v-model="form.beneficiary_id" :options="personOptions" :empty-label="t('account.no_linked_person')"
+                                      :invalid="Boolean(errors.beneficiary_id)" :aria-label="t('account.linked_person')" />
                     </FormField>
                 </form>
                 <template #footer>
@@ -249,6 +254,9 @@
         computed: {
             candidates() {
                 return this.accounts.filter((item) => item.active && item.id !== this.account.id);
+            },
+            candidateOptions() {
+                return this.candidates.map((item) => ({ value: item.id, label: item.name + ' (' + CertiSub.labels.role(item.role) + ')', search: item.email || '' }));
             },
         },
         methods: {
@@ -281,10 +289,8 @@
                 <form id="transfer-form" novalidate @submit.prevent="submit">
                     <div v-if="message" class="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{{ message }}</div>
                     <FormField :label="t('account.transfer_to')" :error="errors.to_user_id" required>
-                        <select v-model="target" :class="['input', errors.to_user_id ? 'input-error' : '']">
-                            <option value="">{{ t('common.choose') }}</option>
-                            <option v-for="item in candidates" :key="item.id" :value="String(item.id)">{{ item.name }} ({{ labels.role(item.role) }})</option>
-                        </select>
+                        <SearchSelect v-model="target" :options="candidateOptions" :empty-label="t('common.choose')"
+                                      :invalid="Boolean(errors.to_user_id)" :aria-label="t('account.transfer_to')" />
                     </FormField>
                 </form>
                 <template #footer>

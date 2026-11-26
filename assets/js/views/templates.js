@@ -17,6 +17,7 @@
                 error: '',
                 uploading: false,
                 uploadError: '',
+                ruleCount: null,
             };
         },
         mounted() {
@@ -43,10 +44,11 @@
             edit(template) {
                 CertiSub.openModal('TemplateForm', { templateId: template.id, placeholders: this.placeholders, attachments: this.attachments }, () => this.load());
             },
-            async upload(event) {
-                const input = event.target;
-                const file = input.files && input.files[0];
-                if (!file) {
+            importTemplates() {
+                CertiSub.openImport('email_templates');
+            },
+            async upload(file) {
+                if (this.uploading) {
                     return;
                 }
                 const body = new FormData();
@@ -62,7 +64,6 @@
                     this.uploadError = (error.errors && error.errors.file) || error.message;
                 } finally {
                     this.uploading = false;
-                    input.value = '';
                 }
             },
             async remove(attachment) {
@@ -90,11 +91,14 @@
         template: `
             <section>
                 <PageHeader :title="t('template.title')" :description="t('template.description')">
-                    <button v-if="tab === 'templates'" type="button" class="btn-primary" @click="add">+ {{ t('template.add') }}</button>
-                    <label v-else :class="['btn-primary cursor-pointer', uploading ? 'opacity-60 pointer-events-none' : '']">
+                    <template v-if="tab === 'templates'">
+                        <ExportButtons dataset="email_templates" />
+                        <button v-if="can('import.run')" type="button" class="btn-secondary" @click="importTemplates">⬆ {{ t('exchange.import.from_file') }}</button>
+                        <button type="button" class="btn-primary" @click="add">+ {{ t('template.add') }}</button>
+                    </template>
+                    <button v-else-if="tab === 'attachments'" type="button" class="btn-primary" :disabled="uploading" @click="$refs.drop && $refs.drop.browse()">
                         ⬆ {{ uploading ? t('attachment.uploading') : t('attachment.upload') }}
-                        <input type="file" class="sr-only" :disabled="uploading" @change="upload">
-                    </label>
+                    </button>
                 </PageHeader>
 
                 <div class="flex flex-wrap gap-2 mb-4" role="tablist">
@@ -106,11 +110,21 @@
                             :class="['px-4 py-2 rounded-lg text-sm font-medium border transition', tab === 'attachments' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50']">
                         {{ t('attachment.plural') }} <span class="opacity-75">({{ attachments.length }})</span>
                     </button>
+                    <button type="button" role="tab" :aria-selected="tab === 'reading'" @click="tab = 'reading'"
+                            :class="['px-4 py-2 rounded-lg text-sm font-medium border transition', tab === 'reading' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50']">
+                        {{ t('reading.title') }} <span v-if="ruleCount !== null" class="opacity-75">({{ ruleCount }})</span>
+                    </button>
                 </div>
+
+                <ReadingRulesPanel v-if="tab === 'reading'" @count="ruleCount = $event" />
+
+                <FileDrop v-if="tab === 'attachments'" ref="drop" class="mb-4" :disabled="uploading"
+                          accept=".pdf,.doc,.docx,.odt,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.zip"
+                          :label="uploading ? t('attachment.uploading') : t('drop.attachment')" @file="upload" />
 
                 <div v-if="uploadError && tab === 'attachments'" class="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{{ uploadError }}</div>
 
-                <div class="card overflow-x-auto">
+                <div v-if="tab !== 'reading'" class="card overflow-x-auto">
                     <table v-if="tab === 'templates'" class="w-full text-sm min-w-[760px]">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>

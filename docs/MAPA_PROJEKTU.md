@@ -1023,6 +1023,26 @@ na mocniejszych ilustracjach — dwa zrzuty zrobione na produkcji z pustymi tabe
 „Zaproszenia” i rysunek 31 „Wnioski e-mail”), które warto powtórzyć lokalnie na danych demo.
 
 ---
+### Etap 11 — pliki przez przeciąganie, filtrowane listy, szablony odczytu i poprawki procesu (2026-11-26)
+
+Poprawki po przeglądzie aplikacji przez autora.
+
+| Zmiana | Opis | Najważniejsze pliki |
+|---|---|---|
+| Pliki: przeciągnij, wybierz, wklej | wspólne pole na plik we wszystkich miejscach przyjmujących pliki (wniosek, import CSV/XML, import EML, załączniki); Ctrl+V przyjmuje plik albo — we wskazanym polu — tekst | `assets/js/inputs.js` (`FileDrop`) |
+| Czytnik wniosków | konwersja HTML → tekst bez stylów i komentarzy, z nową linią po blokach i komórkach (liniowo); wiersze układu strony nie są sklejane; wartość pod etykietą; daty z godziną i UTC; „3-letni”; powiadomienia dostawcy (Certum): dane klienta z treści, nadawca i stopka z NIP-em dostawcy pomijane, uwagi z numerem wniosku i karty | `TemplateRenderer::htmlToText`, `RegistrationExtractor` |
+| Firma przy powiadomieniu | dobierana po numerze seryjnym albo adresie e-mail; w ekranie sprawdzania wybór firmy i osoby z ewidencji | `RegistrationIntakeService`, `registrations.js` |
+| Szablony odczytu | nowa tabela `reading_rules`, zarządzanie w „Szablony i załączniki”, import/eksport | `ReadingRuleService`, `ReadingRulesMigration`, `reading_rules.js` |
+| Przeterminowane kwalifikowane | bez zaproszeń, przypomnień, zadań ręcznych, zmian statusu i odnowienia (`409`); tylko archiwizacja — operator dostał uprawnienie `certificates.archive_lapsed` wyłącznie do tego przypadku (rozszerzenie D8) | `CertificateService::isLapsed`, `TaskService`, `InvitationService`, `Rbac` |
+| Import i eksport | nowe zbiory: konta personelu (bez haseł), szablony wiadomości, szablony odczytu; podgląd pokazuje wartości, wiersze można odznaczyć, zapis zawsze po potwierdzeniu | `Columns`, `ImportService`, `ExportService`, `exchange.js` |
+| Listy wyboru i filtry | listy rekordów z filtrowaniem w trakcie pisania; operatory `|`, `-słowo`, `"fraza"`; filtr autoodnawiania | `SearchSelect`, `CertiSub.textFilter` |
+| Okna formularzy | nagłówek i przyciski stałe, przewija się treść (koniec obcinania górnej części) | `components.js` (`ModalShell`) |
+
+Weryfikacja: **412 testów** (394 przed etapem) z integracyjnymi, PHPStan level 5 bez uwag, `composer cs` czyste;
+migracja `reading_rules` wykonana na bazie aplikacji po `mysqldump`, struktura zgodna z bazą testową (200 kolumn,
+90 indeksów, 33 klucze obce, 2 `CHECK`). Interfejs sprawdzony w przeglądarce na danych demo.
+
+---
 ## Załącznik A — Oficjalny opis pracy (dosłownie, przekazany 2026-09-16)
 
 ```text

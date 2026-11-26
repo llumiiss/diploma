@@ -54,7 +54,7 @@ final class ImportServiceTest extends IntegrationTestCase
         $preview = $this->service()->preview($this->admin, 'payers', 'platnicy.csv', $content);
 
         $this->assertFalse($preview['committed']);
-        $this->assertSame(['rows' => 4, 'create' => 1, 'update' => 0, 'unchanged' => 0, 'skip' => 0, 'error' => 3], $preview['totals']);
+        $this->assertSame(['rows' => 4, 'create' => 1, 'update' => 0, 'unchanged' => 0, 'skip' => 0, 'excluded' => 0, 'error' => 3], $preview['totals']);
         $this->assertSame(['create', 'error', 'error', 'error'], array_column($preview['rows'], 'status'));
         $this->assertSame([2, 3, 4, 5], array_column($preview['rows'], 'line'));
         $this->assertNull($preview['rows'][0]['record_id']);

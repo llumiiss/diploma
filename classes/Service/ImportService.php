@@ -13,14 +13,17 @@ use App\Exchange\ParsedTable;
 use App\Exchange\XmlRecordReader;
 use App\Intake\CompanyRegistry;
 use App\Intake\IntakeConfig;
+use App\Intake\RegistrationExtractor;
 use App\Intake\RegistryException;
+use App\Rbac;
 use PDO;
 use PDOException;
 use Throwable;
 
 /**
  * Import płatników, użytkowników certyfikatów i certyfikatów z plików CSV i XML (F10),
- * także z załącznika wiadomości EML.
+ * także z załącznika wiadomości EML. Od Etapu 11 również kont personelu, szablonów wiadomości
+ * i szablonów odczytu — np. przy przenoszeniu bazy z innego systemu.
  *
  * Podgląd i zapis przechodzą tę samą ścieżkę: każdy wiersz jest zapisywany przez usługę ewidencji
  * (walidacja, unikalność, uprawnienia, historia), a podgląd wycofuje na końcu całą transakcję.
@@ -29,7 +32,11 @@ use Throwable;
  *
  * Istniejące rekordy rozpoznaje klucz naturalny: płatnik — NIP albo nazwa, osoba — e-mail albo
  * imię i nazwisko (z płatnikiem), certyfikat — wystawca i numer seryjny albo nazwa, data wygaśnięcia
- * i płatnik. Tryb „skip” je pomija, „update” uzupełnia kolumnami obecnymi w pliku.
+ * i płatnik, konto — e-mail, szablon wiadomości — kod i język, szablon odczytu — nazwa, pole i etykieta.
+ * Tryb „skip” je pomija, „update” uzupełnia kolumnami obecnymi w pliku.
+ *
+ * Podgląd pokazuje wartości odczytane z każdego wiersza; osoba importująca może wyłączyć wybrane
+ * wiersze (opcja „exclude” z numerami linii), zanim zatwierdzi zapis.
  */
 final class ImportService
 {
@@ -39,6 +46,16 @@ final class ImportService
     private const CERTIFICATE_INPUT = [
         'name', 'certificate_type', 'serial_number', 'issuer', 'valid_from', 'expiry_date', 'renewal_lead_days', 'status',
         'discount_percent', 'billing_cycle', 'payment_status', 'last_payment_date', 'auto_renew', 'notes',
+    ];
+
+    /** Najdłuższa wartość pokazywana w podglądzie (treść szablonu bywa długim HTML-em). */
+    private const PREVIEW_VALUE_CHARS = 300;
+
+    /** Nazwy ról spotykane w arkuszach obok etykiet z aplikacji. */
+    private const ROLE_SYNONYMS = [
+        'admin' => 'ADMIN', 'administrator' => 'ADMIN', 'szef' => 'DIRECTOR', 'dyrektor' => 'DIRECTOR',
+        'kierownik' => 'MANAGER', 'menedżer' => 'MANAGER', 'manager' => 'MANAGER', 'księgowy' => 'ACCOUNTANT',
+        'księgowa' => 'ACCOUNTANT', 'informatyk' => 'IT', 'operator' => 'OPERATOR', 'pracownik' => 'EMPLOYEE',
     ];
 
     /** Nazwy okresu rozliczeń spotykane w arkuszach. */
@@ -52,6 +69,9 @@ final class ImportService
     private readonly PayerService $payers;
     private readonly BeneficiaryService $beneficiaries;
     private readonly CertificateService $certificates;
+    private readonly AccountService $accounts;
+    private readonly TemplateService $templates;
+    private readonly ReadingRuleService $readingRules;
 
     /** Najwięcej zapytań do rejestru na jeden plik — plik z 1000 wierszy nie może zalać rejestru. */
     public const MAX_REGISTRY_LOOKUPS = 100;
@@ -66,10 +86,13 @@ final class ImportService
         $this->payers = new PayerService($db, $this->events);
         $this->beneficiaries = new BeneficiaryService($db, $this->events, $this->payers);
         $this->certificates = new CertificateService($db, $this->events, $this->payers, $this->beneficiaries);
+        $this->accounts = new AccountService($db, $this->events);
+        $this->templates = new TemplateService($db, $this->events);
+        $this->readingRules = new ReadingRuleService($db, $this->events);
     }
 
     /**
-     * @param array{mode?: string, attachment?: int|null} $options
+     * @param array{mode?: string, attachment?: int|null, exclude?: list<int>} $options
      * @return array<string, mixed>
      */
     public function preview(Actor $actor, string $dataset, string $filename, string $content, array $options = []): array
@@ -78,7 +101,7 @@ final class ImportService
     }
 
     /**
-     * @param array{mode?: string, attachment?: int|null} $options
+     * @param array{mode?: string, attachment?: int|null, exclude?: list<int>} $options
      * @return array<string, mixed>
      */
     public function commit(Actor $actor, string $dataset, string $filename, string $content, array $options = []): array
@@ -126,7 +149,7 @@ final class ImportService
     }
 
     /**
-     * @param array{mode?: string, attachment?: int|null} $options
+     * @param array{mode?: string, attachment?: int|null, exclude?: list<int>} $options
      * @return array<string, mixed>
      */
     private function process(Actor $actor, string $dataset, string $filename, string $content, array $options, bool $commit): array
@@ -160,7 +183,7 @@ final class ImportService
                 ], $columns['missing']),
             ],
             'rows'      => [],
-            'totals'    => ['rows' => 0, 'create' => 0, 'update' => 0, 'unchanged' => 0, 'skip' => 0, 'error' => 0],
+            'totals'    => ['rows' => 0, 'create' => 0, 'update' => 0, 'unchanged' => 0, 'skip' => 0, 'excluded' => 0, 'error' => 0],
             'committed' => false,
         ];
 
@@ -177,6 +200,8 @@ final class ImportService
         }
 
         $this->registryLookups = 0;
+        // Wyłączone wiersze dotyczą tylko zapisu — podgląd zawsze pokazuje cały plik.
+        $excluded = $commit ? array_fill_keys($options['exclude'] ?? [], true) : [];
 
         $ownTransaction = !$this->db->inTransaction();
         $ownTransaction ? $this->db->beginTransaction() : $this->db->exec('SAVEPOINT import_file');
@@ -192,7 +217,10 @@ final class ImportService
                     continue;
                 }
 
-                $row = $this->processRow($actor, $dataset, $data, $record['line'], $mode, $seen);
+                $row = isset($excluded[$record['line']])
+                    ? self::excludedRow($dataset, $data, $record['line'])
+                    : $this->processRow($actor, $dataset, $data, $record['line'], $mode, $seen);
+                $row['values'] = self::previewValues($dataset, $data);
                 if ($row['status'] === 'create' && !$commit) {
                     $row['record_id'] = null;
                 }
@@ -209,7 +237,7 @@ final class ImportService
                     'mode'      => $mode,
                     'created'   => $result['totals']['create'],
                     'updated'   => $result['totals']['update'],
-                    'skipped'   => $result['totals']['skip'] + $result['totals']['unchanged'],
+                    'skipped'   => $result['totals']['skip'] + $result['totals']['unchanged'] + $result['totals']['excluded'],
                     'errors'    => $result['totals']['error'],
                 ]);
                 $ownTransaction ? $this->db->commit() : $this->db->exec('RELEASE SAVEPOINT import_file');
@@ -248,9 +276,12 @@ final class ImportService
         $this->db->exec('SAVEPOINT import_row');
         try {
             $outcome = match ($dataset) {
-                'payers'        => $this->payerRow($actor, $data, $line, $mode, $seen),
-                'beneficiaries' => $this->beneficiaryRow($actor, $data, $line, $mode, $seen),
-                default         => $this->certificateRow($actor, $data, $line, $mode, $seen),
+                'payers'          => $this->payerRow($actor, $data, $line, $mode, $seen),
+                'beneficiaries'   => $this->beneficiaryRow($actor, $data, $line, $mode, $seen),
+                'accounts'        => $this->accountRow($actor, $data, $line, $mode, $seen),
+                'email_templates' => $this->templateRow($actor, $data, $line, $mode, $seen),
+                'reading_rules'   => $this->readingRuleRow($actor, $data, $line, $mode, $seen),
+                default           => $this->certificateRow($actor, $data, $line, $mode, $seen),
             };
             $this->db->exec('RELEASE SAVEPOINT import_row');
 
@@ -509,6 +540,205 @@ final class ImportService
     }
 
     /**
+     * Konto personelu — bez hasła: właściciel ustawia je linkiem z poczty („Nie pamiętam hasła” albo
+     * przycisk w widoku kont).
+     *
+     * @param array<string, string> $data
+     * @param array<string, int>    $seen
+     * @return array<string, mixed>
+     */
+    private function accountRow(Actor $actor, array $data, int $line, string $mode, array &$seen): array
+    {
+        $input = array_intersect_key($data, array_flip(['first_name', 'last_name', 'email', 'role']));
+        if (isset($input['role'])) {
+            $input['role'] = Normalizer::choice(
+                $input['role'],
+                self::labelKeys(Rbac::roles(), static fn (string $code): string => 'role.' . strtolower($code)),
+                self::ROLE_SYNONYMS
+            );
+        }
+        if (($data['beneficiary_email'] ?? '') !== '') {
+            $input['beneficiary_id'] = $this->resolveBeneficiary($data['beneficiary_email'], '', '');
+        }
+
+        $email = mb_strtolower($input['email'] ?? '');
+        self::assertFirstInFile($seen, 'account:' . $email, $line);
+        $existing = $email === '' ? null : $this->fetchOne('SELECT * FROM users WHERE LOWER(email) = :email LIMIT 1', ['email' => $email]);
+
+        if ($existing === null) {
+            return ['status' => 'create', 'record_id' => $this->accounts->create($actor, $input)['id']];
+        }
+
+        $id = (int) $existing['id'];
+        if ($existing['deactivated_at'] !== null) {
+            return ['status' => 'skip', 'record_id' => $id, 'message' => \__('exchange.skip.deactivated')];
+        }
+        if ($mode === 'skip') {
+            return ['status' => 'skip', 'record_id' => $id, 'message' => \__('exchange.skip.exists')];
+        }
+
+        $current = self::castIds($existing, ['beneficiary_id']);
+        $merged = array_merge(array_intersect_key($current, array_flip(['first_name', 'last_name', 'email', 'role', 'beneficiary_id'])), $input);
+        if ($merged['role'] !== Rbac::EMPLOYEE) {
+            $merged['beneficiary_id'] = null;
+        }
+        $changes = array_keys(EventLogger::diff($current, $merged, ['first_name', 'last_name', 'email', 'role', 'beneficiary_id']));
+        if ($changes === []) {
+            return ['status' => 'unchanged', 'record_id' => $id, 'message' => \__('exchange.skip.unchanged')];
+        }
+
+        $this->accounts->update($actor, $id, $merged);
+
+        return self::updated($id, $changes);
+    }
+
+    /**
+     * @param array<string, string> $data
+     * @param array<string, int>    $seen
+     * @return array<string, mixed>
+     */
+    private function templateRow(Actor $actor, array $data, int $line, string $mode, array &$seen): array
+    {
+        $fields = ['code', 'locale', 'name', 'subject', 'body_html', 'body_text', 'is_active'];
+        $input = array_intersect_key($data, array_flip($fields));
+        $input['code'] = mb_strtolower($input['code'] ?? '');
+        $input['locale'] = mb_strtolower($input['locale'] ?? '');
+        if (isset($input['is_active'])) {
+            $input['is_active'] = $input['is_active'] === '' ? '1' : Normalizer::bool($input['is_active']);
+        }
+
+        self::assertFirstInFile($seen, 'template:' . $input['code'] . ':' . $input['locale'], $line);
+        $existing = $this->fetchOne(
+            'SELECT * FROM email_templates WHERE code = :code AND locale = :locale LIMIT 1',
+            ['code' => $input['code'], 'locale' => $input['locale']]
+        );
+
+        if ($existing === null) {
+            return ['status' => 'create', 'record_id' => $this->templates->create($actor, $input)['id']];
+        }
+
+        $id = (int) $existing['id'];
+        if ($mode === 'skip') {
+            return ['status' => 'skip', 'record_id' => $id, 'message' => \__('exchange.skip.exists')];
+        }
+
+        $current = array_intersect_key($existing, array_flip($fields));
+        $current['is_active'] = (string) (int) $existing['is_active'];
+        $merged = array_merge($current, $input);
+        $changes = array_values(array_filter(
+            $fields,
+            static fn (string $field): bool => trim(str_replace("\r\n", "\n", (string) $merged[$field])) !== trim(str_replace("\r\n", "\n", (string) $current[$field]))
+        ));
+        if ($changes === []) {
+            return ['status' => 'unchanged', 'record_id' => $id, 'message' => \__('exchange.skip.unchanged')];
+        }
+
+        // Załączników nie ma w pliku — zostają te, które szablon miał.
+        $this->templates->update($actor, $id, $merged + ['attachment_ids' => $this->templates->attachmentIds($id)]);
+
+        return self::updated($id, $changes);
+    }
+
+    /**
+     * @param array<string, string> $data
+     * @param array<string, int>    $seen
+     * @return array<string, mixed>
+     */
+    private function readingRuleRow(Actor $actor, array $data, int $line, string $mode, array &$seen): array
+    {
+        $input = array_intersect_key($data, array_flip(ReadingRuleService::FIELDS));
+        if (isset($input['field'])) {
+            $input['field'] = Normalizer::choice($input['field'], self::labelKeys(
+                RegistrationExtractor::readableFields(),
+                static fn (string $code): string => ReadingRuleService::fieldLabelKey($code)
+            ));
+        }
+        $input['label'] = rtrim($input['label'] ?? '', ": \t");
+        if (isset($input['is_active'])) {
+            $input['is_active'] = $input['is_active'] === '' ? '1' : Normalizer::bool($input['is_active']);
+        }
+
+        $key = ['name' => $input['name'] ?? '', 'field' => $input['field'] ?? '', 'label' => $input['label']];
+        self::assertFirstInFile($seen, 'rule:' . mb_strtolower(implode(':', $key)), $line);
+        $existing = $this->fetchOne('SELECT id FROM reading_rules WHERE name = :name AND field = :field AND label = :label LIMIT 1', $key);
+
+        if ($existing === null) {
+            return ['status' => 'create', 'record_id' => $this->readingRules->create($actor, $input)['id']];
+        }
+
+        $id = (int) $existing['id'];
+        if ($mode === 'skip') {
+            return ['status' => 'skip', 'record_id' => $id, 'message' => \__('exchange.skip.exists')];
+        }
+
+        $current = $this->readingRules->find($id);
+        $current['is_active'] = (int) $current['is_active'];
+        $merged = $this->readingRules->validate(array_merge($current, $input), $id);
+        $changes = array_keys(EventLogger::diff($current, $merged, ReadingRuleService::FIELDS));
+        if ($changes === []) {
+            return ['status' => 'unchanged', 'record_id' => $id, 'message' => \__('exchange.skip.unchanged')];
+        }
+
+        $this->readingRules->update($actor, $id, $merged);
+
+        return self::updated($id, $changes);
+    }
+
+    /**
+     * @param list<string> $changes
+     * @return array<string, mixed>
+     */
+    private static function updated(int $id, array $changes): array
+    {
+        return [
+            'status'    => 'update',
+            'record_id' => $id,
+            'changes'   => array_map(static fn (string $field): string => self::fieldLabel($field), $changes),
+        ];
+    }
+
+    /**
+     * @param array<string, string> $data
+     * @return array<string, mixed>
+     */
+    private static function excludedRow(string $dataset, array $data, int $line): array
+    {
+        return [
+            'line'      => $line,
+            'label'     => self::rowLabel($dataset, $data),
+            'status'    => 'excluded',
+            'record_id' => null,
+            'changes'   => [],
+            'message'   => \__('exchange.skip.excluded'),
+            'errors'    => [],
+            'registry'  => [],
+        ];
+    }
+
+    /**
+     * Wartości odczytane z wiersza — do sprawdzenia przed zapisem.
+     *
+     * @param array<string, string> $data
+     * @return list<array{field: string, label: string, value: string}>
+     */
+    private static function previewValues(string $dataset, array $data): array
+    {
+        $values = [];
+        foreach ($data as $field => $value) {
+            if ($value === '') {
+                continue;
+            }
+            $values[] = [
+                'field' => $field,
+                'label' => \__(Columns::labelKey($dataset, $field)),
+                'value' => mb_strlen($value) > self::PREVIEW_VALUE_CHARS ? mb_substr($value, 0, self::PREVIEW_VALUE_CHARS) . '…' : $value,
+            ];
+        }
+
+        return $values;
+    }
+
+    /**
      * Rekord już istnieje: pominięcie albo aktualizacja kolumnami obecnymi w pliku.
      *
      * @param array<string, mixed>                        $existing
@@ -540,11 +770,7 @@ final class ImportService
 
         $update($merged);
 
-        return [
-            'status'    => 'update',
-            'record_id' => $id,
-            'changes'   => array_map(static fn (string $field): string => self::fieldLabel($field), $changes),
-        ];
+        return self::updated($id, $changes);
     }
 
     private function resolvePayer(string $taxId, string $name): ?int
@@ -724,9 +950,12 @@ final class ImportService
     private static function rowLabel(string $dataset, array $data): string
     {
         return match ($dataset) {
-            'payers'        => $data['company_name'] ?? '',
-            'beneficiaries' => trim(($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? '')),
-            default         => trim(($data['name'] ?? '') . (($data['serial_number'] ?? '') !== '' ? ' (' . $data['serial_number'] . ')' : '')),
+            'payers'          => $data['company_name'] ?? '',
+            'beneficiaries'   => trim(($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? '')),
+            'accounts'        => trim(($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? '') . (($data['email'] ?? '') !== '' ? ' (' . $data['email'] . ')' : '')),
+            'email_templates' => trim(($data['name'] ?? '') . (($data['locale'] ?? '') !== '' ? ' (' . mb_strtoupper($data['locale']) . ')' : '')),
+            'reading_rules'   => trim(($data['name'] ?? '') . ' — ' . ($data['label'] ?? ''), ' —'),
+            default           => trim(($data['name'] ?? '') . (($data['serial_number'] ?? '') !== '' ? ' (' . $data['serial_number'] . ')' : '')),
         };
     }
 

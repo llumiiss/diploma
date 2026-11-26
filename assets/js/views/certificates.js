@@ -26,12 +26,16 @@
             try {
                 await api.post(endpoints.certificates, { action: 'archive', id: item.id });
                 CertiSub.notify(t('certificate.archived'));
-                CertiSub.data.refresh('certificates', 'summary', 'beneficiaries', 'payers');
+                CertiSub.data.refresh('certificates', 'summary', 'beneficiaries', 'payers', 'tasks', 'taskStats');
                 return true;
             } catch (error) {
                 CertiSub.notifyError(error);
                 return false;
             }
+        },
+        /** Pełna archiwizacja albo — dla certyfikatu kwalifikowanego po terminie — archiwizacja z listy ToDo. */
+        canArchive(item) {
+            return CertiSub.can('certificates.archive') || (Boolean(item.renewal_blocked) && CertiSub.can('certificates.archive_lapsed'));
         },
         async restore(item) {
             try {
@@ -59,6 +63,7 @@
                 filterPayment: '',
                 filterPriority: '',
                 filterStatus: '',
+                filterAutoRenew: '',
             };
         },
         computed: {
@@ -95,15 +100,16 @@
                     list = list.filter((item) => item.status === this.filterStatus);
                 }
 
-                const query = this.search.trim().toLowerCase();
-                if (!query) {
-                    return list;
+                if (this.filterAutoRenew !== '') {
+                    list = list.filter((item) => Boolean(item.auto_renew) === (this.filterAutoRenew === 'yes'));
                 }
 
-                return list.filter((item) => [
+                const matches = CertiSub.textFilter.matcher(this.search);
+
+                return list.filter((item) => matches([
                     item.name, item.serial_number, item.issuer, item.beneficiary_name,
                     item.company_name, item.owner_name, item.type_label,
-                ].some((value) => value && String(value).toLowerCase().indexOf(query) !== -1));
+                ]));
             },
         },
         mounted() {
@@ -122,12 +128,16 @@
             archive(item) {
                 certificateActions.archive(item);
             },
+            canArchive(item) {
+                return certificateActions.canArchive(item);
+            },
             reset() {
                 this.search = '';
                 this.filterType = '';
                 this.filterPayment = '';
                 this.filterPriority = '';
                 this.filterStatus = '';
+                this.filterAutoRenew = '';
             },
         },
         template: `
@@ -138,8 +148,8 @@
                     <button v-if="can('certificates.create')" type="button" class="btn-primary" @click="add">+ {{ t('certificate.add') }}</button>
                 </PageHeader>
 
-                <div class="card p-4 mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-                    <input v-model="search" type="search" class="input xl:col-span-2" :placeholder="t('certificate.search_placeholder')" :aria-label="t('common.search')">
+                <div class="card p-4 mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+                    <input v-model="search" type="search" class="input xl:col-span-2" :placeholder="t('certificate.search_placeholder')" :aria-label="t('common.search')" :title="t('filter.syntax')">
                     <select v-model="filterType" class="input" :aria-label="t('field.certificate_type')">
                         <option value="">{{ t('dash.filter.all_types') }}</option>
                         <option v-for="type in labels.types" :key="type" :value="type">{{ labels.type(type) }}</option>
@@ -159,10 +169,15 @@
                         <option value="warning">{{ t('dash.filter.warning', { days: warningDays }) }}</option>
                         <option value="ok">{{ t('priority.label.ok') }}</option>
                     </select>
+                    <select v-model="filterAutoRenew" class="input" :aria-label="t('field.auto_renew')">
+                        <option value="">{{ t('certificate.filter.auto_renew_any') }}</option>
+                        <option value="yes">{{ t('certificate.filter.auto_renew_yes') }}</option>
+                        <option value="no">{{ t('certificate.filter.auto_renew_no') }}</option>
+                    </select>
                 </div>
-                <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
-                    <span>{{ t('certificate.showing', { shown: filtered.length, total: state.items.length }) }}</span>
-                    <button v-if="search || filterType || filterPayment || filterPriority || filterStatus" type="button" class="btn-ghost" @click="reset">{{ t('common.clear_filters') }}</button>
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 text-xs text-slate-400">
+                    <span>{{ t('certificate.showing', { shown: filtered.length, total: state.items.length }) }} · {{ t('filter.syntax') }}</span>
+                    <button v-if="search || filterType || filterPayment || filterPriority || filterStatus || filterAutoRenew" type="button" class="btn-ghost" @click="reset">{{ t('common.clear_filters') }}</button>
                 </div>
 
                 <div class="card overflow-x-auto">
@@ -203,7 +218,7 @@
                                 <td class="td"><span :class="['badge', badge.status(item.status)]">{{ item.status_label }}</span></td>
                                 <td class="td text-right whitespace-nowrap" @click.stop>
                                     <button v-if="can('certificates.update')" type="button" class="btn-ghost" @click="edit(item)">{{ t('common.edit') }}</button>
-                                    <button v-if="can('certificates.archive')" type="button" class="btn-ghost text-red-600" @click="archive(item)">{{ t('common.archive') }}</button>
+                                    <button v-if="canArchive(item)" type="button" class="btn-ghost text-red-600" @click="archive(item)">{{ t('common.archive') }}</button>
                                 </td>
                             </tr>
                             <TableState :colspan="10" :loading="state.loading && !state.loaded" :error="state.error"
@@ -306,9 +321,17 @@
             openInvitation(invitation) {
                 CertiSub.openDrawer('invitation', invitation.id);
             },
+            canArchive(item) {
+                return certificateActions.canArchive(item);
+            },
             async archive() {
                 if (await certificateActions.archive(this.certificate)) {
-                    this.load();
+                    // Bez wglądu w archiwum rekordu nie da się już otworzyć — zamykamy panel.
+                    if (CertiSub.can('archive.view')) {
+                        this.load();
+                    } else {
+                        this.close();
+                    }
                 }
             },
             async restore() {
@@ -334,7 +357,7 @@
                     <template v-if="certificate && !certificate.archived_at">
                         <button v-if="can('certificates.update')" type="button" class="btn-secondary" @click="edit">✏️ {{ t('common.edit') }}</button>
                         <button v-if="can('certificates.update_payment') && !can('certificates.update')" type="button" class="btn-secondary" @click="editPayment">💳 {{ t('certificate.payment_edit') }}</button>
-                        <button v-if="can('certificates.archive')" type="button" class="btn-secondary text-red-700" @click="archive">📦 {{ t('common.archive') }}</button>
+                        <button v-if="canArchive(certificate)" type="button" class="btn-secondary text-red-700" @click="archive">📦 {{ t('common.archive') }}</button>
                     </template>
                     <button v-else-if="certificate && can('certificates.archive')" type="button" class="btn-secondary" @click="restore">♻️ {{ t('common.restore') }}</button>
                 </template>
@@ -385,7 +408,8 @@
                                 <span :class="['badge', CertiSub.taskBadge(openTask.status)]">{{ t('task.status.' + openTask.status) }}</span>
                             </div>
                             <p v-else class="text-sm text-slate-500">{{ t('task.no_open_task') }}</p>
-                            <div v-if="!certificate.archived_at" class="flex flex-wrap gap-2 mt-3">
+                            <p v-if="!certificate.archived_at && certificate.renewal_blocked" class="mt-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm">{{ t('task.lapsed_notice') }}</p>
+                            <div v-else-if="!certificate.archived_at" class="flex flex-wrap gap-2 mt-3">
                                 <button v-if="!openTask && can('tasks.update')" type="button" class="btn-secondary" @click="createTask">+ {{ t('task.create') }}</button>
                                 <button v-if="can('invitations.send')" type="button" class="btn-secondary" @click="invite">✉️ {{ t('invitation.send') }}</button>
                             </div>
@@ -462,6 +486,15 @@
             /** Typowe rabaty do jednego kliknięcia; w polu można wpisać dowolną wartość 0–100. */
             discountPresets() {
                 return ['0', '-3', '-5', '-10', '-15', '-20'];
+            },
+            beneficiaryOptions() {
+                return this.options ? this.options.beneficiaries.map((item) => ({ value: item.id, label: this.personName(item) })) : [];
+            },
+            payerOptions() {
+                return this.options ? this.options.payers.map((item) => ({ value: item.id, label: item.company_name + (item.tax_id ? ' (' + item.tax_id + ')' : '') })) : [];
+            },
+            ownerOptions() {
+                return this.options ? this.options.owners.map((owner) => ({ value: owner.id, label: owner.name + ' (' + labels.role(owner.role) + ')' })) : [];
             },
         },
         async mounted() {
@@ -594,26 +627,21 @@
                         <FormField :label="t('field.beneficiary_id')" :error="errors.beneficiary_id" :required="requiresBeneficiary"
                                    :hint="requiresBeneficiary ? t('certificate.hint.beneficiary_required') : t('certificate.hint.beneficiary')">
                             <div class="flex gap-2">
-                                <select v-model="form.beneficiary_id" :class="['input', errors.beneficiary_id ? 'input-error' : '']" @change="onBeneficiaryChange">
-                                    <option value="">{{ requiresBeneficiary ? t('common.choose') : t('certificate.no_beneficiary') }}</option>
-                                    <option v-for="item in options.beneficiaries" :key="item.id" :value="String(item.id)">{{ personName(item) }}</option>
-                                </select>
+                                <SearchSelect v-model="form.beneficiary_id" :options="beneficiaryOptions" :invalid="Boolean(errors.beneficiary_id)"
+                                              :empty-label="requiresBeneficiary ? t('common.choose') : t('certificate.no_beneficiary')"
+                                              :aria-label="t('field.beneficiary_id')" @change="onBeneficiaryChange" />
                                 <button v-if="can('beneficiaries.create')" type="button" class="btn-secondary shrink-0" :title="t('beneficiary.add')" @click="addBeneficiary">+</button>
                             </div>
                         </FormField>
                         <FormField :label="t('field.payer_id')" :error="errors.payer_id" required>
                             <div class="flex gap-2">
-                                <select v-model="form.payer_id" :class="['input', errors.payer_id ? 'input-error' : '']">
-                                    <option value="">{{ t('common.choose') }}</option>
-                                    <option v-for="item in options.payers" :key="item.id" :value="String(item.id)">{{ item.company_name }}{{ item.tax_id ? ' (' + item.tax_id + ')' : '' }}</option>
-                                </select>
+                                <SearchSelect v-model="form.payer_id" :options="payerOptions" :invalid="Boolean(errors.payer_id)"
+                                              :empty-label="t('common.choose')" :aria-label="t('field.payer_id')" />
                                 <button v-if="can('payers.create')" type="button" class="btn-secondary shrink-0" :title="t('payer.add')" @click="addPayer">+</button>
                             </div>
                         </FormField>
                         <FormField v-if="canAssignOwner" :label="t('field.user_id')" :error="errors.user_id" :hint="t('certificate.hint.owner')">
-                            <select v-model="form.user_id" class="input">
-                                <option v-for="owner in options.owners" :key="owner.id" :value="String(owner.id)">{{ owner.name }} ({{ labels.role(owner.role) }})</option>
-                            </select>
+                            <SearchSelect v-model="form.user_id" :options="ownerOptions" :aria-label="t('field.user_id')" />
                         </FormField>
                     </fieldset>
 

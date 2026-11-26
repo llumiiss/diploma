@@ -19,6 +19,27 @@ final class CertificateService
     public const TYPES = ['QUALIFIED_SIGNATURE', 'QUALIFIED_SEAL', 'SSL_CERTIFICATE', 'CODE_SIGNING', 'DOMAIN', 'SAAS', 'CLOUD_SUPPORT', 'OTHER'];
     /** Typy, które nie istnieją bez użytkownika certyfikatu (spójne z chk_certificates_qualified_user). */
     public const QUALIFIED_TYPES = ['QUALIFIED_SIGNATURE', 'QUALIFIED_SEAL'];
+
+    /**
+     * Certyfikat kwalifikowany po terminie nie daje się odnowić (trzeba wydać nowy), więc nie wysyła się dla
+     * niego zaproszeń ani nie prowadzi odnowienia — pozostaje archiwizacja.
+     */
+    public static function isLapsed(string $type, ?string $expiryDate, ?string $today = null): bool
+    {
+        return in_array($type, self::QUALIFIED_TYPES, true)
+            && $expiryDate !== null && $expiryDate !== ''
+            && substr($expiryDate, 0, 10) < ($today ?? date('Y-m-d'));
+    }
+
+    /**
+     * @param array<string, mixed> $certificate wiersz z polami certificate_type i expiry_date
+     */
+    public static function assertNotLapsed(array $certificate): void
+    {
+        if (self::isLapsed((string) $certificate['certificate_type'], (string) $certificate['expiry_date'])) {
+            throw ServiceException::conflict(\__('certificate.error.lapsed', ['date' => (string) $certificate['expiry_date']]));
+        }
+    }
     public const STATUSES = ['pending', 'active', 'renewal_in_progress', 'expired'];
     public const BILLING_CYCLES = ['monthly', 'annual', 'multi_year'];
     public const PAYMENT_STATUSES = ['paid', 'due_soon', 'overdue', 'not_applicable'];
@@ -260,8 +281,13 @@ final class CertificateService
      */
     public function archive(Actor $actor, int $id): array
     {
-        $actor->authorize('certificates.archive');
+        // Role bez pełnej archiwizacji mogą zamknąć tylko certyfikat, którego nie da się już odnowić.
+        $onlyLapsed = !$actor->can('certificates.archive');
+        $actor->authorize($onlyLapsed ? 'certificates.archive_lapsed' : 'certificates.archive');
         $certificate = $this->findVisible($actor, $id, false);
+        if ($onlyLapsed && !self::isLapsed((string) $certificate['certificate_type'], (string) $certificate['expiry_date'])) {
+            $actor->authorize('certificates.archive');
+        }
 
         Transaction::run($this->db, function () use ($actor, $id, $certificate): void {
             $this->db->prepare('UPDATE certificates SET archived_at = NOW() WHERE id = :id')->execute(['id' => $id]);
@@ -286,7 +312,8 @@ final class CertificateService
             }
         });
 
-        return $this->get($actor, $id);
+        // Konto bez wglądu w archiwum nie może już otworzyć rekordu — dostaje stan z chwili archiwizacji.
+        return $actor->can('archive.view') ? $this->get($actor, $id) : array_merge($certificate, ['archived_at' => date('Y-m-d H:i:s')]);
     }
 
     /**
@@ -345,6 +372,7 @@ final class CertificateService
     {
         $actor->authorize('certificates.create');
         $old = $this->findVisible($actor, $oldId, false);
+        self::assertNotLapsed($old);
 
         $pick = static fn (string $key, mixed $fallback): mixed => array_key_exists($key, $data) && $data[$key] !== null ? $data[$key] : $fallback;
         $merged = [
@@ -674,6 +702,7 @@ final class CertificateService
                 $row[$key] = $row[$key] !== null ? (int) $row[$key] : null;
             }
             $row['auto_renew'] = (bool) $row['auto_renew'];
+            $row['renewal_blocked'] = self::isLapsed((string) $row['certificate_type'], (string) $row['expiry_date']);
         }
         unset($row);
 

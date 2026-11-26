@@ -91,6 +91,9 @@
     .th { @apply text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide whitespace-nowrap; }
     .td { @apply px-4 py-3 align-top; }
     .badge { @apply inline-block px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap; }
+    .drop-zone { @apply flex flex-col items-center justify-center gap-1 w-full px-4 py-5 text-center border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 cursor-pointer transition hover:border-brand-400 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500; }
+    .drop-zone-over { @apply border-brand-600 bg-brand-100; }
+    .drop-zone-disabled { @apply opacity-60 cursor-not-allowed pointer-events-none; }
 }
 
 @layer components {

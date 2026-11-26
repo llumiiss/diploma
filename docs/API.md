@@ -6,17 +6,18 @@ Błędy biznesowe mapowane są na kody HTTP przez `ApiKernel`: `400` (błędne d
 
 | Endpoint | Zakres odpowiedzialności |
 |---|---|
-| `api/certificates.php` | CRUD certyfikatów, walidacja (m.in. unikalny numer seryjny u wystawcy, użytkownik wymagany dla certyfikatów kwalifikowanych), rabat `discount_percent`, `update_payment` (księgowość), odnowienie (nowy rekord + archiwizacja starego) |
+| `api/certificates.php` | CRUD certyfikatów, walidacja (m.in. unikalny numer seryjny u wystawcy, użytkownik wymagany dla certyfikatów kwalifikowanych), rabat `discount_percent`, `update_payment` (księgowość), odnowienie (nowy rekord + archiwizacja starego); certyfikat kwalifikowany po terminie można tylko zarchiwizować (zaproszenia, zadania i odnowienie zwracają `409`) |
 | `api/beneficiaries.php` | CRUD użytkowników certyfikatów (beneficjentów); firma wymagana |
 | `api/payers.php` | CRUD firm (płatników) wraz ze średnim rabatem, kontrola sumy kontrolnej NIP |
 | `api/tasks.php` | Lista ToDo, zmiana statusu, przydział (MANAGER+), porzucenie z powodem |
 | `api/invitations.php` | Wysyłka zaproszeń e-mail z szablonu, rejestr, ponowienie, przypomnienia |
 | `api/templates.php` | Szablony wiadomości (PL/EN) i biblioteka załączników (ADMIN) |
+| `api/reading_rules.php` | Szablony odczytu wniosków (ADMIN): `GET` lista i dostępne pola, `create`, `update`, `delete` |
 | `api/reports.php` | Karty raportowe (perspektywa użytkownika certyfikatu / płatnika), harmonogram wygaśnięć |
 | `api/search.php` | Wyszukiwarka globalna (Ctrl+K) po certyfikatach, osobach i płatnikach wraz z powiązaniami |
 | `api/events.php` | Oś czasu rekordu oraz dziennik zdarzeń administratora |
-| `api/export.php` | Eksport list, kart raportowych, harmonogramu i dziennika zdarzeń do CSV/XML |
-| `api/import.php` | Import płatników/osób/certyfikatów z CSV/XML oraz wiadomości e-mail (EML) z podglądem wiersz po wierszu przed zapisem (ADMIN) |
+| `api/export.php` | Eksport list, kart raportowych, harmonogramu i dziennika zdarzeń do CSV/XML; konta personelu (bez haseł), szablony wiadomości i odczytu tylko dla ADMIN |
+| `api/import.php` | Import płatników, osób, certyfikatów, kont personelu, szablonów wiadomości i szablonów odczytu z CSV/XML oraz wiadomości e-mail (EML) z podglądem wiersz po wierszu przed zapisem; `exclude=3,7` pomija odznaczone wiersze (ADMIN) |
 | `api/accounts.php`, `api/delete_account.php` | Konta personelu, role, dezaktywacja/usunięcie (ADMIN) |
 | `api/settings.php` | Progi i parametry procesu odnowienia (ADMIN) |
 | `api/dashboard.php` | Zagregowane KPI pulpitu (cache'owane per rola/konto/filtr firm) |

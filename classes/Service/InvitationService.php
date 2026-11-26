@@ -125,6 +125,7 @@ final class InvitationService
     {
         $actor->authorize('invitations.send');
         $certificate = $this->certificates->findActive($actor, $certificateId);
+        CertificateService::assertNotLapsed($certificate);
 
         $recipients = [];
         foreach (self::RECIPIENT_TYPES as $type) {
@@ -178,6 +179,7 @@ final class InvitationService
         $v->throwIfFailed();
 
         $certificate = $this->certificates->findActive($actor, (int) $certificateId);
+        CertificateService::assertNotLapsed($certificate);
         $template = $this->templates->find((int) $templateId);
         if (!$template['is_active']) {
             throw ServiceException::validation(['template_id' => \__('invitation.error.template_inactive')]);
@@ -289,6 +291,7 @@ final class InvitationService
         }
 
         $certificate = $this->certificates->findActive($actor, (int) $invitation['certificate_id']);
+        CertificateService::assertNotLapsed($certificate);
         $files = $this->attachments->filesFor($this->invitationAttachmentIds($id));
         $recipient = ['email' => (string) $invitation['recipient_email'], 'name' => (string) $invitation['recipient_name'], 'type' => $invitation['recipient_type']];
 
@@ -336,6 +339,7 @@ final class InvitationService
     public function processDueReminders(): array
     {
         $actor = Actor::system();
+        $this->cancelRemindersForLapsed();
         $stmt = $this->db->query(
             "SELECT i.id
              FROM invitations i
@@ -365,12 +369,32 @@ final class InvitationService
     }
 
     /**
+     * Certyfikat kwalifikowany po terminie nie ma o czym przypominać — zaplanowane przypomnienia są odwoływane.
+     */
+    private function cancelRemindersForLapsed(): void
+    {
+        $stmt = $this->db->query(
+            "SELECT i.id, i.certificate_id, c.certificate_type, c.expiry_date, c.beneficiary_id, c.payer_id
+             FROM invitations i INNER JOIN certificates c ON c.id = i.certificate_id
+             WHERE i.status = 'sent' AND i.next_reminder_at IS NOT NULL AND c.expiry_date < CURDATE()"
+        );
+        foreach ($stmt !== false ? $stmt->fetchAll() : [] as $row) {
+            if (!CertificateService::isLapsed((string) $row['certificate_type'], (string) $row['expiry_date'])) {
+                continue;
+            }
+            $this->db->prepare('UPDATE invitations SET next_reminder_at = NULL WHERE id = :id')->execute(['id' => (int) $row['id']]);
+            $this->events->log('invitation', (int) $row['id'], 'reminder_cancelled', null, self::context($row), ['reason' => 'certificate_expired']);
+        }
+    }
+
+    /**
      * @param array<string, mixed> $invitation
      */
     private function sendReminder(Actor $actor, array $invitation): bool
     {
         $id = (int) $invitation['id'];
         $certificate = $this->certificates->findActive($actor, (int) $invitation['certificate_id']);
+        CertificateService::assertNotLapsed($certificate);
         $locale = (string) ($invitation['template_locale'] ?? 'pl');
         $template = $this->templates->findActiveByCode(TemplateService::CODE_REMINDER, $locale);
         if ($template === null) {
@@ -583,7 +607,7 @@ final class InvitationService
                 i.id, i.certificate_id, i.renewal_task_id, i.template_id, i.recipient_type, i.recipient_email, i.recipient_name,
                 i.subject, i.body_html, i.status, i.sent_at, i.last_error, i.reminder_count, i.last_reminder_at,
                 i.next_reminder_at, i.created_at, i.updated_at,
-                c.name AS certificate_name, c.serial_number, c.expiry_date, c.beneficiary_id, c.payer_id,
+                c.name AS certificate_name, c.certificate_type, c.serial_number, c.expiry_date, c.beneficiary_id, c.payer_id,
                 c.archived_at AS certificate_archived_at,
                 et.name AS template_name, et.locale AS template_locale,
                 su.first_name AS sent_by_first_name, su.last_name AS sent_by_last_name,
@@ -610,6 +634,7 @@ final class InvitationService
         }
         $row['sent_by_name'] = trim(($row['sent_by_first_name'] ?? '') . ' ' . ($row['sent_by_last_name'] ?? ''));
         $row['is_due'] = $row['status'] === 'sent' && $row['next_reminder_at'] !== null && strtotime((string) $row['next_reminder_at']) <= time();
+        $row['renewal_blocked'] = CertificateService::isLapsed((string) $row['certificate_type'], (string) $row['expiry_date']);
         unset($row['sent_by_first_name'], $row['sent_by_last_name']);
 
         return $row;

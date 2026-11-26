@@ -1,0 +1,4 @@
+Nazwa;Pole formularza;Etykieta w wiadomości;Nadawca zawiera;Temat zawiera;Aktywny
+Formularz partnera;Użytkownik: imię i nazwisko;Abonent;@partner.example.com;;tak
+Formularz partnera;Firma: NIP;Kontrahent;@partner.example.com;;tak
+Formularz partnera;Certyfikat: ważny do;Abonament do;@partner.example.com;;tak

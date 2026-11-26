@@ -13,6 +13,7 @@ use App\Migrations\CompanyRolesMigration;
 use App\Migrations\NotificationsMigration;
 use App\Migrations\OtpRateLimitMigration;
 use App\Migrations\PasswordAuthMigration;
+use App\Migrations\ReadingRulesMigration;
 use App\Migrations\RegistrationDraftsMigration;
 use App\Migrations\RenewalProcessMigration;
 use App\Migrations\SchemaInspector;
@@ -179,6 +180,9 @@ final class MigrationRunner
             // Etap 10: wnioski o certyfikat przesłane e-mailem (kolejka robocza operatora).
             'registration_drafts' => static function (PDO $db): void {
                 RegistrationDraftsMigration::up($db);
+            },
+            'reading_rules' => static function (PDO $db): void {
+                ReadingRulesMigration::up($db);
             },
         ];
     }

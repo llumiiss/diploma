@@ -270,6 +270,7 @@ final class TaskService
     public function openTaskFor(Actor $actor, int $certificateId, string $source, ?int $assignee = null, ?string $note = null): int
     {
         $certificate = $this->certificates->findActive($actor, $certificateId);
+        CertificateService::assertNotLapsed($certificate);
 
         $existing = $this->openTaskId($certificateId);
         if ($existing !== null) {
@@ -362,6 +363,9 @@ final class TaskService
         if ($status === $from) {
             return $this->get($actor, $id);
         }
+
+        // Dla certyfikatu kwalifikowanego po terminie zadanie zamyka tylko archiwizacja certyfikatu.
+        CertificateService::assertNotLapsed($task);
 
         if (!in_array($status, self::TRANSITIONS[$from], true)) {
             throw ServiceException::conflict(\__('task.error.transition', [
@@ -467,6 +471,8 @@ final class TaskService
         if (!in_array($task['status'], self::OPEN_STATUSES, true)) {
             throw ServiceException::conflict(\__('task.error.closed'));
         }
+
+        CertificateService::assertNotLapsed($task);
 
         $note = isset($data['note']) && is_string($data['note']) && trim($data['note']) !== '' ? mb_substr(trim($data['note']), 0, 2000) : null;
 
@@ -649,6 +655,7 @@ final class TaskService
         $row['beneficiary_name'] = trim(($row['beneficiary_first_name'] ?? '') . ' ' . ($row['beneficiary_last_name'] ?? ''));
         $row['is_open'] = in_array($row['status'], self::OPEN_STATUSES, true);
         $row['is_overdue'] = $row['is_open'] && $row['days_left'] < 0;
+        $row['renewal_blocked'] = CertificateService::isLapsed((string) $row['certificate_type'], (string) $row['expiry_date']);
         unset($row['assignee_first_name'], $row['assignee_last_name'], $row['owner_first_name'], $row['owner_last_name']);
 
         return $row;

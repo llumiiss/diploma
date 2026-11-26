@@ -163,9 +163,9 @@ final class CertificateServiceTest extends IntegrationTestCase
 
         try {
             $service->archive($operator, $certificateId);
-            $this->fail('Operator nie archiwizuje certyfikatów.');
+            $this->fail('Operator nie archiwizuje cudzych certyfikatów.');
         } catch (ServiceException $e) {
-            $this->assertSame(403, $e->httpStatus());
+            $this->assertSame(404, $e->httpStatus());
         }
 
         $archived = $service->archive($manager, $certificateId);

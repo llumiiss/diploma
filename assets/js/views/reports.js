@@ -400,6 +400,20 @@
                 }
                 return format.discount(this.schedule.average_discount);
             },
+            beneficiaryOptions() {
+                return this.store.beneficiaries.items.map((item) => ({
+                    value: item.id,
+                    label: item.last_name + ' ' + item.first_name + (item.payer_name ? ' — ' + item.payer_name : ''),
+                    search: item.email || '',
+                }));
+            },
+            payerOptions() {
+                return this.store.payers.items.map((item) => ({
+                    value: item.id,
+                    label: item.company_name + (item.city ? ' — ' + item.city : ''),
+                    search: item.tax_id || '',
+                }));
+            },
         },
         watch: {
             months() {
@@ -459,11 +473,7 @@
                         <h3 class="font-semibold text-slate-900">👤 {{ t('report.perspective.beneficiary.title') }}</h3>
                         <p class="text-sm text-slate-500 mt-1 mb-4 flex-1">{{ t('report.perspective.beneficiary.description') }}</p>
                         <form class="flex gap-2" @submit.prevent="openBeneficiary">
-                            <label class="sr-only" for="report-beneficiary">{{ t('report.choose_beneficiary') }}</label>
-                            <select id="report-beneficiary" v-model="beneficiaryId" class="input">
-                                <option value="">{{ t('report.choose_beneficiary') }}</option>
-                                <option v-for="item in store.beneficiaries.items" :key="item.id" :value="String(item.id)">{{ item.last_name }} {{ item.first_name }}{{ item.payer_name ? ' — ' + item.payer_name : '' }}</option>
-                            </select>
+                            <SearchSelect v-model="beneficiaryId" :options="beneficiaryOptions" :empty-label="t('report.choose_beneficiary')" :aria-label="t('report.choose_beneficiary')" />
                             <button type="submit" class="btn-primary shrink-0" :disabled="!beneficiaryId">{{ t('report.open_card') }}</button>
                         </form>
                     </div>
@@ -471,11 +481,7 @@
                         <h3 class="font-semibold text-slate-900">🏢 {{ t('report.perspective.payer.title') }}</h3>
                         <p class="text-sm text-slate-500 mt-1 mb-4 flex-1">{{ t('report.perspective.payer.description') }}</p>
                         <form class="flex gap-2" @submit.prevent="openPayer">
-                            <label class="sr-only" for="report-payer">{{ t('report.choose_payer') }}</label>
-                            <select id="report-payer" v-model="payerId" class="input">
-                                <option value="">{{ t('report.choose_payer') }}</option>
-                                <option v-for="item in store.payers.items" :key="item.id" :value="String(item.id)">{{ item.company_name }}{{ item.city ? ' — ' + item.city : '' }}</option>
-                            </select>
+                            <SearchSelect v-model="payerId" :options="payerOptions" :empty-label="t('report.choose_payer')" :aria-label="t('report.choose_payer')" />
                             <button type="submit" class="btn-primary shrink-0" :disabled="!payerId">{{ t('report.open_card') }}</button>
                         </form>
                     </div>
@@ -495,11 +501,7 @@
                         <select id="schedule-months" v-model.number="months" class="input w-auto">
                             <option v-for="value in [3, 6, 12, 24]" :key="value" :value="value">{{ t('report.schedule.months_option', { count: value }) }}</option>
                         </select>
-                        <label class="sr-only" for="schedule-payer">{{ t('field.payer_id') }}</label>
-                        <select id="schedule-payer" v-model="payerFilter" class="input w-auto max-w-[14rem]">
-                            <option value="">{{ t('report.schedule.all_payers') }}</option>
-                            <option v-for="item in store.payers.items" :key="item.id" :value="String(item.id)">{{ item.company_name }}</option>
-                        </select>
+                        <SearchSelect v-model="payerFilter" class="w-56" :options="payerOptions" :empty-label="t('report.schedule.all_payers')" :aria-label="t('field.payer_id')" />
                         <label class="sr-only" for="schedule-type">{{ t('field.certificate_type') }}</label>
                         <select id="schedule-type" v-model="typeFilter" class="input w-auto">
                             <option value="">{{ t('report.schedule.all_types') }}</option>

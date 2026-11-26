@@ -24,6 +24,7 @@ USE assistent_subscriptions;
 -- na czas usuwania i tworzenia tabel kontrola kluczy jest wyłączona.
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS reading_rules;
 DROP TABLE IF EXISTS registration_drafts;
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS settings;
@@ -494,6 +495,24 @@ CREATE TABLE registration_drafts (
         FOREIGN KEY (result_beneficiary_id) REFERENCES beneficiaries(id) ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_registration_drafts_result_certificate
         FOREIGN KEY (result_certificate_id) REFERENCES certificates(id) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Szablony odczytu wniosków (Etap 11): własne etykiety dla czytnika wiadomości.
+CREATE TABLE reading_rules (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name                VARCHAR(120) NOT NULL,
+    field               VARCHAR(64) NOT NULL,
+    label               VARCHAR(120) NOT NULL,
+    sender_match        VARCHAR(255) NULL,
+    subject_match       VARCHAR(255) NULL,
+    is_active           TINYINT(1) NOT NULL DEFAULT 1,
+    created_by_user_id  INT UNSIGNED NULL,
+    created_at          TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_reading_rules (name, field, label),
+    KEY idx_reading_rules_created_by (created_by_user_id),
+    CONSTRAINT fk_reading_rules_created_by
+        FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

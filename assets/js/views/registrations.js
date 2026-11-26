@@ -88,12 +88,12 @@
                 CertiSub.navigate('registrations', item.id);
             },
             pickFile() {
-                this.$refs.file.click();
+                if (this.$refs.drop) {
+                    this.$refs.drop.browse();
+                }
             },
-            async upload(event) {
-                const file = event.target.files && event.target.files[0];
-                event.target.value = '';
-                if (!file) {
+            async upload(file) {
+                if (this.busy) {
                     return;
                 }
                 this.busy = true;
@@ -139,8 +139,10 @@
                 <PageHeader :title="t('registration.title')" :description="t('registration.description')">
                     <button v-if="can('registrations.intake') && pending.imap" type="button" class="btn-secondary" :disabled="busy" @click="fetchMail">📥 {{ t('registration.fetch') }}</button>
                     <button v-if="can('registrations.intake')" type="button" class="btn-primary" :disabled="busy" :title="t('registration.upload_hint')" @click="pickFile">+ {{ t('registration.upload') }}</button>
-                    <input ref="file" type="file" accept=".eml,message/rfc822" class="hidden" @change="upload">
                 </PageHeader>
+
+                <FileDrop v-if="can('registrations.intake')" ref="drop" class="mb-4" accept=".eml,message/rfc822" text-name="wklejony-wniosek.eml"
+                          :label="busy ? t('exchange.eml.analyzing') : t('drop.request')" :disabled="busy" @file="upload" />
 
                 <div class="card p-3 mb-4 flex flex-wrap items-center gap-2">
                     <button v-for="name in tabs" :key="name" type="button"
@@ -212,9 +214,48 @@
                 message: '',
                 rejectOpen: false,
                 rejectReason: '',
+                /** Słowniki firm i osób w zakresie konta — do wskazania rekordu z ewidencji. */
+                options: null,
             };
         },
         computed: {
+            companyOptions() {
+                const list = (this.options ? this.options.payers : []).map((item) => ({
+                    value: item.id,
+                    label: item.company_name + (item.tax_id ? ' (' + item.tax_id + ')' : ''),
+                }));
+                // Firma dopasowana albo już wybrana może być spoza zakresu konta — musi być na liście.
+                const has = (id) => list.some((item) => String(item.value) === String(id));
+                if (this.matchedPayer && !has(this.matchedPayer.id)) {
+                    list.unshift({
+                        value: this.matchedPayer.id,
+                        label: this.matchedPayer.visible ? this.matchedPayer.company_name : t('registration.company.use_existing_hidden'),
+                    });
+                }
+                const chosen = this.form && this.form.company.payer_id;
+                if (chosen && !has(chosen)) {
+                    list.unshift({ value: chosen, label: this.form.company.company_name || '#' + chosen });
+                }
+                return list;
+            },
+            personOptions() {
+                const company = this.form ? String(this.form.company.payer_id || '') : '';
+                const list = (this.options ? this.options.beneficiaries : [])
+                    .filter((item) => String(item.payer_id) === company)
+                    .map((item) => ({ value: item.id, label: CertiSub.format.person(item.first_name, item.last_name), hint: item.email || '' }));
+                const chosen = this.form && this.form.person.beneficiary_id;
+                if (this.personExisting && chosen && !list.some((item) => String(item.value) === String(chosen))) {
+                    const matched = this.matchedPerson && String(this.matchedPerson.id) === String(chosen) ? this.matchedPerson : null;
+                    list.unshift({
+                        value: chosen,
+                        label: matched && matched.visible ? matched.name : t('registration.person.matched_hidden'),
+                    });
+                }
+                return list;
+            },
+            isMatchedCompany() {
+                return Boolean(this.companyExisting && this.matchedPayer && String(this.form.company.payer_id) === String(this.matchedPayer.id));
+            },
             editable() {
                 return Boolean(this.reg && this.reg.can_review);
             },
@@ -252,14 +293,56 @@
             warnings() {
                 return this.reg ? this.reg.warnings : [];
             },
+            /** Problemy blokujące zatwierdzenie, których operator jeszcze nie rozwiązał w formularzu. */
             blocking() {
-                return this.warnings.filter((warning) => warning.level === 'error').length;
+                return this.warnings.filter((warning) => warning.level === 'error' && !this.resolved(warning)).length;
             },
         },
         mounted() {
             this.load();
         },
         methods: {
+            resolved(warning) {
+                if (!this.form) {
+                    return false;
+                }
+                const company = this.form.company;
+                const chosen = company.mode === 'existing' && Boolean(company.payer_id);
+                if (warning.code === 'nip_missing' || warning.code === 'company_not_in_message') {
+                    return company.mode === 'existing' ? chosen : Boolean(String(company.company_name || '').trim());
+                }
+                if (warning.code === 'company_archived') {
+                    return chosen && !(this.matchedPayer && String(this.matchedPayer.id) === String(company.payer_id));
+                }
+                if (warning.code === 'person_missing') {
+                    const person = this.form.person;
+                    return person.mode === 'existing' || Boolean(String(person.first_name || '').trim() && String(person.last_name || '').trim());
+                }
+                return false;
+            },
+            setCompanyMode(mode) {
+                this.form.company.mode = mode;
+                if (mode === 'existing' && !this.form.company.payer_id && this.matchedPayer) {
+                    this.form.company.payer_id = this.matchedPayer.id;
+                }
+                if (mode === 'new') {
+                    this.form.person.mode = 'new';
+                }
+            },
+            choosePayer(value) {
+                this.form.company.payer_id = value ? Number(value) : null;
+                // Osoba należy do firmy — po zmianie firmy trzeba ją wskazać od nowa.
+                this.form.person.mode = 'new';
+                this.form.person.beneficiary_id = null;
+                if (this.matchedPerson && this.matchedPayer && String(this.matchedPayer.id) === String(value)) {
+                    this.form.person.mode = 'existing';
+                    this.form.person.beneficiary_id = this.matchedPerson.id;
+                }
+            },
+            choosePerson(value) {
+                this.form.person.mode = value ? 'existing' : 'new';
+                this.form.person.beneficiary_id = value ? Number(value) : null;
+            },
             levelStyle: (level) => LEVEL_STYLE[level] || LEVEL_STYLE.info,
             warningText,
             err(section, field) {
@@ -271,6 +354,13 @@
                 try {
                     const data = await api.get(endpoints.registrations, { id: this.id });
                     this.setRegistration(data.registration);
+                    if (data.registration.can_review) {
+                        try {
+                            this.options = await CertiSub.data.certificateOptions(true);
+                        } catch (error) {
+                            this.options = null;
+                        }
+                    }
                 } catch (error) {
                     this.error = error.message;
                 } finally {
@@ -332,8 +422,9 @@
                 }
             },
             async approve() {
+                const chosen = this.companyOptions.find((item) => String(item.value) === String(this.form.company.payer_id));
                 const company = this.companyExisting
-                    ? t('registration.approve_company_existing', { name: this.matchedPayer && this.matchedPayer.company_name ? this.matchedPayer.company_name : this.form.company.company_name })
+                    ? t('registration.approve_company_existing', { name: chosen ? chosen.label : this.form.company.company_name })
                     : t('registration.approve_company_new', { name: this.form.company.company_name });
                 const ok = await CertiSub.confirm({
                     title: t('registration.approve_title'),
@@ -464,15 +555,24 @@
                             <div class="card p-5">
                                 <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">🏢 {{ t('registration.section.company') }}</h4>
 
-                                <template v-if="matchedPayer && !(reg.status === 'approved' && form.company.mode !== 'existing')">
-                                    <div class="px-4 py-3 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-900">
+                                <div v-if="editable" class="flex flex-wrap gap-4 mb-3 text-sm">
+                                    <label class="flex items-center gap-2"><input type="radio" name="company-mode" :checked="companyExisting" @change="setCompanyMode('existing')"> {{ t('registration.company.mode_existing') }}</label>
+                                    <label class="flex items-center gap-2"><input type="radio" name="company-mode" :checked="!companyExisting" @change="setCompanyMode('new')"> {{ t('registration.company.mode_new') }}</label>
+                                </div>
+
+                                <template v-if="companyExisting">
+                                    <FormField :label="t('field.payer_id')" :error="err('company', 'payer_id')" required>
+                                        <SearchSelect :model-value="form.company.payer_id" :options="companyOptions" :empty-label="t('common.choose')" :disabled="!editable"
+                                                      :invalid="Boolean(err('company', 'payer_id'))" :aria-label="t('field.payer_id')" @update:model-value="choosePayer" />
+                                    </FormField>
+                                    <div v-if="isMatchedCompany" class="mt-3 px-4 py-3 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-900">
                                         <strong v-if="matchedPayer.visible">{{ t('registration.company.use_existing', { name: matchedPayer.company_name }) }}</strong>
                                         <strong v-else>{{ t('registration.company.use_existing_hidden') }}</strong>
                                         <span v-if="matchedPayer.visible && matchedPayer.tax_id" class="font-mono ml-2">NIP {{ matchedPayer.tax_id }}</span>
                                         <p class="text-xs mt-1">{{ t('registration.company.existing_note') }}</p>
                                     </div>
                                     <div v-if="editable" class="mt-3">
-                                        <FormField :label="t('field.tax_id')" :error="err('company', 'tax_id')">
+                                        <FormField :label="t('field.tax_id')" :error="err('company', 'tax_id')" :hint="t('registration.company.lookup_hint')">
                                             <div class="flex gap-2">
                                                 <input v-model="form.company.tax_id" type="text" maxlength="20" class="input font-mono">
                                                 <button type="button" class="btn-secondary shrink-0" :disabled="saving" @click="refreshCompany">🔎 {{ t('registration.company.refresh') }}</button>
@@ -513,14 +613,15 @@
                                         </FormField>
                                     </div>
                                 </template>
-                                <p v-if="err('company', 'payer_id')" class="text-xs text-red-600 mt-2">{{ err('company', 'payer_id') }}</p>
                             </div>
 
                             <div class="card p-5">
                                 <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">👤 {{ t('registration.section.person') }}</h4>
-                                <div v-if="matchedPerson && matchedPerson.visible" class="mb-3 space-y-1 text-sm">
-                                    <label class="flex items-center gap-2"><input v-model="form.person.mode" type="radio" value="existing" @change="form.person.beneficiary_id = matchedPerson.id"> {{ t('registration.person.use_existing', { name: matchedPerson.name }) }}</label>
-                                    <label class="flex items-center gap-2"><input v-model="form.person.mode" type="radio" value="new"> {{ t('registration.person.create_new') }}</label>
+                                <div v-if="companyExisting && (personOptions.length > 0)" class="mb-3">
+                                    <FormField :label="t('registration.person.from_registry')">
+                                        <SearchSelect :model-value="personExisting ? form.person.beneficiary_id : ''" :options="personOptions" :empty-label="t('registration.person.create_new')"
+                                                      :disabled="!editable" :aria-label="t('registration.person.from_registry')" @update:model-value="choosePerson" />
+                                    </FormField>
                                 </div>
                                 <div v-if="!personExisting" class="grid md:grid-cols-2 gap-4">
                                     <FormField :label="t('field.first_name')" :error="err('person', 'first_name')" required>
