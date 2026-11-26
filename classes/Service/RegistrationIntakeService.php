@@ -250,7 +250,10 @@ final class RegistrationIntakeService
         }
 
         $stmt = $this->db->prepare(
-            'SELECT id, payer_id FROM beneficiaries WHERE LOWER(email) = LOWER(:email) AND archived_at IS NULL ORDER BY id'
+            'SELECT b.id, b.payer_id,
+                    (SELECT GROUP_CONCAT(e.payer_id) FROM beneficiary_employments e
+                     WHERE e.beneficiary_id = b.id AND e.ended_on IS NULL) AS company_ids
+             FROM beneficiaries b WHERE LOWER(b.email) = LOWER(:email) AND b.archived_at IS NULL ORDER BY b.id'
         );
         $stmt->execute(['email' => $email]);
         $rows = $stmt->fetchAll();
@@ -259,7 +262,8 @@ final class RegistrationIntakeService
         }
 
         foreach ($rows as $row) {
-            if ($payerId !== null && (int) $row['payer_id'] === $payerId) {
+            $companies = array_map('intval', explode(',', (string) ($row['company_ids'] ?? '')));
+            if ($payerId !== null && ((int) $row['payer_id'] === $payerId || in_array($payerId, $companies, true))) {
                 return ['id' => (int) $row['id'], 'other_company' => false];
             }
         }

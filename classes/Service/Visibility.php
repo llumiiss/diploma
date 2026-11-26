@@ -74,10 +74,37 @@ final class Visibility
         }
         $parts[] = "EXISTS (SELECT 1 FROM certificates {$certAlias} WHERE {$certAlias}.payer_id = {$alias}.id"
             . " AND {$certAlias}.archived_at IS NULL AND {$certSql})";
-        $parts[] = "EXISTS (SELECT 1 FROM beneficiaries {$benAlias} WHERE {$benAlias}.payer_id = {$alias}.id"
+        // Firma osoby: główna albo dowolna, w której osoba obecnie pracuje (Etap 12 — kilka firm naraz).
+        $empAlias = 'vis_pe' . $n;
+        $parts[] = "EXISTS (SELECT 1 FROM beneficiaries {$benAlias} WHERE ({$benAlias}.payer_id = {$alias}.id"
+            . " OR EXISTS (SELECT 1 FROM beneficiary_employments {$empAlias} WHERE {$empAlias}.beneficiary_id = {$benAlias}.id"
+            . " AND {$empAlias}.payer_id = {$alias}.id AND {$empAlias}.ended_on IS NULL))"
             . " AND {$benAlias}.archived_at IS NULL AND {$benSql})";
 
         return ['(' . implode(' OR ', $parts) . ')', $params + $certParams + $benParams];
+    }
+
+    /**
+     * Filtr firm dla listy osób: osoba pasuje, gdy wybrana firma jest jej firmą główną albo osoba
+     * obecnie w niej pracuje (Etap 12).
+     *
+     * @return array{0: string, 1: array<string, int>}
+     */
+    public static function personCompanyFilter(Actor $actor, string $alias = 'b'): array
+    {
+        if ($actor->companyIds === null) {
+            return ['1 = 1', []];
+        }
+
+        [$primary, $primaryParams] = self::companyFilter($actor, "{$alias}.payer_id");
+        $empAlias = 'vis_fe' . self::next();
+        [$other, $otherParams] = self::companyFilter($actor, "{$empAlias}.payer_id");
+
+        return [
+            "({$primary} OR EXISTS (SELECT 1 FROM beneficiary_employments {$empAlias}"
+            . " WHERE {$empAlias}.beneficiary_id = {$alias}.id AND {$empAlias}.ended_on IS NULL AND {$other}))",
+            $primaryParams + $otherParams,
+        ];
     }
 
     /**

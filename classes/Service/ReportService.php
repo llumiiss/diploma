@@ -53,7 +53,7 @@ final class ReportService
         $today = $today ?? $this->today();
         $settings = Settings::read($this->db);
 
-        $certificates = $this->certificates($actor, 'c.beneficiary_id = :record_id', ['record_id' => $id], $today, $settings);
+        $certificates = $this->withPayerHistory($this->certificates($actor, 'c.beneficiary_id = :record_id', ['record_id' => $id], $today, $settings));
         $ids = array_column($certificates, 'id');
         $tasks = $this->tasks($ids);
         $invitations = $this->invitations($ids);
@@ -74,6 +74,7 @@ final class ReportService
                 'created_at'        => $person['created_at'],
             ],
             'summary'        => self::summary($active, $history, $tasks, $invitations, $settings),
+            'employments'    => (new CompanyHistory($this->db))->employments($id),
             'certificates'   => $active,
             'history'        => $history,
             'tasks'          => $tasks,
@@ -98,7 +99,7 @@ final class ReportService
         $today = $today ?? $this->today();
         $settings = Settings::read($this->db);
 
-        $certificates = $this->certificates($actor, 'c.payer_id = :record_id', ['record_id' => $id], $today, $settings);
+        $certificates = $this->withPayerHistory($this->certificates($actor, 'c.payer_id = :record_id', ['record_id' => $id], $today, $settings));
         $ids = array_column($certificates, 'id');
         $tasks = $this->tasks($ids);
         $invitations = $this->invitations($ids);
@@ -106,7 +107,8 @@ final class ReportService
         $beneficiaries = $this->payerBeneficiaries($actor, $id, $today);
 
         $summary = self::summary($active, $history, $tasks, $invitations, $settings);
-        $summary['beneficiaries'] = count(array_filter($beneficiaries, static fn (array $row): bool => $row['archived_at'] === null));
+        $summary['beneficiaries'] = count(array_filter($beneficiaries, static fn (array $row): bool => $row['archived_at'] === null && $row['is_current']));
+        $summary['former_beneficiaries'] = count(array_filter($beneficiaries, static fn (array $row): bool => !$row['is_current']));
         $summary['average_discount'] = self::averageDiscount($active);
 
         return [
@@ -396,6 +398,23 @@ final class ReportService
      *
      * @return list<array<string, mixed>>
      */
+    /**
+     * Dopisuje do certyfikatów historię płatników (kto płacił i kiedy).
+     *
+     * @param list<array<string, mixed>> $certificates
+     * @return list<array<string, mixed>>
+     */
+    private function withPayerHistory(array $certificates): array
+    {
+        $history = (new CompanyHistory($this->db))->certificatePayersFor(array_map(static fn (array $c): int => (int) $c['id'], $certificates));
+
+        return array_map(static function (array $certificate) use ($history): array {
+            $certificate['payer_history'] = $history[(int) $certificate['id']] ?? [];
+
+            return $certificate;
+        }, $certificates);
+    }
+
     private function payerBeneficiaries(Actor $actor, int $payerId, DateTimeImmutable $today): array
     {
         [$visibility, $params] = Visibility::beneficiaries($actor, 'b');
@@ -407,6 +426,12 @@ final class ReportService
         $stmt = $this->db->prepare(
             "SELECT b.id, b.first_name, b.last_name, b.email, b.phone, b.archived_at,
                     (b.payer_id = :payer_direct) AS linked_directly,
+                    (SELECT MIN(se.started_on) FROM beneficiary_employments se
+                     WHERE se.beneficiary_id = b.id AND se.payer_id = :payer_since) AS employed_since,
+                    (SELECT MAX(ue.ended_on) FROM beneficiary_employments ue
+                     WHERE ue.beneficiary_id = b.id AND ue.payer_id = :payer_until) AS employed_until,
+                    EXISTS (SELECT 1 FROM beneficiary_employments oe
+                            WHERE oe.beneficiary_id = b.id AND oe.payer_id = :payer_open AND oe.ended_on IS NULL) AS employed_now,
                     (SELECT COUNT(*) FROM certificates cc
                      WHERE cc.beneficiary_id = b.id AND cc.payer_id = :payer_count
                        AND cc.archived_at IS NULL AND {$countVisibility}) AS certificate_count,
@@ -416,7 +441,9 @@ final class ReportService
              FROM beneficiaries b
              WHERE (b.payer_id = :payer_where OR EXISTS (
                         SELECT 1 FROM certificates lc
-                        WHERE lc.beneficiary_id = b.id AND lc.payer_id = :payer_link AND {$linkVisibility}))
+                        WHERE lc.beneficiary_id = b.id AND lc.payer_id = :payer_link AND {$linkVisibility})
+                    OR EXISTS (SELECT 1 FROM beneficiary_employments we
+                               WHERE we.beneficiary_id = b.id AND we.payer_id = :payer_emp))
                AND {$visibility}{$archived}
              ORDER BY b.archived_at IS NOT NULL, b.last_name, b.first_name"
         );
@@ -426,6 +453,10 @@ final class ReportService
             'payer_expiry' => $payerId,
             'payer_where'  => $payerId,
             'payer_link'   => $payerId,
+            'payer_since'  => $payerId,
+            'payer_until'  => $payerId,
+            'payer_open'   => $payerId,
+            'payer_emp'    => $payerId,
         ] + $params + $linkParams + $countParams + $expiryParams);
 
         return array_map(static function (array $row) use ($today): array {
@@ -439,6 +470,9 @@ final class ReportService
                 'phone'             => $row['phone'],
                 'archived_at'       => $row['archived_at'],
                 'linked_directly'   => (bool) $row['linked_directly'],
+                'employed_since'    => $row['employed_since'],
+                'employed_until'    => (bool) $row['employed_now'] ? null : $row['employed_until'],
+                'is_current'        => (bool) $row['employed_now'] || (bool) $row['linked_directly'] || $row['employed_since'] === null,
                 'certificate_count' => (int) $row['certificate_count'],
                 'next_expiry'       => $nextExpiry,
                 'days_left'         => $nextExpiry !== null ? (int) $today->diff(new DateTimeImmutable((string) $nextExpiry))->format('%r%a') : null,

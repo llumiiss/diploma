@@ -118,6 +118,9 @@
                             </td>
                             <td v-if="showPayer" class="td">
                                 <button type="button" class="text-brand-700 hover:underline text-left" @click="openPayer(item.payer.id)">{{ item.payer.name }}</button>
+                                <div v-if="item.payer_history && item.payer_history.length > 1" class="text-xs text-slate-500" :title="t('certificate.payer_history')">
+                                    💳 {{ item.payer_history.map((p) => p.payer_name + ' ' + format.date(p.started_on) + '–' + (p.ended_on ? format.date(p.ended_on) : t('employment.now'))).join('; ') }}
+                                </div>
                             </td>
                             <td class="td whitespace-nowrap">
                                 <span v-if="item.valid_from">{{ format.date(item.valid_from) }} – </span>{{ format.date(item.expiry_date) }}
@@ -198,6 +201,9 @@
                             </td>
                             <td v-if="showPayer" class="td">
                                 <button type="button" class="text-brand-700 hover:underline text-left" @click="openPayer(item.payer.id)">{{ item.payer.name }}</button>
+                                <div v-if="item.payer_history && item.payer_history.length > 1" class="text-xs text-slate-500" :title="t('certificate.payer_history')">
+                                    💳 {{ item.payer_history.map((p) => p.payer_name + ' ' + format.date(p.started_on) + '–' + (p.ended_on ? format.date(p.ended_on) : t('employment.now'))).join('; ') }}
+                                </div>
                             </td>
                             <td class="td whitespace-nowrap"><span v-if="item.valid_from">{{ format.date(item.valid_from) }} – </span>{{ format.date(item.expiry_date) }}</td>
                             <td class="td whitespace-nowrap">{{ format.date(item.archived_at) }}</td>
@@ -644,8 +650,8 @@
             details() {
                 CertiSub.openDrawer('beneficiary', this.id);
             },
-            openPayer() {
-                CertiSub.openPayerCard(this.person.payer_id);
+            openPayer(id) {
+                CertiSub.openPayerCard(typeof id === "number" ? id : this.person.payer_id);
             },
         },
         template: `
@@ -677,6 +683,39 @@
                     <div class="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3 mb-6">
                         <KpiTile v-for="kpi in kpis" :key="kpi.label" :label="kpi.label" :value="kpi.value" :hint="kpi.hint" :tone="kpi.tone || 'default'" />
                     </div>
+
+                    <ReportSection :title="t('employment.title')" :count="report.employments.length" :description="t('employment.card_hint')">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm min-w-[560px]">
+                                <thead class="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th class="th">{{ t('payer.singular') }}</th>
+                                        <th class="th">{{ t('employment.from') }}</th>
+                                        <th class="th">{{ t('employment.to') }}</th>
+                                        <th class="th">{{ t('employment.status') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="item in report.employments" :key="item.id" class="border-b border-slate-100">
+                                        <td class="td">
+                                            <button type="button" class="font-medium text-brand-700 hover:underline text-left" @click="openPayer(item.payer_id)">{{ item.payer_name }}</button>
+                                            <div v-if="item.note" class="text-xs text-slate-500 italic">{{ item.note }}</div>
+                                        </td>
+                                        <td class="td whitespace-nowrap">{{ format.date(item.started_on) }}</td>
+                                        <td class="td whitespace-nowrap">{{ item.ended_on ? format.date(item.ended_on) : t('employment.now') }}</td>
+                                        <td class="td">
+                                            <span v-if="item.is_primary" class="badge bg-brand-50 text-brand-700">{{ t('employment.primary') }}</span>
+                                            <span v-else-if="item.is_current" class="badge bg-emerald-50 text-emerald-700">{{ t('employment.current') }}</span>
+                                            <span v-else class="badge bg-slate-100 text-slate-600">{{ t('employment.former') }}</span>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="report.employments.length === 0">
+                                        <td colspan="4" class="px-4 py-8 text-center text-slate-400">{{ t('employment.empty') }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </ReportSection>
 
                     <ReportSection :title="t('report.section.certificates')" :count="report.certificates.length"
                                    :description="t('report.section.certificates_hint', { days: report.thresholds.warning })">
@@ -833,7 +872,13 @@
                                             <span v-if="item.archived_at" class="badge bg-slate-200 text-slate-600 ml-2">{{ t('common.archived') }}</span>
                                         </td>
                                         <td class="td text-slate-600">{{ [item.email, item.phone].filter(Boolean).join(' · ') || '—' }}</td>
-                                        <td class="td text-xs text-slate-600">{{ item.linked_directly ? t('report.relation.direct') : t('report.relation.certificate') }}</td>
+                                        <td class="td text-xs text-slate-600">
+                                            <template v-if="item.employed_since">
+                                                <span :class="['badge', item.is_current ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600']">{{ item.is_current ? t('employment.current') : t('employment.former') }}</span>
+                                                <div>{{ format.date(item.employed_since) }} – {{ item.employed_until ? format.date(item.employed_until) : t('employment.now') }}</div>
+                                            </template>
+                                            <template v-else>{{ item.linked_directly ? t('report.relation.direct') : t('report.relation.certificate') }}</template>
+                                        </td>
                                         <td class="td text-right">{{ item.certificate_count }}</td>
                                         <td class="td whitespace-nowrap">
                                             <template v-if="item.next_expiry">

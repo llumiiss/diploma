@@ -95,8 +95,14 @@ abstract class IntegrationTestCase extends TestCase
              VALUES (:first_name, :last_name, :email, :payer_id, :created_by_user_id)'
         );
         $stmt->execute($row);
+        $id = (int) $this->db->lastInsertId();
 
-        return (int) $this->db->lastInsertId();
+        // Jak w aplikacji (Etap 12): osoba ma otwarty okres w swojej firmie głównej.
+        $this->db->prepare(
+            'INSERT INTO beneficiary_employments (beneficiary_id, payer_id, started_on) VALUES (:beneficiary_id, :payer_id, :started_on)'
+        )->execute(['beneficiary_id' => $id, 'payer_id' => $row['payer_id'], 'started_on' => date('Y-m-d', strtotime('-1 year'))]);
+
+        return $id;
     }
 
     /**

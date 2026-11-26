@@ -8,6 +8,7 @@ use App\Migrations\AccountsAndOwnershipMigration;
 use App\Migrations\CertificateDiscountMigration;
 use App\Migrations\CertificatesModelMigration;
 use App\Migrations\CompanyFilterMigration;
+use App\Migrations\CompanyHistoryMigration;
 use App\Migrations\CompanyIntegrityMigration;
 use App\Migrations\CompanyRolesMigration;
 use App\Migrations\NotificationsMigration;
@@ -183,6 +184,10 @@ final class MigrationRunner
             },
             'reading_rules' => static function (PDO $db): void {
                 ReadingRulesMigration::up($db);
+            },
+            // Etap 12: historia firm osoby (kilka firm naraz) i historia płatników certyfikatu.
+            'company_history' => static function (PDO $db): void {
+                CompanyHistoryMigration::up($db);
             },
         ];
     }

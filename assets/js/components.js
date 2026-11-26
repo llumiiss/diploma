@@ -332,6 +332,26 @@
             } else if (payload.from_name && payload.to_name) {
                 lines.push(payload.from_name + ' → ' + payload.to_name);
             }
+            if (event.event_type.indexOf('company_') === 0 || event.event_type === 'payer_changed') {
+                if (payload.from || payload.to) {
+                    lines.push((payload.from || '—') + ' → ' + (payload.to || '—'));
+                }
+                if (payload.company) {
+                    lines.push(payload.company);
+                }
+                if (payload.date) {
+                    lines.push(t('event.detail.date', { date: CertiSub.format.date(payload.date) }));
+                }
+                if (payload.primary && typeof payload.primary === 'string') {
+                    lines.push(t('event.detail.primary', { company: payload.primary }));
+                }
+                if (payload.certificates) {
+                    lines.push(t('event.detail.certificates_moved', { count: payload.certificates }));
+                }
+                if (payload.note) {
+                    lines.push(payload.note);
+                }
+            }
             if (event.event_type === 'renewal_scan') {
                 lines.push(t('event.system.renewal_scan_detail', {
                     scanned: payload.scanned || 0,

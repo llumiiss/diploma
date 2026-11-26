@@ -1042,6 +1042,30 @@ Weryfikacja: **412 testów** (394 przed etapem) z integracyjnymi, PHPStan level 
 migracja `reading_rules` wykonana na bazie aplikacji po `mysqldump`, struktura zgodna z bazą testową (200 kolumn,
 90 indeksów, 33 klucze obce, 2 `CHECK`). Interfejs sprawdzony w przeglądarce na danych demo.
 
+### Etap 12 — historia firm osoby, płatnicy rok do roku i duży zestaw danych testowych (2026-11-26)
+
+Ustalenia autora: jedna osoba = jeden rekord z historią firm; osoba może pracować w kilku firmach naraz; firmę zmienia
+się przyciskami (przenieś / dodaj / zakończ), a zwykła edycja tylko poprawia pomyłkę; certyfikat należy do osoby i **nie
+jest archiwizowany** przy odejściu z firmy; płatnik certyfikatu może być inną firmą niż pracodawca i zmieniać się z roku
+na rok — z zapisaną historią; nic nie jest usuwane.
+
+| Zmiana | Opis | Najważniejsze pliki |
+|---|---|---|
+| Historia firm osoby | tabela `beneficiary_employments` (od–do, notatka, autor); kilka otwartych okresów naraz, najwyżej jeden na parę osoba–firma; `beneficiaries.payer_id` = firma główna; migracja odtwarza okresy z danych i ze zdarzeń edycji | `CompanyHistoryMigration`, `CompanyHistory` |
+| Przyciski zmiany firmy | „Przenieś do firmy” (stary okres kończy się w dniu zmiany, nowa firma staje się główna; opcjonalnie — domyślnie wyłączone — zmiana płatnika certyfikatów opłacanych przez dawną firmę), „Dodaj firmę”, „Zakończ” (ostatniej firmy nie da się zakończyć), „Ustaw jako główną”, „Popraw” (daty i notatka); każda akcja w historii zdarzeń | `BeneficiaryService::moveCompany/addCompany/endCompany/setPrimaryCompany/correctCompany`, `CompanyChangeForm` |
+| Historia płatników | tabela `certificate_payers`; zmiana płatnika w edycji, w płatnościach (księgowa, z powodem zmiany) i przy odnowieniu (wybór płatnika w oknie odnowienia); okres zamykany przy archiwizacji | `CertificateService`, `TaskService::renew`, `CertificatePaymentForm`, `RenewForm` |
+| Archiwum → Historia firm | wyszukiwanie po osobie, e-mailu, firmie, NIP-ie, numerze i nazwie certyfikatu; filtr dat (okresy zachodzące na przedział) i stanu; certyfikaty osoby z płatnikami i znacznikiem „płaciła”; eksport CSV/XML (`company_history`); archiwizacja osoby z wyników | `CompanyHistoryService`, `archive.js`, `ExportService` |
+| Karty i listy | karta osoby: okresy w firmach, historia płatników przy certyfikatach; karta firmy: obecni i dawni pracownicy z datami; lista osób: firmy dodatkowe i dawne | `ReportService`, `reports.js`, `beneficiaries.js` |
+| Zakres danych i wyszukiwanie | firma osoby dodatkowej jest widoczna jak firma główna (D8); filtr firm i wyszukiwarka uwzględniają wszystkie obecne firmy osoby; archiwizacja firmy kończy okresy osób, dla których była dodatkowa | `Visibility::personCompanyFilter`, `SearchService`, `PayerService::archive` |
+| Wnioski e-mail | osobie z innej firmy wybranej jako istniejąca dopisuje się firmę z wniosku (bez duplikatu) | `RegistrationService`, `RegistrationIntakeService::findBeneficiary` |
+| Dane testowe | `scripts/seed-history-data.php` — dopisuje (bez usuwania, powtarzalnie) 37 firm z publicznego Wykazu podatników VAT (`scripts/data/firmy-publiczne.php`), 151 wymyślonych osób, ~200 okresów, ~300 certyfikatów z łańcuchami odnowień i płatnikami, konta wszystkich ról, zadania, zaproszenia (bez wysyłki), powiadomienia, wnioski, szablony; `--sql=plik.sql` zapisuje to samo jako skrypt do phpMyAdmin | `scripts/seed-history-data.php` |
+
+Weryfikacja: **422 testy** z integracyjnymi (10 nowych w `CompanyHistoryTest`), PHPStan level 5 bez uwag, `composer cs`
+czyste; migracja `company_history` wykonana na bazie aplikacji po `mysqldump`; struktura bazy aplikacji = baza testowa
+(217 kolumn, 128 pozycji indeksów, 39 kluczy obcych, 2 `CHECK`). Interfejs sprawdzony w przeglądarce na kopii bazy
+(`CERTISUB_DB_NAME=assistent_ui`). Skrypt SQL danych testowych sprawdzony na świeżej kopii bazy: wynik identyczny jak
+generator, drugi import nic nie dopisuje.
+
 ---
 ## Załącznik A — Oficjalny opis pracy (dosłownie, przekazany 2026-09-16)
 

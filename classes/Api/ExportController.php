@@ -32,7 +32,7 @@ final class ExportController
     public function __invoke(Request $request, Actor $actor): Response
     {
         $filters = [];
-        foreach (['entity_type', 'event_type', 'user', 'date_from', 'date_to', 'q', 'certificate_id', 'beneficiary_id', 'payer_id', 'months', 'certificate_type'] as $key) {
+        foreach (['entity_type', 'event_type', 'user', 'date_from', 'date_to', 'q', 'certificate_id', 'beneficiary_id', 'payer_id', 'months', 'certificate_type', 'from', 'to', 'state'] as $key) {
             $value = $request->queryString($key);
             if ($value !== '') {
                 $filters[$key] = $value;

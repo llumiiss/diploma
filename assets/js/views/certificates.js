@@ -386,6 +386,20 @@
                         </button>
                     </div>
 
+                    <template v-if="certificate.payer_history && certificate.payer_history.length > 0">
+                        <h4 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mt-6 mb-3">{{ t('certificate.payer_history') }}</h4>
+                        <div class="card divide-y divide-slate-100">
+                            <div v-for="item in certificate.payer_history" :key="item.id" class="px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                                <span>
+                                    <span class="font-medium text-slate-800">{{ item.payer_name }}</span>
+                                    <span v-if="!item.ended_on" class="ml-2 badge bg-emerald-50 text-emerald-700 border border-emerald-200">{{ t('certificate.payer_current') }}</span>
+                                    <span v-if="item.note" class="block text-xs text-slate-500 italic">{{ item.note }}</span>
+                                </span>
+                                <span class="text-xs text-slate-500 whitespace-nowrap">{{ format.date(item.started_on) }} – {{ item.ended_on ? format.date(item.ended_on) : t('employment.now') }}</span>
+                            </div>
+                        </div>
+                    </template>
+
                     <div v-if="certificate.previous || certificate.next" class="mt-4 text-sm space-y-1">
                         <p v-if="certificate.previous">
                             {{ t('certificate.previous') }}:
@@ -706,7 +720,10 @@
                     payment_status: c.payment_status,
                     last_payment_date: c.last_payment_date || '',
                     discount_percent: Number(c.discount_percent || 0) > 0 ? '-' + Number(c.discount_percent) : '0',
+                    payer_id: c.payer_id ? String(c.payer_id) : '',
+                    payer_note: '',
                 },
+                payers: [],
                 saving: false,
                 errors: {},
                 message: '',
@@ -716,6 +733,20 @@
             discountPresets() {
                 return ['0', '-3', '-5', '-10', '-15', '-20'];
             },
+            payerOptions() {
+                return this.payers.map((payer) => ({ value: payer.id, label: payer.company_name + (payer.city ? ' — ' + payer.city : ''), search: payer.tax_id || '' }));
+            },
+            payerChanged() {
+                return String(this.form.payer_id) !== String(this.certificate.payer_id);
+            },
+        },
+        async mounted() {
+            try {
+                const data = await api.get(endpoints.payers, { view: 'options' });
+                this.payers = data.options;
+            } catch (error) {
+                this.payers = [{ id: this.certificate.payer_id, company_name: this.certificate.company_name }];
+            }
         },
         methods: {
             async submit() {
@@ -751,6 +782,12 @@
                     </FormField>
                     <FormField :label="t('field.last_payment_date')" :error="errors.last_payment_date">
                         <input v-model="form.last_payment_date" type="date" class="input">
+                    </FormField>
+                    <FormField :label="t('field.payer_id')" :error="errors.payer_id" :hint="t('certificate.hint.payer_change')">
+                        <SearchSelect v-model="form.payer_id" :options="payerOptions" :invalid="Boolean(errors.payer_id)" :aria-label="t('field.payer_id')" />
+                    </FormField>
+                    <FormField v-if="payerChanged" :label="t('certificate.payer_note')" :error="errors.payer_note">
+                        <input v-model="form.payer_note" type="text" maxlength="500" class="input">
                     </FormField>
                     <FormField :label="t('field.discount_percent')" :error="errors.discount_percent" :hint="t('certificate.hint.discount')">
                         <input v-model="form.discount_percent" type="text" inputmode="decimal" maxlength="8" :class="['input', errors.discount_percent ? 'input-error' : '']">

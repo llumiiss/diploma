@@ -172,7 +172,9 @@ final class SearchService
                            OR CONCAT_WS(' ', b.last_name, b.first_name) LIKE :b_name2) AS m_name,
                        (b.email LIKE :b_email) AS m_email,
                        ({$phone} LIKE :b_phone) AS m_phone,
-                       (p.company_name LIKE :b_payer) AS m_payer,
+                       (p.company_name LIKE :b_payer OR EXISTS (
+                           SELECT 1 FROM beneficiary_employments me INNER JOIN payers mp ON mp.id = me.payer_id
+                           WHERE me.beneficiary_id = b.id AND (mp.company_name LIKE :b_payer2 OR mp.tax_id LIKE :b_tax))) AS m_payer,
                        EXISTS (SELECT 1 FROM certificates mc
                                WHERE mc.beneficiary_id = b.id AND mc.archived_at IS NULL
                                  AND (mc.name LIKE :b_cert1 OR mc.serial_number LIKE :b_cert2) AND {$matchVisibility}) AS m_certificate,
@@ -190,6 +192,8 @@ final class SearchService
             'b_email' => $like,
             'b_phone' => $digitsLike,
             'b_payer' => $like,
+            'b_payer2' => $like,
+            'b_tax'   => $digitsLike,
             'b_cert1' => $like,
             'b_cert2' => $like,
         ];
@@ -234,7 +238,10 @@ final class SearchService
                        (p.email LIKE :p_email OR p.contact_person LIKE :p_contact) AS m_contact,
                        (p.city LIKE :p_city) AS m_city,
                        EXISTS (SELECT 1 FROM beneficiaries mb
-                               WHERE mb.payer_id = p.id AND mb.archived_at IS NULL
+                               WHERE (mb.payer_id = p.id OR EXISTS (
+                                          SELECT 1 FROM beneficiary_employments me
+                                          WHERE me.beneficiary_id = mb.id AND me.payer_id = p.id))
+                                 AND mb.archived_at IS NULL
                                  AND (CONCAT_WS(' ', mb.first_name, mb.last_name) LIKE :p_person1
                                       OR CONCAT_WS(' ', mb.last_name, mb.first_name) LIKE :p_person2)
                                  AND {$personVisibility}) AS m_beneficiary,
@@ -242,7 +249,10 @@ final class SearchService
                                WHERE mc.payer_id = p.id AND mc.archived_at IS NULL
                                  AND (mc.name LIKE :p_cert1 OR mc.serial_number LIKE :p_cert2) AND {$certificateVisibility}) AS m_certificate,
                        (SELECT COUNT(*) FROM beneficiaries cb
-                        WHERE cb.payer_id = p.id AND cb.archived_at IS NULL AND {$personCountVisibility}) AS beneficiary_count,
+                        WHERE (cb.payer_id = p.id OR EXISTS (
+                                   SELECT 1 FROM beneficiary_employments ce
+                                   WHERE ce.beneficiary_id = cb.id AND ce.payer_id = p.id AND ce.ended_on IS NULL))
+                          AND cb.archived_at IS NULL AND {$personCountVisibility}) AS beneficiary_count,
                        (SELECT COUNT(*) FROM certificates cc
                         WHERE cc.payer_id = p.id AND cc.archived_at IS NULL AND {$certificateCountVisibility}) AS certificate_count
                 FROM payers p

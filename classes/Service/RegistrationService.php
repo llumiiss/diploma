@@ -406,8 +406,13 @@ final class RegistrationService
             if ($found === false || $found['archived_at'] !== null) {
                 throw ServiceException::validation(['person.beneficiary_id' => \__('registration.error.person_unavailable')]);
             }
-            if ((int) $found['payer_id'] !== $payerId) {
-                throw ServiceException::validation(['person.beneficiary_id' => \__('registration.error.person_other_company')]);
+            // Osoba z innej firmy: zamiast duplikatu firma z wniosku dochodzi do jej historii firm (Etap 12).
+            if ((int) $found['payer_id'] !== $payerId && (new CompanyHistory($this->db))->openEmployment($personId, $payerId) === null) {
+                try {
+                    $this->beneficiaries->addCompany($writer, $personId, ['payer_id' => $payerId, 'note' => \__('registration.company_added_note')]);
+                } catch (ServiceException $e) {
+                    throw self::prefixed($e, 'person.');
+                }
             }
 
             return $personId;

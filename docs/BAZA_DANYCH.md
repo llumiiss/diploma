@@ -21,6 +21,10 @@ erDiagram
     payers ||--o{ beneficiaries : "firma ma użytkowników (payer_id, wymagane)"
     payers ||--o{ certificates : "firma płaci za certyfikat (payer_id)"
     beneficiaries ||--o{ certificates : "użytkownik certyfikatu (beneficiary_id)"
+    beneficiaries ||--o{ beneficiary_employments : "historia firm osoby (od–do)"
+    payers ||--o{ beneficiary_employments : "osoby w firmie, także dawne"
+    certificates ||--o{ certificate_payers : "historia płatników (od–do)"
+    payers ||--o{ certificate_payers : "firma płaciła za certyfikat"
     users ||--o{ certificates : "opiekun rekordu (user_id)"
     users }o--o| beneficiaries : "konto pracownika wskazuje swoją osobę (beneficiary_id)"
     certificates ||--o{ certificates : "łańcuch odnowień (previous_certificate_id)"
@@ -94,6 +98,16 @@ firmy i osoby.
 `payer_id` zostaje także przy certyfikacie: domyślnie przepisuje się z firmy użytkownika, ale konkretny certyfikat może opłacać
 inna firma.
 
+**Historia firm i płatników (Etap 12)**
+
+| Tabela | Co przechowuje | Powiązania |
+|---|---|---|
+| `beneficiary_employments` — **osoba w firmie od–do** | `started_on`, `ended_on` (NULL = trwa), notatka, autor; kolumna wyliczana `open_marker` i unikalny indeks: najwyżej jeden otwarty okres na parę osoba–firma, ale kilka różnych firm naraz | `beneficiary_id → beneficiaries` (CASCADE), `payer_id → payers` (CASCADE), `created_by_user_id → users` (SET NULL) |
+| `certificate_payers` — **kto płacił za certyfikat** | `started_on`, `ended_on`, notatka (np. powód zmiany), autor; jeden otwarty okres na certyfikat — zgodny z `certificates.payer_id` | `certificate_id → certificates` (CASCADE), `payer_id → payers` (CASCADE), `created_by_user_id → users` (SET NULL) |
+
+`beneficiaries.payer_id` to firma główna osoby — zawsze jedna z firm, w których ma otwarty okres. Okresów się nie usuwa,
+tylko kończy datą; `CASCADE` działa wyłącznie przy twardym usunięciu rodzica (np. sprzątanie danych demo).
+
 ### 4.3. Proces odnowień
 
 | Tabela | Co przechowuje | Powiązania |
@@ -166,6 +180,7 @@ techniczne; operator — własne i przydzielone certyfikaty oraz powiązane osob
 | `notifications` | 10 | powiadomienia wewnętrzne |
 | `registration_drafts` | 10 | wnioski z e-maila |
 | `reading_rules` | 11 | szablony odczytu wniosków |
+| `company_history` | 12 | `beneficiary_employments` i `certificate_payers` + odtworzenie okresów z istniejących danych i zdarzeń |
 
 Migracje są idempotentne (każdy krok sprawdza stan przez `SchemaInspector`). **Przed migracją istniejącej bazy zrób zrzut:**
 `mysqldump assistent_subscriptions > kopia.sql` — migracja `certificate_discount` usuwa kolumnę z kwotą.

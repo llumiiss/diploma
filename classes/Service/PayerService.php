@@ -250,9 +250,12 @@ final class PayerService
 
         Transaction::run($this->db, function () use ($actor, $id, $payer): void {
             $this->db->prepare('UPDATE payers SET archived_at = NOW() WHERE id = :id')->execute(['id' => $id]);
-            $this->events->log('payer', $id, 'archived', $actor->id, ['payer_id' => $id], [
-                'company_name' => $payer['company_name'],
-            ]);
+            // Osoby, dla których to była firma dodatkowa, kończą w niej okres w dniu archiwizacji (Etap 12).
+            $ended = (new CompanyHistory($this->db))->endEmploymentsAtPayer($id, CompanyHistory::today());
+            $this->events->log('payer', $id, 'archived', $actor->id, ['payer_id' => $id], array_filter([
+                'company_name'      => $payer['company_name'],
+                'employments_ended' => $ended > 0 ? $ended : null,
+            ], static fn (mixed $value): bool => $value !== null));
         });
 
         return $this->get($actor, $id);

@@ -25,7 +25,7 @@ final class ExportService
     public const FORMATS = ['csv', 'xml'];
     public const DATASETS = [
         'certificates', 'beneficiaries', 'payers', 'accounts', 'email_templates', 'reading_rules',
-        'tasks', 'invitations', 'events', 'beneficiary_card', 'payer_card', 'schedule',
+        'tasks', 'invitations', 'events', 'beneficiary_card', 'payer_card', 'schedule', 'company_history',
     ];
 
     /** Zbiory z uprawnieniem ostrzejszym niż sam eksport: konta personelu i szablony widzi tylko administrator. */
@@ -48,6 +48,7 @@ final class ExportService
         'beneficiary_card' => 'karta-uzytkownika',
         'payer_card'       => 'karta-platnika',
         'schedule'         => 'harmonogram-wygasniec',
+        'company_history'  => 'historia-firm',
     ];
 
     /** Nazwy elementów pozycji list w XML kart i harmonogramu. */
@@ -122,6 +123,7 @@ final class ExportService
             'beneficiary_card' => $this->cardFile('beneficiary_card', $format, (new ReportService($this->db))->beneficiaryCard($actor, self::requireId($id))),
             'payer_card'       => $this->cardFile('payer_card', $format, (new ReportService($this->db))->payerCard($actor, self::requireId($id))),
             'schedule'         => $this->scheduleFile($format, (new ReportService($this->db))->schedule($actor, $filters)),
+            'company_history'  => $this->plainFile($dataset, $format, (new CompanyHistoryService($this->db))->exportRows($actor, $filters), 'employment'),
         };
 
         $this->events->log('system', null, 'data_exported', $actor->id, [], array_filter([

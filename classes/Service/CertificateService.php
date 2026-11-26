@@ -55,6 +55,7 @@ final class CertificateService
     private readonly PayerService $payers;
     private readonly BeneficiaryService $beneficiaries;
     private readonly TimelineService $timeline;
+    private readonly CompanyHistory $history;
 
     public function __construct(
         private readonly PDO $db,
@@ -66,6 +67,7 @@ final class CertificateService
         $this->payers = $payers ?? new PayerService($db, $this->events);
         $this->beneficiaries = $beneficiaries ?? new BeneficiaryService($db, $this->events, $this->payers);
         $this->timeline = new TimelineService($db);
+        $this->history = new CompanyHistory($db);
     }
 
     /**
@@ -113,6 +115,7 @@ final class CertificateService
             : null;
         $certificate['next'] = $this->chainLink($actor, 'c.previous_certificate_id = :link', $id);
         $certificate['events'] = $this->timeline->forContext('certificate', $id);
+        $certificate['payer_history'] = $this->history->certificatePayers($id);
 
         return $certificate;
     }
@@ -175,6 +178,7 @@ final class CertificateService
                 );
                 $stmt->execute(self::bindable($values));
                 $id = (int) $this->db->lastInsertId();
+                $this->history->recordCertificatePayer($id, (int) $values['payer_id'], self::payerSince($values), null, $actor->id);
 
                 $this->events->log('certificate', $id, 'created', $actor->id, self::context($id, $values), [
                     'name'             => $values['name'],
@@ -208,7 +212,10 @@ final class CertificateService
         }
 
         try {
-            Transaction::run($this->db, function () use ($actor, $id, $values, $changes): void {
+            Transaction::run($this->db, function () use ($actor, $id, $before, $values, $changes): void {
+                if ((int) $values['payer_id'] !== (int) $before['payer_id']) {
+                    $this->history->recordCertificatePayer($id, (int) $values['payer_id'], CompanyHistory::today(), null, $actor->id);
+                }
                 $stmt = $this->db->prepare(
                     'UPDATE certificates SET name = :name, certificate_type = :certificate_type, serial_number = :serial_number,
                         issuer = :issuer, valid_from = :valid_from, expiry_date = :expiry_date, renewal_lead_days = :renewal_lead_days,
@@ -245,20 +252,31 @@ final class CertificateService
             'payment_status'    => (string) $v->enum('payment_status', true, self::PAYMENT_STATUSES),
             'last_payment_date' => $v->date('last_payment_date', false),
             'discount_percent'  => $v->discountPercent('discount_percent'),
+            // Płatnik może się zmieniać z roku na rok (Etap 12); bez pola zostaje dotychczasowy.
+            'payer_id'          => $v->id('payer_id', false) ?? (int) $before['payer_id'],
         ];
+        $payerNote = $v->string('payer_note', false, 500);
+        if ($values['payer_id'] !== (int) $before['payer_id'] && $this->payers->findActiveVisible($actor, $values['payer_id']) === null) {
+            $v->addError('payer_id', 'certificate.error.payer_unavailable');
+        }
         $v->throwIfFailed();
 
-        $changes = EventLogger::diff($before, $values, ['payment_status', 'last_payment_date', 'discount_percent']);
+        $changes = EventLogger::diff($before, $values, ['payment_status', 'last_payment_date', 'discount_percent', 'payer_id']);
         if ($changes === []) {
             return $this->get($actor, $id);
         }
 
-        Transaction::run($this->db, function () use ($actor, $id, $before, $values, $changes): void {
+        Transaction::run($this->db, function () use ($actor, $id, $before, $values, $changes, $payerNote): void {
+            if ($values['payer_id'] !== (int) $before['payer_id']) {
+                $this->history->recordCertificatePayer($id, $values['payer_id'], CompanyHistory::today(), $payerNote, $actor->id);
+                $before['payer_id'] = $values['payer_id'];
+            }
             $this->db->prepare(
                 'UPDATE certificates SET payment_status = :payment_status, last_payment_date = :last_payment_date,
-                        discount_percent = :discount_percent
+                        discount_percent = :discount_percent, payer_id = :payer_id
                  WHERE id = :id'
             )->execute([
+                'payer_id'          => $values['payer_id'],
                 'payment_status'    => $values['payment_status'],
                 'last_payment_date' => $values['last_payment_date'],
                 'discount_percent'  => number_format((float) $values['discount_percent'], 2, '.', ''),
@@ -291,6 +309,7 @@ final class CertificateService
 
         Transaction::run($this->db, function () use ($actor, $id, $certificate): void {
             $this->db->prepare('UPDATE certificates SET archived_at = NOW() WHERE id = :id')->execute(['id' => $id]);
+            $this->history->closeCertificatePayer($id, CompanyHistory::today());
             $context = self::context($id, $certificate);
             $this->events->log('certificate', $id, 'archived', $actor->id, $context, ['name' => $certificate['name']]);
 
@@ -341,6 +360,7 @@ final class CertificateService
 
         Transaction::run($this->db, function () use ($actor, $id, $certificate): void {
             $this->db->prepare('UPDATE certificates SET archived_at = NULL WHERE id = :id')->execute(['id' => $id]);
+            $this->history->recordCertificatePayer($id, (int) $certificate['payer_id'], CompanyHistory::today(), null, $actor->id);
             $this->events->log('certificate', $id, 'restored', $actor->id, self::context($id, $certificate), [
                 'name' => $certificate['name'],
             ]);
@@ -385,7 +405,8 @@ final class CertificateService
             'renewal_lead_days' => $old['renewal_lead_days'],
             'user_id'           => $old['user_id'],
             'beneficiary_id'    => $old['beneficiary_id'],
-            'payer_id'          => $old['payer_id'],
+            // Przy odnowieniu płatnik może być inny niż w poprzednim okresie (np. druga firma osoby).
+            'payer_id'          => $pick('payer_id', $old['payer_id']),
             'status'            => 'active',
             'discount_percent'  => $pick('discount_percent', $old['discount_percent']),
             'billing_cycle'     => $old['billing_cycle'],
@@ -421,8 +442,10 @@ final class CertificateService
                 throw $this->translateDuplicate($e, $actor, $values);
             }
             $newId = (int) $this->db->lastInsertId();
+            $this->history->recordCertificatePayer($newId, (int) $values['payer_id'], self::payerSince($values), null, $actor->id);
 
             $this->db->prepare('UPDATE certificates SET archived_at = NOW() WHERE id = :id')->execute(['id' => $oldId]);
+            $this->history->closeCertificatePayer($oldId, CompanyHistory::today());
 
             $this->events->log('certificate', $oldId, 'renewed', $actor->id, self::context($oldId, $old), [
                 'new_certificate_id' => $newId,
@@ -661,6 +684,18 @@ final class CertificateService
         $existing = $stmt->fetch();
 
         return $existing === false ? $e : $this->serialConflict($actor, $existing);
+    }
+
+    /**
+     * Początek okresu płatnika nowego certyfikatu: początek ważności, a bez niego dzień zapisu.
+     *
+     * @param array<string, mixed> $values
+     */
+    private static function payerSince(array $values): string
+    {
+        $from = $values['valid_from'] ?? null;
+
+        return is_string($from) && $from !== '' ? $from : CompanyHistory::today();
     }
 
     private function isActiveAccount(int $userId): bool

@@ -457,12 +457,27 @@
                     issuer: this.task.issuer || '',
                     payment_status: 'paid',
                     last_payment_date: '',
+                    payer_id: this.task.payer_id ? String(this.task.payer_id) : '',
                     note: '',
                 },
+                payers: [],
                 saving: false,
                 errors: {},
                 message: '',
             };
+        },
+        computed: {
+            payerOptions() {
+                return this.payers.map((payer) => ({ value: payer.id, label: payer.company_name + (payer.city ? ' — ' + payer.city : ''), search: payer.tax_id || '' }));
+            },
+        },
+        async mounted() {
+            try {
+                const data = await api.get(endpoints.payers, { view: 'options' });
+                this.payers = data.options;
+            } catch (error) {
+                this.payers = [];
+            }
         },
         methods: {
             async submit() {
@@ -470,7 +485,11 @@
                 this.errors = {};
                 this.message = '';
                 try {
-                    const result = await api.post(endpoints.tasks, { action: 'renew', id: this.task.id, data: this.form });
+                    const data = Object.assign({}, this.form);
+                    if (!data.payer_id) {
+                        delete data.payer_id;
+                    }
+                    const result = await api.post(endpoints.tasks, { action: 'renew', id: this.task.id, data });
                     CertiSub.notify(t('task.renewed'));
                     CertiSub.data.refresh('tasks', 'taskStats', 'certificates', 'summary', 'beneficiaries', 'payers');
                     this.$emit('saved', result);
@@ -507,6 +526,9 @@
                     </FormField>
                     <FormField :label="t('field.last_payment_date')" :error="errors.last_payment_date">
                         <input v-model="form.last_payment_date" type="date" class="input">
+                    </FormField>
+                    <FormField class="md:col-span-2" :label="t('field.payer_id')" :error="errors.payer_id" :hint="t('task.renew_payer_hint')">
+                        <SearchSelect v-model="form.payer_id" :options="payerOptions" :invalid="Boolean(errors.payer_id)" :aria-label="t('field.payer_id')" />
                     </FormField>
                     <FormField class="md:col-span-2" :label="t('task.note_optional')">
                         <textarea v-model="form.note" rows="2" maxlength="2000" class="input"></textarea>
